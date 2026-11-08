@@ -1,0 +1,73 @@
+---
+title: 朗追踪集成
+description: 如何使用外部可观测工具 Langtrace 监控 CrewAI 代理的成本、延迟和性能。
+icon: chart-line
+mode: "wide"
+---
+
+# 朗追踪概述
+
+Langtrace 是一款开源外部工具，可帮助您设置大型语言模型 (LLM)、LLM 框架和向量数据库的可观察性和评估。
+虽然未直接内置到 CrewAI 中，但 Langtrace 可以与 CrewAI 一起使用，以深入了解 CrewAI 代理的成本、延迟和性能。
+这种集成允许您记录超参数、监控性能回归并建立持续改进代理的流程。
+
+![选定的一系列代理会话运行的概述](/images/langtrace1.png)
+![代理踪迹概览](/images/langtrace2.png)
+![llm 轨迹详细概述](/images/langtrace3.png)
+
+## 设置说明
+
+<Steps>
+   <Step title="Sign up for Langtrace">
+通过访问注册[https://app.langtrace.ai/signup](https://app.langtrace.ai/signup).
+   </Step>
+   <Step title="Create a project">
+将项目类型设置为`CrewAI`并生成 API 密钥。
+   </Step>
+   <Step title="Install Langtrace in your CrewAI project">
+使用以下命令：
+
+    ```bash
+    pip install langtrace-python-sdk
+    ```
+   </Step>
+   <Step title="Import Langtrace">
+在导入任何 CrewAI 之前，在脚本开头导入并初始化 Langtrace：
+
+    ```python
+    from langtrace_python_sdk import langtrace
+    langtrace.init(api_key='<LANGTRACE_API_KEY>')
+
+    # Now import CrewAI modules
+    from crewai import Agent, Task, Crew
+    ```
+   </Step>
+</Steps> 
+
+### 特征及其在 CrewAI 中的应用
+
+1. **LLM 代币和成本跟踪**
+
+   - 监控每个 CrewAI 代理交互的令牌使用情况和相关成本。
+
+2. **执行步骤的跟踪图**
+
+   - 可视化 CrewAI 任务的执行流程，包括延迟和日志。
+   - 对于识别代理工作流程中的瓶颈很有用。
+
+3. **使用手动注释进行数据集管理**
+
+   - 从 CrewAI 任务输出创建数据集以供将来的训练或评估。
+
+4. **及时的版本控制和管理**
+
+   - 跟踪 CrewAI 代理中使用的不同版本的提示。
+   - 对于 A/B 测试和优化代理性能很有用。
+
+5. **带有模型比较的提示游乐场**
+
+   - 在部署之前测试并比较 CrewAI 代理的不同提示和模型。
+
+6. **测试和评估**
+
+   - 为您的 CrewAI 代理和任务设置自动化测试。

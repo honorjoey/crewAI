@@ -1,0 +1,208 @@
+---
+title: 代理生成 UI
+description: 将 CrewAI Flow 的实时状态渲染为 UI，随着代理完成多步骤任务而更新。
+icon: list-check
+mode: "wide"
+---
+
+## 渲染代理的实时状态
+
+有些工作不适合单个工具调用。一项研究任务、一项多步骤计划、一项长期运行的工作：向用户展示的有趣的事情不是一个结果，而是“进展”。代理生成 UI 呈现代理的 **状态** 并在每次状态改变时重新渲染它。
+
+该模式有两半：
+
+1. 您的 Flow 在工作时将进度写入其自己的状态。
+2. 您的前端使用 `useAgent` 读取该状态并绘制它，随着状态流入而重新渲染。
+
+Flow 的状态通过 AG-UI 到达前端，无需连接任何传输。状态快照会在流程的每个步骤（方法）边界自动发出，并且您可以在流程期间推送中间更新通过显式调用 `copilotkit_emit_state` 来执行长时间运行的步骤。您可以对状态进行子类化以添加自己的字段，在 Flow 中更新它们，并在 React 中读取它们。
+
+<Note>
+状态驱动渲染需要具有自定义状态 (`Flow[AgentState]`) 的 **Flow**。 Crew 是面向聊天的，不会以这种方式公开自定义状态，因此对于 Crew，请改用 [工具渲染](/edge/zh-CN/guides/frontend/tool-based-generative-ui)。
+</Note>
+
+## 构建实时任务计划器
+
+此示例构建一个规划器，将请求分解为大约十个步骤，并将它们作为清单传输到 UI。它假设您已经连接了 CrewAI 服务器和 CopilotKit 前端。如果不这样做，请开始与[前端概述](/edge/zh-CN/guides/frontend/overview)。
+
+<Steps>
+
+<Step title="将您自己的字段添加到代理状态">
+
+子类 `CopilotKitState` 来声明您的 UI 需要的状态。 `CopilotKitState` 已进行对话 (`messages`)；您可以添加想要渲染的任何其他内容，这里是任务步骤列表。
+
+```python
+from typing import List, Literal
+from pydantic import BaseModel, Field
+from ag_ui_crewai.sdk import CopilotKitState
+
+
+class TaskStep(BaseModel):
+    description: str
+    status: Literal["enabled", "disabled"]
+
+
+class AgentState(CopilotKitState):
+    steps: List[TaskStep] = Field(default_factory=list)
+```
+
+`AgentState` 上的所有内容都包含在前端收到的状态快照中。快照会在每个步骤边界自动发出，因此写入 `self.state` 足以让 UI 在步骤之间拾取它。到*在长步骤中*更新 UI，显式发出（如下所示）。
+
+</Step>
+
+<Step title="将进度从 Flow 写入状态">
+
+使用自定义状态 (`Flow[AgentState]`) 输入您的流程并让模型填充它。这里 LLM 调用 `generate_task_steps` 工具；流式工具调用进入对话，并且步骤在状态中变得可见。
+
+```python
+from crewai.flow.flow import Flow, start
+from litellm import acompletion
+from ag_ui_crewai.sdk import copilotkit_stream
+
+GENERATE_TASK_STEPS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "generate_task_steps",
+        "description": "Break a task into about 10 short imperative steps.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "description": {"type": "string"},
+                            "status": {"type": "string", "enum": ["enabled"]},
+                        },
+                        "required": ["description", "status"],
+                    },
+                },
+            },
+            "required": ["steps"],
+        },
+    },
+}
+
+
+class TaskPlannerFlow(Flow[AgentState]):
+    @start()
+    async def chat(self):
+        response = await copilotkit_stream(
+            await acompletion(
+                model="openai/gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Plan the task the user asks for."},
+                    *self.state.messages,
+                ],
+                tools=[GENERATE_TASK_STEPS_TOOL],
+                parallel_tool_calls=False,
+                stream=True,
+            )
+        )
+        message = response.choices[0].message
+        self.state.messages.append(message)
+```
+
+将 LLM 调用包装在 `copilotkit_stream` 中，将助理的令牌和工具调用在生成时流式传输到前端。您写入 `self.state` 的 `steps` 将在此步骤结束时发出的状态快照中发送。
+
+</Step>
+
+<Step title="在长步中流式传输进度（可选）">
+
+自动快照在步骤边界处触发。如果单个步骤完成了大量工作，并且您希望*在发生时*填写清单，请使用 `copilotkit_emit_state` 自行发出中间状态。每次调用都会推送当前的立即向前端声明。
+
+```python
+from ag_ui_crewai.sdk import copilotkit_emit_state
+
+class TaskPlannerFlow(Flow[AgentState]):
+    @start()
+    async def execute(self):
+        for step in self.state.steps:
+            step.status = "disabled"          # mark done as you go
+            await copilotkit_emit_state(self.state)   # push update now
+            await do_work(step)
+```
+
+从 `ag_ui_crewai.sdk` 导入 `copilotkit_emit_state`。它需要 CopilotKit SDK (`pip install "copilotkit[crewai]"`)。仅当步骤足够长以至于等待其边界快照会感觉无响应时才伸手去触碰它。
+
+</Step>
+
+<Step title="通过 AG-UI 服务流">
+
+与任何其他流一样，在其自己的路径上注册该流：
+
+```python
+# server.py
+from fastapi import FastAPI
+from ag_ui_crewai.endpoint import add_crewai_flow_fastapi_endpoint
+from my_agents.task_planner import TaskPlannerFlow
+
+app = FastAPI(title="CrewAI Agent Server")
+
+add_crewai_flow_fastapi_endpoint(
+    app=app,
+    flow=TaskPlannerFlow(),
+    path="/task_planner",
+)
+```
+
+请参阅[前端概述](/edge/zh-CN/guides/frontend/overview) 了解完整的服务器、运行时和提供程序设置，并记住在 CopilotKit 运行时路径中注册代理（此处为 `task_planner`）。
+
+</Step>
+
+<Step title="读取 React 中的实时状态">
+
+在前端，`useAgent` 为您提供代理的实时状态。订阅状态更改，以便每次流程写入更新时您的组件都会重新呈现。
+
+```tsx
+"use client";
+import { useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
+
+function TaskPlan() {
+  const { agent } = useAgent({
+    agentId: "task_planner",
+    updates: [UseAgentUpdate.OnStateChanged],
+  });
+
+  const steps = agent?.state?.steps ?? [];
+
+  return (
+    <ul>
+      {steps.map((s, i) => (
+        <li key={i}>{s.description}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+`useAgent` 返回 `{ agent }`。有几件事需要知道：
+
+- `agent.state` 是实时 Flow 状态。它的形状与您添加到 `AgentState` 的字段匹配，因此 `agent.state.steps` 是您的任务步骤列表。
+- `agent.isRunning` 告诉您代理何时正在积极工作，对于显示旋转器或禁用输入很有用。
+- 每当状态发生变化时 `updates: [UseAgentUpdate.OnStateChanged]` 都会重新渲染组件，因此清单会随着流程流式传输其步骤而填充。
+
+</Step>
+
+</Steps>
+
+## 接下来会发生什么
+
+阅读状态是基础。两个指南直接建立在它的基础上：
+
+- [共享状态](/edge/zh-CN/guides/frontend/shared-state) 添加了另一个方向：从 UI 编辑代理的状态并让流程接收更改。
+- [预测性状态更新](/edge/zh-CN/guides/frontend/predictive-state-updates) 将工具的正在进行的参数流式传输到状态，以便 UI 在提交之前反映工作。
+
+## 有关的
+
+<CardGroup cols={2}>
+ <Card title="共享状态" icon="arrows-rotate" href="/edge/zh-CN/guides/frontend/shared-state">
+双向同步代理状态和应用程序 UI。
+ </Card>
+ <Card title="预测性状态更新" icon="gauge-high" href="/edge/zh-CN/guides/frontend/predictive-state-updates">
+将正在进行的工具参数流式传输到状态中。
+ </Card>
+ <Card title="基于工具的生成式 UI" icon="puzzle-piece" href="/edge/zh-CN/guides/frontend/tool-based-generative-ui">
+将代理工具调用映射到组件。
+ </Card>
+</CardGroup>

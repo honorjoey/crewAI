@@ -1,0 +1,1588 @@
+---
+title: 'LLM'
+description: '在 CrewAI 项目中配置与使用大语言模型（LLM）的综合指南'
+icon: 'microchip-ai'
+mode: "wide"
+---
+
+## 概览
+
+CrewAI 通过各提供商的原生 SDK 集成了多个 LLM 提供商，让你可以根据具体场景灵活选择合适的模型。本指南将帮助你理解如何在 CrewAI 项目中配置和使用不同的 LLM 提供商。
+
+
+## 什么是 LLM？
+
+大语言模型（LLM）是 CrewAI 智能体背后的核心智能。它们使智能体能够理解上下文、做出决策并生成类人响应。以下是你需要了解的重点：
+
+<CardGroup cols={2}>
+  <Card title="LLM 基础" icon="brain">
+    大语言模型是基于海量文本数据训练的 AI 系统。它们为 CrewAI 智能体提供核心能力，使其能够理解并生成人类风格的文本。
+  </Card>
+  <Card title="上下文窗口" icon="window">
+    上下文窗口决定了 LLM 一次可处理的文本量。更大的窗口（例如 128K tokens）可容纳更多上下文，但通常成本更高、速度更慢。
+  </Card>
+  <Card title="Temperature" icon="temperature-three-quarters">
+    Temperature 是部分模型支持的采样控制参数。较低取值通常让采样更聚焦，较高取值会增加多样性。某些较新的推理模型会忽略、弃用或拒绝该参数，因此设置前请先查看所选模型文档。
+  </Card>
+  <Card title="提供商选择" icon="server">
+    每个 LLM 提供商（如 OpenAI、Anthropic、Google）都提供能力、价格和特性各异的模型。请根据你对准确性、速度和成本的需求进行选择。
+  </Card>
+</CardGroup>
+
+## 设置你的 LLM
+
+在 CrewAI 代码中可以在不同位置指定要使用的模型。指定模型后，你需要为所使用的每个模型提供商提供配置（如 API key）。请查看对应提供商的[提供商配置示例](#provider-configuration-examples)。
+
+<Tabs>
+  <Tab title="1. 环境变量">
+    最简单的入门方式。可直接在环境中设置模型，方式包括 `.env` 文件或应用代码。如果你使用 `crewai create` 初始化项目，通常会已预设。
+
+    ```bash .env
+    MODEL=provider/model-id  # e.g. openai/gpt-5.6-terra
+
+    # Be sure to set your API keys here too. See the Provider
+    # section below.
+    ```
+
+    <Warning>
+      永远不要把 API key 提交到版本控制。请使用环境文件（.env）或系统密钥管理。
+    </Warning>
+  </Tab>
+  <Tab title="2. YAML 配置">
+    通过 YAML 文件定义智能体配置。该方式非常适合版本管理与团队协作：
+
+    ```yaml agents.yaml {6}
+    researcher:
+        role: Research Specialist
+        goal: Conduct comprehensive research and analysis
+        backstory: A dedicated research professional with years of experience
+        verbose: true
+        llm: provider/model-id  # e.g. anthropic/claude-sonnet-4-6
+        # (see provider configuration examples below for more)
+    ```
+
+    <Info>
+      YAML 配置可以让你：
+      - 对智能体设置进行版本管理
+      - 轻松切换不同模型
+      - 在团队成员间共享配置
+      - 记录模型选择及其用途
+    </Info>
+  </Tab>
+  <Tab title="3. 直接在代码中配置">
+    若需要最大灵活性，可直接在 Python 代码中配置 LLM：
+
+    ```python {4,8}
+    from crewai import LLM
+
+    # Basic configuration
+    llm = LLM(model="provider/model-id")  # e.g. gemini/gemini-3.6-flash
+
+    # Advanced configuration with detailed parameters
+    llm = LLM(
+        model="provider/model-id",
+        timeout=120,
+        max_tokens=4000,
+        response_format={"type": "json"},  # For structured outputs
+    )
+    ```
+
+    <Info>
+      参数说明：
+      - `timeout`：响应最大等待时间
+      - `max_tokens`：限制响应长度
+      - `response_format`：指定输出结构
+
+      `temperature`、`top_p` 等采样控制参数，惩罚参数、token 上限参数命名以及推理控制都与模型有关。仅在所选提供商和模型支持时再添加。请参阅下方提供商示例及提供商模型文档。
+    </Info>
+  </Tab>
+</Tabs>
+
+<Info>
+  CrewAI 为 OpenAI、Anthropic、Google（Gemini API）、Azure、AWS Bedrock 与 Snowflake Cortex 提供原生 SDK 集成——除对应提供商扩展依赖外无需额外安装（例如 `uv add "crewai[openai]"`）。
+
+  其余提供商由 **LiteLLM** 驱动。如果你计划使用其中任意一个，请将其添加为项目依赖：
+  ```bash
+  uv add 'crewai[litellm]'
+  ```
+</Info>
+
+## 提供商配置示例
+
+CrewAI 支持大量 LLM 提供商，每个提供商都有不同的功能、鉴权方式与模型能力。
+本节提供详细示例，帮助你选择、配置并优化最适合项目需求的 LLM。
+
+<Warning>
+  模型可用性变化频繁，并且会因账号、区域和云平台而异。
+  下方示例使用的是撰写时可用模型，但并非完整支持列表。
+  在部署前，请在提供商链接的模型目录中核验模型 ID 与生命周期状态。
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="OpenAI">
+    CrewAI 通过 OpenAI Python SDK 原生集成 OpenAI。
+
+    ```toml Code
+    # Required
+    OPENAI_API_KEY=sk-...
+
+    # Optional
+    OPENAI_BASE_URL=<custom-base-url>
+    ```
+
+    **基本用法：**
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="openai/gpt-5.6-terra",
+        api_key="your-api-key",  # Or set OPENAI_API_KEY
+        reasoning_effort="medium",
+        max_completion_tokens=4000
+    )
+    ```
+
+    **自定义 OpenAI 兼容端点：**
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="anthropic/claude-sonnet-4-6",
+        custom_openai=True,
+        base_url="https://your-gateway.example.com/v1",
+        api_key="your-gateway-api-key",
+    )
+    ```
+
+    **高级配置：**
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="openai/gpt-5.6-terra",
+        api_key="your-api-key",
+        base_url="https://api.openai.com/v1",  # Optional custom endpoint
+        organization="org-...",  # Optional organization ID
+        project="proj_...",  # Optional project ID
+        max_completion_tokens=4000,
+        reasoning_effort="medium",
+        stream=True,  # Enable streaming
+        timeout=60.0,  # Request timeout in seconds
+        max_retries=3  # Maximum retry attempts
+    )
+    ```
+
+    **结构化输出：**
+    ```python Code
+    from pydantic import BaseModel
+    from crewai import LLM
+
+    class ResponseFormat(BaseModel):
+        name: str
+        age: int
+        summary: str
+
+    llm = LLM(
+        model="openai/gpt-5.6-terra",
+    )
+    ```
+
+    **支持的环境变量：**
+    - `OPENAI_API_KEY`：你的 OpenAI API key（必填）
+    - `OPENAI_BASE_URL`：OpenAI API 自定义基础 URL（可选）
+
+    **特性：**
+    - 原生 function calling 支持
+    - 基于 JSON schema 的结构化输出
+    - 实时响应流式输出
+    - Token 使用量跟踪
+    - 提供商特定生成控制参数
+    - Token 级别的对数概率洞察
+    - 对支持模型的推理强度控制
+
+    OpenAI 会持续新增模型并淘汰旧快照。请查看
+    [OpenAI 模型目录](https://developers.openai.com/api/docs/models)
+    获取最新模型 ID、上下文窗口、端点兼容性与生命周期信息。
+
+    **Responses API：**
+
+    OpenAI 提供两套 API：Chat Completions（默认）与更新的 Responses API。Responses API 从设计之初就原生支持多模态——文本、图像、音频和函数调用都属于一等能力。它在推理模型上通常有更好表现，并支持自动链式调用、内置工具等附加特性。
+
+    ```python Code
+    from crewai import LLM
+
+    # Use the Responses API instead of Chat Completions
+    llm = LLM(
+        model="openai/gpt-4o",
+        api="responses",  # Enable Responses API
+        store=True,  # Store responses for multi-turn (optional)
+        auto_chain=True,  # Auto-chain for reasoning models (optional)
+    )
+    ```
+
+    **Responses API 参数：**
+    - `api`：设为 `"responses"` 以使用 Responses API（默认：`"completions"`）
+    - `instructions`：系统级指令（仅 Responses API）
+    - `store`：是否存储响应用于多轮对话
+    - `previous_response_id`：多轮对话时前一响应的 ID
+    - `include`：要包含在响应中的附加数据（如 `["reasoning.encrypted_content"]`）
+    - `builtin_tools`：OpenAI 内置工具列表：`"web_search"`、`"file_search"`、`"code_interpreter"`、`"computer_use"`
+    - `parse_tool_outputs`：返回带已解析内置工具输出的结构化 `ResponsesAPIResult`
+    - `auto_chain`：自动跟踪并使用响应 ID 进行多轮对话
+    - `auto_chain_reasoning`：跟踪加密推理条目以满足 ZDR（零数据保留）合规
+
+    <Tip>
+      新项目建议使用 Responses API，尤其是在使用推理模型（o1、o3、o4）或需要原生多模态 [files](/zh-CN/concepts/files) 支持时。
+    </Tip>
+
+    **注意：**使用 OpenAI 需要安装对应依赖：
+    ```bash
+    uv add "crewai[openai]"
+    ```
+  </Accordion>
+
+  <Accordion title="Meta-Llama">
+    Meta 的 Llama API 提供对 Meta 系列大语言模型的访问。
+    该 API 可通过 [Meta Llama API](https://llama.developer.meta.com?utm_source=partner-crewai&utm_medium=website) 使用。
+    在 `.env` 文件中设置以下环境变量：
+
+    ```toml Code
+    # Meta Llama API Key Configuration
+    LLAMA_API_KEY=LLM|your_api_key_here
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    from crewai import LLM
+
+    # Initialize Meta Llama LLM
+    llm = LLM(
+        model="meta_llama/Llama-4-Scout-17B-16E-Instruct-FP8",
+        temperature=0.8,
+        stop=["END"],
+        seed=42
+    )
+    ```
+
+    请参阅 [Meta Llama 模型概览](https://ai.meta.com/llama/get-started/)
+    了解当前模型家族、模态与上下文建议。
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="Snowflake Cortex">
+    CrewAI 通过与 OpenAI 兼容的 Chat Completions 端点原生集成 Snowflake Cortex REST API。这可避免 `snowflake/...` 模型回退到 LiteLLM。当前 CrewAI 中 Snowflake Cortex 仅支持 Chat Completions，因此请使用默认 `api` 模式，不要设置 `api="responses"`。
+
+    ```toml Code
+    # Required
+    SNOWFLAKE_PAT=<your-programmatic-access-token>
+    SNOWFLAKE_ACCOUNT_URL=https://<account-identifier>.snowflakecomputing.com
+
+    # Alternative account configuration
+    SNOWFLAKE_ACCOUNT=<account-identifier>
+    ```
+
+    **基本用法：**
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="snowflake/openai-gpt-4.1",
+        temperature=0.7,
+        max_completion_tokens=1024,
+    )
+    ```
+
+    **Cortex 上的 Claude 模型：**
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="snowflake/claude-sonnet-4-5",
+        max_completion_tokens=1024,
+        stream=True,
+    )
+    ```
+
+    **支持的环境变量：**
+    - `SNOWFLAKE_PAT`、`SNOWFLAKE_TOKEN` 或 `SNOWFLAKE_JWT`：用作认证的 token
+    - `SNOWFLAKE_ACCOUNT_URL`：完整 Snowflake 账号 URL
+    - `SNOWFLAKE_ACCOUNT`、`SNOWFLAKE_ACCOUNT_ID` 或 `SNOWFLAKE_ACCOUNT_IDENTIFIER`：用于拼接账号 URL 的标识
+
+    Snowflake REST 请求会使用用户默认 Snowflake 角色。请确保该角色具备 `SNOWFLAKE.CORTEX_USER` 或 `SNOWFLAKE.CORTEX_REST_API_USER` 权限。Cortex REST Chat Completions 端点不需要数据库、schema、warehouse 和显式角色参数。
+
+    **特性：**
+    - 使用 `model="snowflake/<model-name>"` 进行原生提供商选择
+    - 仅支持流式与非流式 Chat Completions；不支持 `api="responses"`
+    - Token 使用量跟踪
+    - 对 Snowflake 托管 OpenAI 与 Claude 模型的函数调用支持
+    - 自动移除 Snowflake Claude 模型中无效的 assistant 预填充尾部
+  </Accordion>
+
+  <Accordion title="Anthropic">
+    CrewAI 通过 Anthropic Python SDK 原生集成 Anthropic。
+
+    ```toml Code
+    # Required
+    ANTHROPIC_API_KEY=sk-ant-...
+    ```
+
+    **基本用法：**
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="anthropic/claude-sonnet-4-6",
+        api_key="your-api-key",  # Or set ANTHROPIC_API_KEY
+        max_tokens=4096  # Required for Anthropic
+    )
+    ```
+
+    **高级配置：**
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="anthropic/claude-sonnet-4-6",
+        api_key="your-api-key",
+        base_url="https://api.anthropic.com",  # Optional custom endpoint
+        max_tokens=4096,  # Required parameter
+        stop_sequences=["END", "STOP"],  # Anthropic uses stop_sequences
+        stream=True,  # Enable streaming
+        timeout=60.0,  # Request timeout in seconds
+        max_retries=3  # Maximum retry attempts
+    )
+    ```
+
+    **Extended Thinking：**
+
+    CrewAI 支持 Anthropic 的 Extended Thinking 功能，让 Claude 在响应前以更接近人类的方式先进行思考。这对复杂推理、分析和问题解决任务尤其有用。
+
+    ```python Code
+    from crewai import LLM
+
+    # Enable extended thinking with default settings
+    llm = LLM(
+        model="anthropic/claude-sonnet-4-6",
+        thinking={"type": "enabled"},
+        max_tokens=10000
+    )
+
+    # Configure thinking with budget control
+    llm = LLM(
+        model="anthropic/claude-sonnet-4-6",
+        thinking={
+            "type": "enabled",
+            "budget_tokens": 5000  # Limit thinking tokens
+        },
+        max_tokens=10000
+    )
+    ```
+
+    **Thinking 配置选项：**
+    - `type`：设为 `"enabled"` 以启用扩展思考模式
+    - `budget_tokens`（可选）：思考阶段可使用的最大 token 数（有助于控制成本）
+
+    不同代 Claude 的 thinking 模式与参数支持可能不同。
+    启用 `thinking` 前请先核对所选模型能力。
+
+    **何时使用 Extended Thinking：**
+    - 复杂推理与多步骤问题求解
+    - 数学计算与证明
+    - 代码分析与调试
+    - 战略规划与决策
+    - 研究与分析任务
+
+    **注意：**Extended Thinking 会消耗额外 token，但在复杂任务上通常能显著提升输出质量。
+
+    **支持的环境变量：**
+    - `ANTHROPIC_API_KEY`：你的 Anthropic API key（必填）
+
+    **特性：**
+    - Claude 3+ 模型原生工具调用支持
+    - 兼容 Claude 模型的 Extended Thinking 支持
+    - 实时响应流式输出
+    - 自动系统消息处理
+    - 使用 stop sequences 控制输出
+    - Token 使用量跟踪
+    - 多轮工具调用对话
+
+    **Token 使用与提示缓存：**
+
+    Anthropic 会将计费输入分开统计——`input_tokens`（未命中缓存）、
+    `cache_read_input_tokens` 与 `cache_creation_input_tokens`。CrewAI 会将三者
+    合并到 `prompt_tokens`（以及提供商响应中的原生 `input_tokens`）中，
+    让 `total_tokens` 能反映缓存场景下的完整计费用量。
+
+    `cached_prompt_tokens` 仅记录缓存读取部分作为拆分信息；它已经包含在
+    `prompt_tokens` 中，不能再次累加到 `total_tokens`。
+    `cache_creation_tokens` 记录缓存写入的方式相同。
+
+    ```python Code
+    usage = llm.get_token_usage_summary()
+    # total_tokens == prompt_tokens + completion_tokens
+    # prompt_tokens includes cache read + cache write for Anthropic
+    ```
+
+    关于 `crew.usage_metrics` 与 `flow.usage_metrics` 使用的提供商无关语义契约，
+    请参阅 Flows 概念文档中的 **UsageMetrics field semantics** 章节。
+
+    **重要说明：**
+    - 所有 Anthropic 模型都**必须**设置 `max_tokens`
+    - Claude 使用 `stop_sequences`，而不是 `stop`
+    - 系统消息会与会话消息分开处理
+    - 首条消息必须来自用户（会自动处理）
+    - 消息必须在 user 和 assistant 之间交替
+
+    请参阅 Anthropic 的[模型概览](https://platform.claude.com/docs/en/about-claude/models/overview)
+    获取最新模型 ID 与能力；并在生产环境固定模型前查看
+    [模型弃用表](https://platform.claude.com/docs/en/about-claude/model-deprecations)。
+
+    **注意：**使用 Anthropic 需要安装对应依赖：
+    ```bash
+    uv add "crewai[anthropic]"
+    ```
+  </Accordion>
+
+  <Accordion title="Google (Gemini API)">
+    CrewAI 通过 Google Gen AI Python SDK 原生集成 Google Gemini。
+
+    在 `.env` 文件中设置 API key。如需申请 key，请访问 [AI Studio](https://aistudio.google.com/apikey)。
+
+    ```toml .env
+    # Required (one of the following)
+    GOOGLE_API_KEY=<your-api-key>
+    GEMINI_API_KEY=<your-api-key>
+
+    # For Vertex AI Express mode (API key authentication)
+    GOOGLE_GENAI_USE_VERTEXAI=true
+    GOOGLE_API_KEY=<your-api-key>
+
+    # For Vertex AI with service account
+    GOOGLE_CLOUD_PROJECT=<your-project-id>
+    GOOGLE_CLOUD_LOCATION=<location>  # Defaults to us-central1
+    ```
+
+    **基本用法：**
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="gemini/gemini-3.6-flash",
+        api_key="your-api-key",  # Or set GOOGLE_API_KEY/GEMINI_API_KEY
+    )
+    ```
+
+    **高级配置：**
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="gemini/gemini-3.6-flash",
+        api_key="your-api-key",
+        max_output_tokens=8192,
+        stop_sequences=["END", "STOP"],
+        stream=True,  # Enable streaming
+        safety_settings={
+            "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
+            "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE"
+        }
+    )
+    ```
+
+    **Vertex AI Express 模式（API Key 鉴权）：**
+
+    Vertex AI Express 模式允许你使用简单的 API key 鉴权访问 Vertex AI，而不必使用服务账号凭据。这是使用 Vertex AI 的最快入门方式。
+
+    如需启用 Express 模式，请在 `.env` 中同时设置以下两个环境变量：
+    ```toml .env
+    GOOGLE_GENAI_USE_VERTEXAI=true
+    GOOGLE_API_KEY=<your-api-key>
+    ```
+
+    然后像平常一样使用 LLM：
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="gemini/gemini-3.6-flash"
+    )
+    ```
+
+    <Info>
+      获取 Express 模式 API key：
+      - 新 Google Cloud 用户：[获取 express mode API key](https://cloud.google.com/vertex-ai/generative-ai/docs/start/quickstart?usertype=apikey)
+      - 现有 Google Cloud 用户：[获取绑定服务账号的 Google Cloud API key](https://cloud.google.com/docs/authentication/api-keys)
+
+      更多信息请参阅 [Vertex AI Express mode 文档](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/start/quickstart?usertype=apikey)。
+    </Info>
+
+    **Vertex AI 配置（服务账号）：**
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="gemini/gemini-3.6-flash",
+        project="your-gcp-project-id",
+        location="us-central1"  # GCP region
+    )
+    ```
+
+    **支持的环境变量：**
+    - `GOOGLE_API_KEY` 或 `GEMINI_API_KEY`：Google API key（Gemini API 和 Vertex AI Express 模式必需）
+    - `GOOGLE_GENAI_USE_VERTEXAI`：设为 `true` 以使用 Vertex AI（Express 模式必需）
+    - `GOOGLE_CLOUD_PROJECT`：Google Cloud 项目 ID（服务账号方式）
+    - `GOOGLE_CLOUD_LOCATION`：GCP 区域（默认 `us-central1`）
+
+    **特性：**
+    - 兼容 Gemini 模型的原生 function calling 支持
+    - 实时响应流式输出
+    - 多模态能力（文本、图像、视频）
+    - 安全设置配置
+    - 同时支持 Gemini API 与 Vertex AI
+    - 自动系统指令处理
+    - Token 使用量跟踪
+
+    Google 在 [Gemini 模型目录](https://ai.google.dev/gemini-api/docs/models)
+    持续发布最新 Gemini ID、能力和生命周期阶段。
+    选择稳定版或预览版模型前，请先查看
+    [弃用计划](https://ai.google.dev/gemini-api/docs/deprecations)。
+    Gemini API 也托管 [Gemma 模型](https://ai.google.dev/gemma/docs)。
+
+    **注意：**使用 Google Gemini 需要安装对应依赖：
+    ```bash
+    uv add "crewai[google-genai]"
+    ```
+
+  </Accordion>
+  <Accordion title="Google (Vertex AI)">
+    使用 [Application Default Credentials](https://cloud.google.com/docs/authentication/provide-credentials-adc) 完成鉴权后，再为 Vertex AI 配置原生 Gemini 提供商：
+    ```toml .env
+    GOOGLE_GENAI_USE_VERTEXAI=true
+    GOOGLE_CLOUD_PROJECT=<your-project-id>
+    GOOGLE_CLOUD_LOCATION=<location>
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="gemini/gemini-3.6-flash"
+    )
+    ```
+
+    Vertex AI 的可用性因区域而异。部署前请使用
+    [Vertex AI 模型目录](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models)
+    核验模型 ID 与地区。
+
+    **注意：**此路径使用 CrewAI 的原生 Gemini 集成。请添加依赖：
+    ```bash
+    uv add "crewai[google-genai]"
+    ```
+  </Accordion>
+
+  <Accordion title="Azure">
+    CrewAI 通过 Azure AI Inference Python SDK 原生集成 Azure AI Inference 与 Azure OpenAI。
+
+    ```toml Code
+    # Required
+    AZURE_API_KEY=<your-api-key>
+    AZURE_ENDPOINT=<your-endpoint-url>
+
+    # Optional
+    AZURE_API_VERSION=<api-version>  # Defaults to 2024-06-01
+    ```
+
+    **端点 URL 格式：**
+
+    对于 Azure OpenAI 部署：
+    ```
+    https://<resource-name>.openai.azure.com/openai/deployments/<deployment-name>
+    ```
+
+    对于 Azure AI Inference 端点：
+    ```
+    https://<resource-name>.inference.azure.com
+    ```
+
+    **基本用法：**
+    ```python Code
+    llm = LLM(
+        model="azure/gpt-4",
+        api_key="<your-api-key>",  # Or set AZURE_API_KEY
+        endpoint="<your-endpoint-url>",
+        api_version="2024-06-01"
+    )
+    ```
+
+    **高级配置：**
+    ```python Code
+    llm = LLM(
+        model="azure/gpt-4o",
+        temperature=0.7,
+        max_tokens=4000,
+        top_p=0.9,
+        frequency_penalty=0.0,
+        presence_penalty=0.0,
+        stop=["END"],
+        stream=True,
+        timeout=60.0,
+        max_retries=3
+    )
+    ```
+
+    **支持的环境变量：**
+    - `AZURE_API_KEY`：Azure API key（必填）
+    - `AZURE_ENDPOINT`：Azure 端点 URL（必填，同时也会检查 `AZURE_OPENAI_ENDPOINT` 与 `AZURE_API_BASE`）
+    - `AZURE_API_VERSION`：API 版本（可选，默认 `2024-06-01`）
+
+    **特性：**
+    - Azure OpenAI 模型（gpt-4、gpt-4o、gpt-3.5-turbo 等）原生 function calling 支持
+    - 实时响应流式输出
+    - 自动端点 URL 校验与修正
+    - 完整错误处理与重试逻辑
+    - Token 使用量跟踪
+
+    **注意：**使用 Azure AI Inference 需安装依赖：
+    ```bash
+    uv add "crewai[azure-ai-inference]"
+    ```
+  </Accordion>
+
+  <Accordion title="AWS Bedrock">
+    CrewAI 通过 boto3 SDK（Converse API）原生集成 AWS Bedrock。
+
+    ```toml Code
+    # Required
+    AWS_ACCESS_KEY_ID=<your-access-key>
+    AWS_SECRET_ACCESS_KEY=<your-secret-key>
+
+    # Optional
+    AWS_SESSION_TOKEN=<your-session-token>  # For temporary credentials
+    AWS_DEFAULT_REGION=<your-region>  # Defaults to us-east-1
+    AWS_REGION_NAME=<your-region>  # Alternative configuration for backwards compatibility with LiteLLM. Defaults to us-east-1
+    ```
+
+    **基本用法：**
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="bedrock/us.anthropic.claude-sonnet-4-6",
+        region_name="us-east-1"
+    )
+    ```
+
+    **高级配置：**
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="bedrock/us.anthropic.claude-sonnet-4-6",
+        aws_access_key_id="your-access-key",  # Or set AWS_ACCESS_KEY_ID
+        aws_secret_access_key="your-secret-key",  # Or set AWS_SECRET_ACCESS_KEY
+        aws_session_token="your-session-token",  # For temporary credentials
+        region_name="us-east-1",
+        temperature=0.7,
+        max_tokens=4096,
+        top_p=0.9,
+        top_k=250,  # For Claude models
+        stop_sequences=["END", "STOP"],
+        stream=True,  # Enable streaming
+        guardrail_config={  # Optional content filtering
+            "guardrailIdentifier": "your-guardrail-id",
+            "guardrailVersion": "1"
+        },
+        additional_model_request_fields={  # Model-specific parameters
+            "top_k": 250
+        }
+    )
+    ```
+
+    **支持的环境变量：**
+    - `AWS_ACCESS_KEY_ID`：AWS 访问密钥（必填）
+    - `AWS_SECRET_ACCESS_KEY`：AWS 密钥（必填）
+    - `AWS_SESSION_TOKEN`：临时凭据会话 token（可选）
+    - `AWS_DEFAULT_REGION`：AWS 区域（默认 `us-east-1`）
+    - `AWS_REGION_NAME`：AWS 区域（默认 `us-east-1`），用于兼容 LiteLLM 的替代配置
+
+    **特性：**
+    - 通过 Converse API 原生支持工具调用
+    - 支持流式与非流式响应
+    - 完整错误处理与重试逻辑
+    - 支持 guardrail 内容过滤配置
+    - 通过 `additional_model_request_fields` 传递模型特定参数
+    - Token 使用量跟踪与停止原因记录
+    - 支持所有 Bedrock 基础模型
+    - 自动处理会话格式
+
+    **重要说明：**
+    - 使用现代 Converse API 统一访问模型
+    - 自动处理不同模型特定会话要求
+    - 系统消息与会话消息分开处理
+    - 首条消息必须来自用户（自动处理）
+    - 某些模型（如 Cohere）要求会话必须以用户消息结束
+
+    Amazon Bedrock 的模型访问与 ID 因地区而异。请使用 AWS
+    [supported models and regions](https://docs.aws.amazon.com/bedrock/latest/userguide/models-regions.html)
+    文档选择模型并核验 Converse API 支持。
+    **注意：**使用 AWS Bedrock 需要安装依赖：
+    ```bash
+    uv add "crewai[bedrock]"
+    ```
+  </Accordion>
+
+  <Accordion title="Amazon SageMaker">
+    ```toml Code
+    AWS_ACCESS_KEY_ID=<your-access-key>
+    AWS_SECRET_ACCESS_KEY=<your-secret-key>
+    AWS_DEFAULT_REGION=<your-region>
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    llm = LLM(
+        model="sagemaker/<my-endpoint>"
+    )
+    ```
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="Mistral">
+    在 `.env` 文件中设置以下环境变量：
+    ```toml Code
+    MISTRAL_API_KEY=<your-api-key>
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    llm = LLM(
+        model="mistral/mistral-large-latest",
+        temperature=0.7
+    )
+    ```
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="Nvidia NIM">
+    在 `.env` 文件中设置以下环境变量：
+    ```toml Code
+    NVIDIA_API_KEY=<your-api-key>
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    llm = LLM(
+        model="nvidia_nim/nvidia/nvidia-nemotron-3-ultra-550b-a55b",
+        temperature=0.7
+    )
+    ```
+
+    NVIDIA NIM 托管目录变化频繁。请使用
+    [NVIDIA NIM model catalog](https://build.nvidia.com/models)
+    选择当前端点并核验模型 ID、模态及上下文限制。
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="NVIDIA Nemotron">
+    NVIDIA Nemotron 模型专为高要求的 agentic 工作负载设计，包括复杂推理、长上下文分析、工具使用、多语言任务以及高要求 RAG 场景。
+
+    `NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4` 是 NVIDIA 推出的前沿规模开源权重模型，总参数 550B、激活参数 55B。它采用结合 Mamba-2、MoE、Attention 和 Multi-Token Prediction（MTP）的 LatentMoE 架构，支持最高 1M token 的上下文长度。
+
+    <Info>
+      `NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4` 是超大模型。NVIDIA 给出的最小部署要求为 4x GB200、4x B200、4x GB300、4x B300 或 8x H100 GPU。对大多数 CrewAI 用户而言，更推荐使用 NVIDIA NIM 或其他 OpenAI 兼容托管端点，而不是本地运行。
+    </Info>
+
+    **托管 NVIDIA NIM 用法：**
+    ```toml Code
+    NVIDIA_API_KEY=<your-api-key>
+    ```
+
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="nvidia_nim/nvidia/nvidia-nemotron-3-ultra-550b-a55b",
+        temperature=0.2,
+        max_tokens=4096,
+    )
+    ```
+
+    **自托管 OpenAI 兼容端点：**
+    ```python Code
+    from crewai import LLM
+
+    llm = LLM(
+        model="openai/nvidia-nemotron-3-ultra-550b-a55b-nvfp4",
+        base_url="https://your-nemotron-endpoint.example.com/v1",
+        api_key="your-api-key",
+        temperature=0.2,
+        max_tokens=4096,
+    )
+    ```
+
+    **模型详情：**
+
+    | Model | Context Window | Best For |
+    |-------|----------------|----------|
+    | `nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4` | Up to 1M tokens | Frontier reasoning, complex agentic workflows, long-context analysis, tool use, multilingual reasoning, and high-stakes RAG |
+
+    **支持语言：**英语、法语、西班牙语、意大利语、德语、日语、韩语、印地语、巴西葡萄牙语和中文。
+
+    **推理模式：**Nemotron 3 Ultra 通过聊天模板支持可配置推理，使用 `enable_thinking=True` 或 `enable_thinking=False`。若使用托管端点，请查看提供商文档确认该标志如何暴露。
+
+    关于模型细节、许可证与部署建议，请参阅 [NVIDIA Nemotron 3 Ultra model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4)。
+
+    **注意：**托管 NVIDIA NIM 用法通过 LiteLLM。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="Local NVIDIA NIM Deployed using WSL2">
+
+    NVIDIA NIM 让你可以在 Windows 机器上通过 WSL2（Windows Subsystem for Linux）本地运行强大的 LLM。
+    这种方式可利用 NVIDIA GPU 进行私有、安全、成本可控的 AI 推理，而不依赖云服务。
+    适用于需要数据隐私或离线能力的开发、测试或生产场景。
+
+    以下是本地部署 NVIDIA NIM 模型的步骤：
+
+    1. 按照 [NVIDIA Website](https://docs.nvidia.com/nim/wsl2/latest/getting-started.html) 的安装说明操作
+
+    2. 安装本地模型。以 Llama 3.1-8b 为例，参考 [instructions](https://build.nvidia.com/meta/llama-3_1-8b-instruct/deploy)
+
+    3. 配置你的 crewai 本地模型：
+
+    ```python Code
+    from crewai.llm import LLM
+
+    local_nvidia_nim_llm = LLM(
+        model="openai/meta/llama-3.1-8b-instruct", # it's an openai-api compatible model
+        base_url="http://localhost:8000/v1",
+        api_key="<your_api_key|any text if you have not configured it>", # api_key is required, but you can use any text
+    )
+
+    # Then you can use it in your crew:
+
+    @CrewBase
+    class MyCrew():
+        # ...
+
+        @agent
+        def researcher(self) -> Agent:
+            return Agent(
+                config=self.agents_config['researcher'], # type: ignore[index]
+                llm=local_nvidia_nim_llm
+            )
+
+        # ...
+    ```
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="Groq">
+    在 `.env` 文件中设置以下环境变量：
+
+    ```toml Code
+    GROQ_API_KEY=<your-api-key>
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    llm = LLM(
+        model="groq/qwen/qwen3.6-27b",
+        temperature=0.7
+    )
+    ```
+
+    Groq 会区分生产模型与预览模型，并经常淘汰模型 ID。
+    在生产环境选型前，请查看 [Groq model catalog](https://console.groq.com/docs/models)
+    与 [deprecation page](https://console.groq.com/docs/deprecations)。
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="IBM watsonx.ai">
+    在 `.env` 文件中设置以下环境变量：
+    ```toml Code
+    # Required
+    WATSONX_URL=<your-url>
+    WATSONX_APIKEY=<your-apikey>
+    WATSONX_PROJECT_ID=<your-project-id>
+
+    # Optional
+    WATSONX_TOKEN=<your-token>
+    WATSONX_DEPLOYMENT_SPACE_ID=<your-space-id>
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    llm = LLM(
+        model="watsonx/meta-llama/llama-3-1-70b-instruct",
+        base_url="https://api.watsonx.ai/v1"
+    )
+    ```
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="Ollama (Local LLMs)">
+    1. 安装 Ollama：[ollama.ai](https://ollama.ai/)
+    2. 运行模型：`ollama run llama3`
+    3. 配置：
+
+    ```python Code
+    llm = LLM(
+        model="ollama/llama3:70b",
+        base_url="http://localhost:11434"
+    )
+    ```
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="Fireworks AI">
+    在 `.env` 文件中设置以下环境变量：
+    ```toml Code
+    FIREWORKS_API_KEY=<your-api-key>
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    llm = LLM(
+        model="fireworks_ai/accounts/fireworks/models/llama-v3-70b-instruct",
+        temperature=0.7
+    )
+    ```
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="Perplexity AI">
+    在 `.env` 文件中设置以下环境变量：
+    ```toml Code
+    PERPLEXITY_API_KEY=<your-api-key>
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    llm = LLM(
+        model="perplexity/sonar-pro"
+    )
+    ```
+
+    请查看 [Perplexity model catalog](https://docs.perplexity.ai/getting-started/models)
+    与 [changelog](https://docs.perplexity.ai/docs/resources/changelog)
+    获取当前模型 ID 与弃用通知。
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="Hugging Face">
+    在 `.env` 文件中设置以下环境变量：
+    ```toml Code
+    HF_TOKEN=<your-api-key>
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    llm = LLM(
+        model="huggingface/meta-llama/Meta-Llama-3.1-8B-Instruct"
+    )
+    ```
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="SambaNova">
+    在 `.env` 文件中设置以下环境变量：
+
+    ```toml Code
+    SAMBANOVA_API_KEY=<your-api-key>
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    llm = LLM(
+        model="sambanova/Meta-Llama-3.3-70B-Instruct",
+        temperature=0.7
+    )
+    ```
+    SambaNova Cloud 的托管模型可能独立于 CrewAI 发生变化。部署前请查询
+    [models endpoint](https://docs.sambanova.ai/docs/api-reference/models/get-environments-available-model-list-metadata)
+    并查看 [deprecation guide](https://docs.sambanova.ai/docs/en/models/deprecations)。
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="Cerebras">
+    在 `.env` 文件中设置以下环境变量：
+    ```toml Code
+    # Required
+    CEREBRAS_API_KEY=<your-api-key>
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    llm = LLM(
+        model="cerebras/gpt-oss-120b",
+        temperature=0.7,
+        max_tokens=8192
+    )
+    ```
+
+    <Info>
+      Cerebras 特性：
+      - 推理速度快
+      - 定价有竞争力
+      - 速度与质量平衡较好
+      - 支持长上下文窗口
+    </Info>
+
+    请查看 [Cerebras model catalog](https://inference-docs.cerebras.ai/models/overview)
+    与 [deprecation notices](https://inference-docs.cerebras.ai/support/deprecation)
+    获取当前公开端点 ID。
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="Open Router">
+    在 `.env` 文件中设置以下环境变量：
+    ```toml Code
+    OPENROUTER_API_KEY=<your-api-key>
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    llm = LLM(
+        model="openrouter/deepseek/deepseek-r1",
+        base_url="https://openrouter.ai/api/v1",
+        api_key=OPENROUTER_API_KEY
+    )
+    ```
+
+    <Info>
+      Open Router 模型：
+      - openrouter/deepseek/deepseek-r1
+      - openrouter/deepseek/deepseek-chat
+    </Info>
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="Nebius AI Studio">
+    在 `.env` 文件中设置以下环境变量：
+    ```toml Code
+    NEBIUS_API_KEY=<your-api-key>
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    llm = LLM(
+        model="nebius/Qwen/Qwen3-30B-A3B"
+    )
+    ```
+
+    <Info>
+      Nebius AI Studio 特性：
+      - 大量开源模型集合
+      - 更高的速率限制
+      - 价格有竞争力
+      - 速度与质量平衡较好
+    </Info>
+
+    **注意：**该提供商通过 LiteLLM 使用。请添加依赖：
+    ```bash
+    uv add 'crewai[litellm]'
+    ```
+  </Accordion>
+
+  <Accordion title="DeepInfra">
+    CrewAI 通过其原生 OpenAI 客户端与 DeepInfra 通信，因此不需要安装 LiteLLM。
+
+    在 `.env` 文件中设置以下环境变量：
+    ```toml Code
+    # Required
+    DEEPINFRA_API_KEY=<your-api-key>
+
+    # Optional, point at a proxy or a private deployment endpoint
+    DEEPINFRA_BASE_URL=https://api.deepinfra.com/v1/openai
+    ```
+
+    在 CrewAI 项目中的示例用法：
+    ```python Code
+    llm = LLM(
+        model="deepinfra/deepseek-ai/DeepSeek-V4-Flash-0731",
+        temperature=0.7
+    )
+    ```
+
+    <Info>
+      DeepInfra 特性：
+      - 通过单一 OpenAI 兼容 API 提供开放权重模型（Llama、Qwen、DeepSeek、GLM、Mistral 等）
+      - 支持工具调用、流式输出与 JSON schema 结构化输出
+      - 模型目录中公开每 token 定价与上下文长度
+    </Info>
+
+    模型 ID 已是 `org/model` 形式，因此完整引用会有三段，
+    例如 `deepinfra/meta-llama/Llama-4-Scout-17B-16E-Instruct`。请查看
+    [为 CrewAI 筛选的模型目录](https://api.deepinfra.com/v1/openai/models?filter=with_meta&sort_by=crewai)，
+    该目录公开且无需鉴权，可用于查询最新 ID、上下文长度与定价。
+  </Accordion>
+</AccordionGroup>
+
+## 流式响应
+
+CrewAI 支持 LLM 流式响应，使应用可以在输出生成过程中实时接收并处理内容。
+
+<Tabs>
+  <Tab title="基础设置">
+    初始化 LLM 时将 `stream` 参数设为 `True` 以启用流式：
+
+    ```python
+    from crewai import LLM
+
+    # Create an LLM with streaming enabled
+    llm = LLM(
+        model="openai/gpt-5.6-terra",
+        stream=True  # Enable streaming
+    )
+    ```
+
+    启用后，响应会以分块形式持续返回，带来更高的交互响应性。
+  </Tab>
+
+  <Tab title="事件处理">
+    CrewAI 会为流式过程中接收到的每个分块发出事件：
+
+    ```python
+    from crewai.events import (
+      LLMStreamChunkEvent
+    )
+    from crewai.events import BaseEventListener
+
+    class MyCustomListener(BaseEventListener):
+        def setup_listeners(self, crewai_event_bus):
+            @crewai_event_bus.on(LLMStreamChunkEvent)
+            def on_llm_stream_chunk(self, event: LLMStreamChunkEvent):
+              # Process each chunk as it arrives
+              print(f"Received chunk: {event.chunk}")
+
+    my_listener = MyCustomListener()
+    ```
+
+    <Tip>
+      更多细节请[点击这里](/zh-CN/concepts/event-listener#creating-a-custom-event-listener)
+    </Tip>
+  </Tab>
+
+  <Tab title="按 Agent 与 Task 跟踪">
+    CrewAI 中所有 LLM 事件都包含 agent 与 task 信息，因此你可以按特定 agent 或 task 跟踪、过滤 LLM 交互：
+
+    ```python
+    from crewai import LLM, Agent, Task, Crew
+    from crewai.events import LLMStreamChunkEvent
+    from crewai.events import BaseEventListener
+
+    class MyCustomListener(BaseEventListener):
+        def setup_listeners(self, crewai_event_bus):
+            @crewai_event_bus.on(LLMStreamChunkEvent)
+            def on_llm_stream_chunk(source, event):
+                if researcher.id == event.agent_id:
+                    print("\n==============\n Got event:", event, "\n==============\n")
+
+
+    my_listener = MyCustomListener()
+
+    llm = LLM(model="openai/gpt-5.6-terra", stream=True)
+
+    researcher = Agent(
+        role="About User",
+        goal="You know everything about the user.",
+        backstory="""You are a master at understanding people and their preferences.""",
+        llm=llm,
+    )
+
+    search = Task(
+        description="Answer the following questions about the user: {question}",
+        expected_output="An answer to the question.",
+        agent=researcher,
+    )
+
+    crew = Crew(agents=[researcher], tasks=[search])
+
+    result = crew.kickoff(
+        inputs={"question": "..."}
+    )
+    ```
+
+    <Info>
+      该特性特别适用于：
+      - 调试特定 agent 行为
+      - 按任务类型记录 LLM 使用情况
+      - 审计哪些 agent 发起了哪些类型的 LLM 调用
+      - 监控特定任务性能
+    </Info>
+  </Tab>
+</Tabs>
+
+## 异步 LLM 调用
+
+CrewAI 支持异步 LLM 调用，可提升 AI 工作流中的性能与并发能力。异步调用允许并发执行多个 LLM 请求而不阻塞，适合高吞吐应用和并行 agent 操作。
+
+<Tabs>
+  <Tab title="基本用法">
+    使用 `acall` 方法发起异步 LLM 请求：
+
+    ```python
+    import asyncio
+    from crewai import LLM
+
+    async def main():
+        llm = LLM(model="openai/gpt-4o")
+
+        # Single async call
+        response = await llm.acall("What is the capital of France?")
+        print(response)
+
+    asyncio.run(main())
+    ```
+
+    `acall` 方法支持与同步 `call` 方法相同的参数，包括消息、工具和回调。
+  </Tab>
+
+  <Tab title="结合流式输出">
+    将异步调用与流式输出结合，实现实时并发响应：
+
+    ```python
+    import asyncio
+    from crewai import LLM
+
+    async def stream_async():
+        llm = LLM(model="openai/gpt-4o", stream=True)
+
+        response = await llm.acall("Write a short story about AI")
+
+        print(response)
+
+    asyncio.run(stream_async())
+    ```
+  </Tab>
+</Tabs>
+
+## 结构化 LLM 调用
+
+CrewAI 支持结构化 LLM 响应：你可以通过 Pydantic 模型定义 `response_format`。这样框架会自动解析并校验输出，避免手动后处理，更易集成到应用中。
+
+结构化输出支持因提供商和模型而异。在生产环境依赖该能力前，请先测试所选模型。
+
+例如，你可以定义一个 Pydantic 模型作为期望响应结构，并在实例化 LLM 时作为 `response_format` 传入。随后模型输出会被转换为结构化 Python 对象。
+
+```python Code
+from crewai import LLM
+
+class Dog(BaseModel):
+    name: str
+    age: int
+    breed: str
+
+
+llm = LLM(model="openai/gpt-5.6-terra", response_format=Dog)
+
+response = llm.call(
+    "Analyze the following messages and return the name, age, and breed. "
+    "Meet Kona! She is 3 years old and is a black german shepherd."
+)
+print(response)
+
+# Output:
+# Dog(name='Kona', age=3, breed='black german shepherd')
+```
+
+## 高级功能与优化
+
+了解如何最大化你的 LLM 配置效果：
+
+<AccordionGroup>
+  <Accordion title="上下文窗口管理">
+    CrewAI 内置了智能上下文管理能力：
+
+    ```python
+    from crewai import LLM
+
+    # CrewAI automatically handles:
+    # 1. Token counting and tracking
+    # 2. Content summarization when needed
+    # 3. Task splitting for large contexts
+
+    llm = LLM(
+        model="openai/gpt-5.6-terra",
+        max_completion_tokens=4000,  # Limit response length
+    )
+    ```
+
+    <Info>
+      上下文管理最佳实践：
+      1. 选择上下文窗口合适的模型
+      2. 尽可能预处理长输入
+      3. 大文档使用分块
+      4. 监控 token 使用量以优化成本
+    </Info>
+
+    **CrewAI 不认识的模型。** CrewAI 会在内置目录中查询每个模型的上下文窗口，并使用其中 85%，其余留作余量。这个大小决定了何时将大型工具结果写入文件而非加入会话，以及何时总结会话。若目录中没有你的模型，CrewAI 会采用默认窗口（大多数提供商为 8,192 tokens）并记录包含模型名的警告。请将 `context_window_size` 设为模型完整上下文窗口（单位 token）。该设置会覆盖所有提供商的目录值，并同样按 85% 规则生效：
+
+    ```python
+    from crewai import LLM
+
+    llm = LLM(
+        model="openrouter/google/gemini-4-argon",
+        context_window_size=1_048_576,  # the model's full context window, in tokens
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="性能优化">
+    <Steps>
+      <Step title="Token 使用优化">
+        根据任务选择合适上下文窗口：
+        - 小任务（最多 4K tokens）：标准模型
+        - 中等任务（4K-32K）：增强模型
+        - 大任务（超过 32K）：大上下文模型
+
+        ```python
+        # Configure model with appropriate settings
+        llm = LLM(
+            model="openai/gpt-5.6-terra",
+            reasoning_effort="medium",
+            max_completion_tokens=4096,
+            timeout=300
+        )
+        ```
+        <Tip>
+          使用所选模型支持的控制项。根据提供商不同，可能是 `temperature`、推理/思考等级，或用于定义风格与多样性的提示词指令。
+        </Tip>
+      </Step>
+
+      <Step title="最佳实践">
+        1. 监控 token 使用量
+        2. 实施速率限制
+        3. 尽可能使用缓存
+        4. 设置合适的 max_tokens 限制
+      </Step>
+    </Steps>
+
+    <Info>
+      请定期监控 token 使用情况，并按需调整配置以优化成本与性能。
+    </Info>
+  </Accordion>
+
+  <Accordion title="Drop Additional Parameters">
+    CrewAI 在内部使用原生 SDK 发起 LLM 调用，因此你可以丢弃当前场景不需要的附加参数。这有助于简化代码并降低 LLM 配置复杂度。
+    例如，如果你不需要发送 <code>stop</code> 参数，可以直接在 LLM 调用中省略：
+
+    ```python
+    from crewai import LLM
+    import os
+
+    os.environ["OPENAI_API_KEY"] = "<api-key>"
+
+    o3_llm = LLM(
+        model="o3",
+        drop_params=True,
+        additional_drop_params=["stop"]
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="传输层拦截器">
+    CrewAI 为多个提供商提供消息拦截器，允许你在传输层挂钩请求/响应周期。
+
+    **支持的提供商：**
+    - ✅ OpenAI
+    - ✅ Anthropic
+
+    **基本用法：**
+    ```python
+import httpx
+from crewai import LLM
+from crewai.llms.hooks import BaseInterceptor
+
+class CustomInterceptor(BaseInterceptor[httpx.Request, httpx.Response]):
+    """Custom interceptor to modify requests and responses."""
+
+    def on_outbound(self, request: httpx.Request) -> httpx.Request:
+        """Print request before sending to the LLM provider."""
+        print(request)
+        return request
+
+    def on_inbound(self, response: httpx.Response) -> httpx.Response:
+        """Process response after receiving from the LLM provider."""
+        print(f"Status: {response.status_code}")
+        print(f"Response time: {response.elapsed}")
+        return response
+
+# Use the interceptor with an LLM
+llm = LLM(
+    model="openai/gpt-4o",
+    interceptor=CustomInterceptor()
+)
+    ```
+
+    **重要说明：**
+    - 两个方法都必须返回接收到的对象或同类型对象。
+    - 修改接收到的对象可能导致意外行为或应用崩溃。
+    - 并非所有提供商都支持拦截器——请参考上方支持列表
+
+    <Info>
+      拦截器工作在传输层，特别适用于：
+      - 消息转换与过滤
+      - 调试 API 交互
+    </Info>
+  </Accordion>
+</AccordionGroup>
+
+## 常见问题与解决方案
+
+<Tabs>
+  <Tab title="鉴权">
+    <Warning>
+      大多数鉴权问题都可以通过检查 API key 格式和环境变量名来解决。
+    </Warning>
+
+    ```bash
+    # OpenAI
+    OPENAI_API_KEY=sk-...
+
+    # Anthropic
+    ANTHROPIC_API_KEY=sk-ant-...
+    ```
+
+    如果某个提供商的 key 缺失，或者 `.env` 中仍保留旧版本 `crewai create flow` 生成项目可能包含的 `YOUR_API_KEY` 占位符，crewAI 会抛出 `MissingAPIKeyError` 并指出应设置的变量。将 key 写入项目 `.env` 后重新运行 `crewai run`。该错误是 `ValueError` 的子类，可从 `crewai.llms.base_llm` 导入。
+  </Tab>
+  <Tab title="模型名称">
+    <Check>
+      模型名称始终包含提供商前缀
+    </Check>
+
+    ```python
+    # Correct
+    llm = LLM(model="openai/gpt-4")
+
+    # Incorrect
+    llm = LLM(model="gpt-4")
+    ```
+  </Tab>
+  <Tab title="网关错误">
+    <Tip>
+      OpenRouter 等网关会在上游提供商接受请求后立即返回 `200 OK`，因此提供商超时会出现在响应体中，而不是状态码中。
+    </Tip>
+
+    CrewAI 会抛出与上游真实 HTTP 状态等价的同类异常，因此被掩盖的失败会被你现有的重试处理捕获：
+
+    ```python
+    import openai
+    from pydantic import BaseModel
+
+    from crewai import LLM
+
+
+    class Report(BaseModel):
+        summary: str
+
+
+    llm = LLM(model="openrouter/z-ai/glm-5.3", response_format=Report)
+
+    try:
+        result = llm.call("Summarize the incident", response_model=Report)
+    except openai.InternalServerError as e:
+        # "z-ai/glm-5.3 via openrouter.ai returned HTTP 200 with an upstream error
+        #  and no choices: The operation was aborted (upstream code 504)"
+        print(f"Upstream provider failed, safe to retry: {e}")
+    ```
+
+    <Warning>
+      过大或层级过深的 `response_model` 会提高上游超时概率。请将这类情况视为提供商的暂时性失败，而不是模型生成了格式错误的结构化输出。
+    </Warning>
+  </Tab>
+  <Tab title="空响应">
+    <Tip>
+      空回答可能是暂时问题，因此智能体会在失败前自动重发一次相同请求。
+    </Tip>
+
+    若模型再次返回无内容且无工具调用，智能体会抛出 `EmptyLLMResponseError`。它是 `ValueError` 子类，因此已有的 `except ValueError` 处理仍可捕获：
+
+    ```python
+    from crewai import Agent
+    from crewai.llms.base_llm import EmptyLLMResponseError
+
+    agent = Agent(
+        role="Analyst",
+        goal="Summarize incidents",
+        backstory="You write short incident summaries.",
+        llm="openai/gpt-4o",
+    )
+
+    try:
+        result = agent.kickoff("Summarize the incident")
+    except EmptyLLMResponseError as e:
+        print(f"{e.model} returned no content twice: {e}")
+    ```
+  </Tab>
+  <Tab title="上下文长度">
+    <Tip>
+      处理大型任务时请使用更大上下文模型
+    </Tip>
+
+    ```python
+    # Large context model
+    llm = LLM(model="openai/gpt-4o")  # 128K tokens
+    ```
+  </Tab>
+</Tabs>

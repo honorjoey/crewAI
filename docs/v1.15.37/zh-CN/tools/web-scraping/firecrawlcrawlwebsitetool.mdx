@@ -1,0 +1,48 @@
+---
+title: "Firecrawl 爬行网站"
+description: "Firecrawl 爬行网站 工具文档。"
+icon: fire-flame
+mode: "wide"
+---
+
+# `FirecrawlCrawlWebsiteTool`
+
+## 说明
+
+用于爬行和转换任何网站的平台,
+
+## 安装
+
+- 从“ 0” 获取一个 API 密钥, 并将其设置在环境变量中( Name`FIRECRAWL_API_KEY`).
+- 随“ 0” 一起安装`crewai[tools]` 软件包 :
+
+```shell
+pip install firecrawl-py 'crewai[tools]'
+```
+
+## 示例
+
+使用 FirecrawlScrape FromWebsite Tool 如下, 允许您的代理服务器加载网站 :
+
+```python Code
+from crewai_tools import FirecrawlCrawlWebsiteTool
+
+tool = FirecrawlCrawlWebsiteTool(url='firecrawl.dev')
+```
+
+## 参数
+
+- `api_key`: 可选。 指定 Firecrawl API 密钥。 默认是`FIRECRAWL_API_KEY` 环境变量。
+- `url`: 要开始爬行的基础 URL 。
+- `page_options`: 可选。
+  - `onlyMainContent`: 可选。 只返回页面中不包括标题,导航,页脚等主要内容.
+  - `includeHtml`: 可选。 包括页面的原始 HTML 内容。 会在响应中输出一个 html 密钥 。
+- `crawler_options`: 可选。 控制爬行行为的选项 。
+  - `includes`: 可选。 要包含在爬行中的 URL 模式 。
+  - `exclude`: 可选。 从爬行中排除 URL 模式 。
+  - `generateImgAltText`: 可选。 使用 LLMS 生成图像的备选文本( 需要付费计划) 。
+  - `returnOnlyUrls`: 可选。 如果选中的话, 仅将 URL 返回为 craw 状态的列表 。 注意:响应会是数据内部的URL列表,而不是文档列表.
+  - `maxDepth`: 可选。 最大深度的爬行。 深度1是基址,深度2包括基址及其直接子,等等.
+  - `mode`: 可选。 要使用的爬行模式 。 快模式在没有网站地图的网站爬行4x更快,但可能没有那么准确,不应该被大量JavaScript登陆的网站使用.
+  - `limit`: 可选。 要爬行的最大页数 。
+  - `timeout`: 可选。 爬行操作超时数以毫秒计.

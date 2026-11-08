@@ -1,0 +1,130 @@
+---
+title: Opik 集成
+description: 了解如何使用 Comet Opik 通过全面跟踪、自动化评估和生产就绪仪表板来调试、评估和监控您的 CrewAI 应用程序。 
+icon: meteor
+mode: "wide"
+---
+
+# Opik 概述
+
+借助 [奥皮克彗星](https://www.comet.com/docs/opik/)，通过全面跟踪、自动化评估和生产就绪仪表板来调试、评估和监控您的 LLM 应用程序、RAG 系统和代理工作流程
+
+<Frame caption="Opik Agent Dashboard">
+  <img src="/images/opik-crewai-dashboard.png" alt="Opik agent monitoring example with CrewAI" />
+</Frame>
+
+Opik 为 CrewAI 应用程序开发的每个阶段提供全面支持：
+
+- **日志跟踪和跨度**：自动跟踪 LLM 调用和应用程序逻辑，以调试和分析开发和生产系统。手动或以编程方式注释、查看和比较跨项目的响应。
+- **评估您的 LLM 应用程序的性能**：根据自定义测试集进行评估并运行内置评估指标或在 SDK 或 UI 中定义您自己的指标。
+- **在 CI/CD 管道中进行测试**：使用基于 PyTest 构建的 Opik 的 LLM 单元测试建立可靠的性能基线。运行在线评估以在生产中进行连续监控。
+- **监控和分析生产数据**：了解模型在生产中未见数据上的性能，并为新的开发迭代生成数据集。
+
+## 设置
+Comet 提供 Opik 平台的托管版本，或者您也可以在本地运行该平台。 
+
+要使用托管版本，只需 [创建一个免费的彗星帐户](https://www.comet.com/signup?utm_medium=github&utm_source=crewai_docs) 并获取 API 密钥。
+
+要在本地运行 Opik 平台，请参阅我们的 [安装指南](https://www.comet.com/docs/opik/self-host/overview/) 了解更多信息。
+
+对于本指南，我们将使用 CrewAI 的快速入门示例。
+
+<Steps>
+    <Step title="Install required packages">
+      ```shell
+      pip install crewai crewai-tools opik --upgrade
+      ```
+    </Step>
+    <Step title="Configure Opik">
+      ```python
+      import opik
+      opik.configure(use_local=False)
+      ```
+    </Step>
+    <Step title="Prepare environment">
+首先，我们为 LLM 提供商设置 API 密钥作为环境变量：
+  
+      ```python
+      import os
+      import getpass
+
+      if "OPENAI_API_KEY" not in os.environ:
+      os.environ["OPENAI_API_KEY"] = getpass.getpass("Enter your OpenAI API key: ")
+      ```
+    </Step>
+    <Step title="Using CrewAI">
+第一步是创建我们的项目。我们将使用 CrewAI 文档中的示例：
+
+      ```python
+      from crewai import Agent, Crew, Task, Process
+
+
+      class YourCrewName:
+          def agent_one(self) -> Agent:
+              return Agent(
+                  role="Data Analyst",
+                  goal="Analyze data trends in the market",
+                  backstory="An experienced data analyst with a background in economics",
+                  verbose=True,
+              )
+
+          def agent_two(self) -> Agent:
+              return Agent(
+                  role="Market Researcher",
+                  goal="Gather information on market dynamics",
+                  backstory="A diligent researcher with a keen eye for detail",
+                  verbose=True,
+              )
+
+          def task_one(self) -> Task:
+              return Task(
+                  name="Collect Data Task",
+                  description="Collect recent market data and identify trends.",
+                  expected_output="A report summarizing key trends in the market.",
+                  agent=self.agent_one(),
+              )
+
+          def task_two(self) -> Task:
+              return Task(
+                  name="Market Research Task",
+                  description="Research factors affecting market dynamics.",
+                  expected_output="An analysis of factors influencing the market.",
+                  agent=self.agent_two(),
+              )
+
+          def crew(self) -> Crew:
+              return Crew(
+                  agents=[self.agent_one(), self.agent_two()],
+                  tasks=[self.task_one(), self.task_two()],
+                  process=Process.sequential,
+                  verbose=True,
+              )
+
+      ```
+
+ 现在我们可以导入 Opik 的跟踪器并运行我们的工作人员：
+  
+      ```python
+      from opik.integrations.crewai import track_crewai
+
+      track_crewai(project_name="crewai-integration-demo")
+
+      my_crew = YourCrewName().crew()
+      result = my_crew.kickoff()
+
+      print(result)
+      ```
+ 运行 CrewAI 应用程序后，访问 Opik 应用程序以查看：
+      - LLM 跟踪、跨度及其元数据
+      - 代理交互和任务执行流程
+      - 延迟和令牌等性能指标使用
+      - 评估指标（内置或自定义）
+    </Step>
+</Steps>
+
+## 资源
+
+- [🦉 Opik 文档](https://www.comet.com/docs/opik/)
+- [👉 Opik + CrewAI 合作实验室](https://colab.research.google.com/github/comet-ml/opik/blob/main/apps/opik-documentation/documentation/docs/cookbook/crewai.ipynb)
+- [🐦X](https://x.com/cometml)
+- [💬 松弛](https://slack.comet.com/)

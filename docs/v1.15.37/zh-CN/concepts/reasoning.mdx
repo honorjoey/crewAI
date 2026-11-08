@@ -1,0 +1,44 @@
+---
+title: 推理
+description: "Agent 推理现已并入 agent 规划。了解如何从 reasoning=True 迁移到 planning_config。"
+icon: brain
+mode: "wide"
+---
+
+## 概述
+
+Agent 推理让 agent 在行动之前先对 task 进行反思并撰写计划。它现在是 agent 规划的一部分，规划还会逐步执行计划、检查每一步，并能在某一步失败时重新规划。
+
+`reasoning` 和 `max_reasoning_attempts` 参数仍然有效，但已被弃用。`reasoning=True` 会发出 `DeprecationWarning`（Python 的默认警告过滤器会将其隐藏），而 `max_reasoning_attempts` 仅在与 `reasoning=True` 一起使用时才有效果。请改用 `planning_config` 来配置规划。完整指南请参阅[规划](/edge/zh-CN/concepts/planning)。
+
+## 从 `reasoning=True` 迁移
+
+将 `reasoning=True` 替换为 `planning_config=PlanningConfig()`，并将 `max_reasoning_attempts` 移到 `PlanningConfig(max_attempts=...)`：
+
+```python
+from crewai import Agent, PlanningConfig
+
+agent = Agent(
+    role="Data Analyst",
+    goal="Analyze complex datasets and provide insights",
+    backstory="You are an experienced data analyst with expertise in finding patterns in complex data.",
+    planning_config=PlanningConfig(max_attempts=3),
+)
+```
+
+| 已弃用 | 替代方案 |
+| --- | --- |
+| `reasoning=True` | `planning_config=PlanningConfig()` |
+| `reasoning=True, max_reasoning_attempts=3` | `planning_config=PlanningConfig(max_attempts=3)` |
+
+这些替代方案保持相同的行为：中等推理强度，并持续完善计划直到计划就绪或达到 `max_attempts`。如果不设置 `max_attempts`，规划器会一直完善计划直到将其标记为就绪，因此建议设置一个上限。
+
+<Warning>
+`planning=True` 与 `reasoning=True` 并不相同。它使用 `PlanningConfig(reasoning_effort="low", max_attempts=1)`：只进行一次规划尝试，且每一步之后不进行 LLM 审查。当你想要更低成本的规划时可以使用它，但不要将其作为直接替代品。
+</Warning>
+
+## 工作原理
+
+计划保存在 agent 的执行状态中，不会添加到 task 描述里。计划的每一步都作为独立的待办事项运行，agent 会在继续之前检查结果。如果规划失败，agent 会在没有计划的情况下运行 task。
+
+关于推理强度级别、步骤数限制、独立的规划 LLM、自定义提示词，以及配合 `Agent.kickoff()` 使用规划，请参阅[规划](/edge/zh-CN/concepts/planning)。

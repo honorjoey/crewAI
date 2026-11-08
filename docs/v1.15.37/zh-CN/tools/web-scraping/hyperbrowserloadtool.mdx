@@ -1,0 +1,87 @@
+---
+title: "超浏览器加载工具"
+description: "超浏览器加载工具 工具文档。"
+icon: globe
+mode: "wide"
+---
+
+# `HyperbrowserLoadTool`
+
+## 说明
+
+那个`HyperbrowserLoadTool` 能够使用“ 0” 浏览器运行和缩放的平台进行网络刮刮和爬行。 这个工具允许您刮掉一个单一的页面或爬行一个完整的站点,以适当的格式标记下或HTML返回内容.
+
+关键特性 :
+- 即时可缩放性 - 在几秒钟内将数百个浏览器会话旋转而不会引起基础设施头痛
+- 简单整合 - 与Puppeteer和Playwright等流行工具无缝工作
+- 强大的 API – 方便使用 API 来刮/滚动任何网站
+- 副通道反毒措施 - 内置隐形模式、广告屏蔽、自动CAPTCHA解析和旋转代理
+
+## 安装
+
+要使用此工具, 您需要安装超浏览器 SDK :
+
+```shell
+uv add hyperbrowser
+```
+
+## 开始的步骤
+
+有效利用`HyperbrowserLoadTool`,遵循这些步骤:
+
+1. ==========================================================================================================================================================================================
+2. **API 密钥**:设置`HYPERBROWSER_API_KEY` 环境变量或直接传递给工具构建器。
+3. "0": 使用上面的命令安装超浏览器 SDK 。
+
+## 示例
+
+以下例子说明如何初始化该工具并使用该工具刮去网站:
+
+```python Code
+from crewai_tools import HyperbrowserLoadTool
+from crewai import Agent
+
+# Initialize the tool with your API key
+tool = HyperbrowserLoadTool(api_key="your_api_key")  # Or use environment variable
+
+# Define an agent that uses the tool
+@agent
+def web_researcher(self) -> Agent:
+    '''
+    This agent uses the HyperbrowserLoadTool to scrape websites
+    and extract information.
+    '''
+    return Agent(
+        config=self.agents_config["web_researcher"],
+        tools=[tool]
+    )
+```
+
+## 参数
+
+那个`HyperbrowserLoadTool` 接受以下参数:
+
+### 构造参数
+- 零:可选。 您的超浏览器 API 密钥 。 如不提供,请从`HYPERBROWSER_API_KEY` 环境变量。
+
+### 运行参数
+- 需要吗? 要刮或爬的网站 URL 。
+- 零:可选。 在网站上执行的操作. 要么"scrape" 要么"crawl". 默认为“ scrape ” 。
+- 零:可选。 刮或爬行操作的额外参数.
+
+## 支持参数
+
+关于所有支助参数的详细资料,访问:
+- [拼贴参数](https://docs.hyperbrowser.ai/reference/sdks/python/scrape#start-scrape-job-and-wait)
+- [爬行参数](https://docs.hyperbrowser.ai/reference/sdks/python/crawl#start-crawl-job-and-wait)
+
+## 返回格式
+
+该工具以下列格式返回内容:
+
+- 用于“0”操作:页的内容以下标或HTML格式显示。
+- 对于"0"操作:由分隔符分隔的每个页面的内容,包括每个页面的URL.
+
+## 结论
+
+那个`HyperbrowserLoadTool` 提供一种强大的方法来刮刮和爬行网站,处理诸如反机器人措施,CAPTCHA等复杂的情景,以及更多. 通过利用Hyperbrowser的平台,这个工具使代理能够高效地访问和提取网络内容.

@@ -1,0 +1,80 @@
+---
+title: "文件已读"
+description: "文件已读 工具文档。"
+icon: folders
+mode: "wide"
+---
+
+## 概览
+
+<Note>
+    我们仍然在努力改进工具,所以将来可能会有出乎意料的行为或变化.
+</Note>
+
+那个`FileReadTool` 从本地文件系统读取文件内容,然后以文本的形式返回。
+它可用于批量文本文件处理,读取运行时间配置文件,以及导入数据用于分析.
+它支持任何基于文本的文件格式,例如`.txt`, `.csv`, `.json`,以及`.md`.
+内容总是作为纯文本返回——分析(例如,`json.loads` 时间:`.json` file)是指定代理人或您自己的代码。
+
+对于大文件,`start_line` 和`line_count` 仅读取一行的窗口,而不是装入整个文件。
+
+## 安装
+
+为了利用以前归属于FileReadTool的功能,安装乘务员工具包:
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 用法示例
+
+要从文件阅读工具开始 :
+
+```python Code
+from crewai_tools import FileReadTool
+
+# Initialize the tool to read any file the agent knows or learns the path for
+file_read_tool = FileReadTool()
+
+# OR
+
+# Initialize with a specific file path, so the agent reads that file by default
+file_read_tool = FileReadTool(file_path='path/to/your/file.txt')
+
+# Read a window of lines (lines 100-149) instead of the whole file
+partial_content = file_read_tool.run(
+    file_path='path/to/your/file.txt',
+    start_line=100,
+    line_count=50,
+)
+```
+
+## 参数
+
+代理在运行时提供这些:
+
+- `file_path`: (备选) 您想要读取的文件的路径 。 接受绝对和相对路径。 确保文件存在,并拥有访问文件的必要权限. 启用它来读取构造时配置的默认文件; 如果没有默认文件, 工具报告没有提供路径 。
+- `start_line`: (可选)从(1-indexed)开始读取的行号. 默认为`1`.
+- `line_count`: (可选)要读行数. 如果省略,请从`start_line` 到文件的结尾。
+
+您在构建工具时设置这些 :
+
+- `file_path`: (optional) 代理调用工具时需要读取的默认文件,没有参数.
+- `base_dir`: (备选) 运行时路径的目录必须留在里面 。 默认为当前工作目录 。
+- `encoding`: (可选)用于解码文件的文本编码. 默认为`utf-8`.
+
+## 允许的路径
+
+由于文件路径通常由运行时的 LLM 选择,读取仅限于沙盒:
+
+- 运行时提供的路径必须在内部解决`base_dir`,默认为当前工作目录。`..` 段和符号链接在检查前解决,所以不能用来逃跑.
+- 页:1`file_path` 传递给构造者是开发者声明的意图,所以它总是被允许通过封装检查——即使是在外`base_dir`。如果文件缺失,是目录,或者不允许,读取本身仍然会失败。 当工具构建时它被固定,所以以后工作目录的更改不能重定位,代理也可以通过省略来解决.`file_path` 或使用工具描述中显示的名称。 宣布一个文件不会暴露其兄弟姐妹。
+
+要让代理人在工作目录外读取目录树, 点`base_dir` 写道:
+
+```python Code
+# The agent may read anything under /data, and nothing outside it
+file_read_tool = FileReadTool(base_dir='/data')
+```
+
+作为最后手段,设置`CREWAI_TOOLS_ALLOW_UNSAFE_PATHS=true` 禁用路径验证。 这适用于每个船员工具的全流程,包括URL比对工具上的SSF保护,所以更倾向于`base_dir`管理下的工人应设置`CREWAI_TOOLS_FORCE_SAFE_PATHS=true` 所以房客不能通过出口逃生舱而使支票失效

@@ -1,0 +1,285 @@
+---
+title: Flows
+description: 了解如何使用 CrewAI Flows 创建和管理 AI 工作流。
+icon: arrow-progress
+mode: "wide"
+---
+
+## 概述
+
+CrewAI Flows 是一项强大的功能，旨在简化 AI 工作流的创建与管理。Flow 允许开发者高效地组合与协调编码任务和 Crew，为构建复杂的 AI 自动化提供了一个健壮的框架。
+
+Flow 让您能够创建结构化、事件驱动的工作流。它提供了一种无缝的方式来连接多个任务、管理状态并控制 AI 应用中的执行流程。借助 Flow，您可以轻松设计并实现充分发挥 CrewAI 能力的多步骤流程。
+
+1. **简化的工作流创建**：轻松地将多个 Crew 和 task 串联起来，创建复杂的 AI 工作流。
+
+2. **状态管理**：Flow 使您能够非常轻松地在工作流的不同任务之间管理和共享状态。
+
+3. **事件驱动架构**：基于事件驱动模型构建，支持动态且响应迅速的工作流。
+
+4. **灵活的控制流**：在工作流中实现条件逻辑、循环和分支。
+
+## 快速开始
+
+让我们创建一个简单的 Flow：先在一个任务中使用 OpenAI 生成一个随机城市，然后在另一个任务中根据该城市生成一条趣闻。
+
+```python Code
+
+from crewai.flow.flow import Flow, listen, start
+from dotenv import load_dotenv
+from litellm import completion
+
+load_dotenv()
+
+class ExampleFlow(Flow):
+    model = "gpt-4o-mini"
+
+    @start()
+    def generate_city(self):
+        print("Starting flow")
+        # Each flow state automatically gets a unique ID
+        print(f"Flow State ID: {self.state['id']}")
+
+        response = completion(
+            model=self.model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": "Return the name of a random city in the world.",
+                },
+            ],
+        )
+
+        random_city = response["choices"][0]["message"]["content"]
+        # Store the city in our state
+        self.state["city"] = random_city
+        print(f"Random City: {random_city}")
+
+        return random_city
+
+    @listen(generate_city)
+    def generate_fun_fact(self, random_city):
+        response = completion(
+            model=self.model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Tell me a fun fact about {random_city}",
+                },
+            ],
+        )
+
+        fun_fact = response["choices"][0]["message"]["content"]
+        # Store the fun fact in our state
+        self.state["fun_fact"] = fun_fact
+        return fun_fact
+
+
+
+flow = ExampleFlow()
+flow.plot()
+result = flow.kickoff()
+
+print(f"Generated fun fact: {result}")
+```
+![Flow Visual image](/images/crewai-flow-1.png)
+在上面的示例中，我们创建了一个简单的 Flow，先使用 OpenAI 生成一个随机城市，再生成关于该城市的趣闻。该 Flow 由两个任务组成：`generate_city` 和 `generate_fun_fact`。`generate_city` 任务是 Flow 的起点，而 `generate_fun_fact` 任务监听 `generate_city` 任务的输出。
+
+每个 Flow 实例的状态中都会自动获得一个唯一标识符（UUID），它有助于跟踪和管理 flow 的执行。状态还可以存储额外的数据（例如生成的城市和趣闻），这些数据在 flow 的整个执行过程中持续存在。
+
+当您运行该 Flow 时，它将：
+1. 为 flow 状态生成一个唯一 ID
+2. 生成一个随机城市并将其存储在状态中
+3. 生成关于该城市的趣闻并将其存储在状态中
+4. 将结果打印到控制台
+
+状态的唯一 ID 和存储的数据对于跟踪 flow 的执行以及在任务之间维护上下文非常有用。**注意：**请确保您已设置好 `.env` 文件来存放 `OPENAI_API_KEY`。该密钥是向 OpenAI API 发起请求进行身份验证所必需的。
+
+### @start()
+
+`@start()` 装饰器用于标记 Flow 的入口点。您可以：
+
+- 声明多个无条件的起点：`@start()`
+- 让起点依赖于某个先前的方法或路由标签：`@start("method_or_label")`
+- 提供一个可调用的条件来控制起点何时触发
+
+当 Flow 开始或恢复时，所有满足条件的 `@start()` 方法都会执行（通常是并行执行）。
+
+### @listen()
+
+`@listen()` 装饰器用于将某个方法标记为 Flow 中另一个任务输出的监听器。当被指定的任务发出输出时，使用 `@listen()` 装饰的方法将被执行。该方法可以将其所监听任务的输出作为参数访问。
+
+#### 用法
+
+`@listen()` 装饰器有多种使用方式：
+
+1. **通过名称监听方法**：您可以以字符串形式传入要监听的方法名。当该方法完成时，监听器方法将被触发。
+
+   ```python Code
+   @listen("generate_city")
+   def generate_fun_fact(self, random_city):
+       # Implementation
+   ```
+
+2. **直接监听方法**：您可以直接传入方法本身。当该方法完成时，监听器方法将被触发。
+   ```python Code
+   @listen(generate_city)
+   def generate_fun_fact(self, random_city):
+       # Implementation
+   ```
+
+### Flow 输出
+
+访问和处理 Flow 的输出，对于将您的 AI 工作流集成到更大的应用或系统中至关重要。CrewAI Flows 提供了简单直接的机制来获取最终输出、访问中间结果以及管理 Flow 的整体状态。
+
+#### 获取最终输出
+
+当您运行一个 Flow 时，最终输出由最后一个完成的方法决定。`kickoff()` 方法会返回这个最后方法的输出。
+
+以下是访问最终输出的方式：
+
+<CodeGroup>
+```python Code
+from crewai.flow.flow import Flow, listen, start
+
+class OutputExampleFlow(Flow):
+    @start()
+    def first_method(self):
+        return "Output from first_method"
+
+    @listen(first_method)
+    def second_method(self, first_output):
+        return f"Second method received: {first_output}"
+
+
+flow = OutputExampleFlow()
+flow.plot("my_flow_plot")
+final_output = flow.kickoff()
+
+print("---- Final Output ----")
+print(final_output)
+```
+
+```text Output
+---- Final Output ----
+Second method received: Output from first_method
+```
+
+</CodeGroup>
+![Flow Visual image](/images/crewai-flow-2.png)
+
+在此示例中，`second_method` 是最后一个完成的方法，因此它的输出将成为该 Flow 的最终输出。
+`kickoff()` 方法会返回最终输出，随后将其打印到控制台。`plot()` 方法会生成 HTML 文件，帮助您理解该 flow。
+
+#### 访问和更新状态
+
+除了获取最终输出之外，您还可以在 Flow 内部访问和更新状态。状态可用于在 Flow 的不同方法之间存储和共享数据。Flow 运行结束后，您可以访问状态，获取执行期间添加或更新的任何信息。
+
+以下是更新和访问状态的示例：
+
+<CodeGroup>
+
+```python Code
+from crewai.flow.flow import Flow, listen, start
+from pydantic import BaseModel
+
+class ExampleState(BaseModel):
+    counter: int = 0
+    message: str = ""
+
+class StateExampleFlow(Flow[ExampleState]):
+
+    @start()
+    def first_method(self):
+        self.state.message = "Hello from first_method"
+        self.state.counter += 1
+
+    @listen(first_method)
+    def second_method(self):
+        self.state.message += " - updated by second_method"
+        self.state.counter += 1
+        return self.state.message
+
+flow = StateExampleFlow()
+flow.plot("my_flow_plot")
+final_output = flow.kickoff()
+print(f"Final Output: {final_output}")
+print("Final State:")
+print(flow.state)
+```
+
+```text Output
+Final Output: Hello from first_method - updated by second_method
+Final State:
+counter=2 message='Hello from first_method - updated by second_method'
+```
+
+</CodeGroup>
+
+![Flow Visual image](/images/crewai-flow-2.png)
+
+在此示例中，状态被 `first_method` 和 `second_method` 都更新了。
+Flow 运行结束后，您可以访问最终状态，查看这些方法所做的更新。
+
+通过确保返回最后一个方法的输出并提供对状态的访问，CrewAI Flows 让您可以轻松地将 AI 工作流的结果集成到更大的应用或系统中，
+同时在 Flow 的整个执行过程中维护和访问状态。
+
+## Flow 用量指标
+
+Flow 执行完成后，您可以访问 `usage_metrics` 属性，查看本次运行期间**所有 LLM 调用**的聚合 token 用量——包括 Flow 所编排的每个 Crew 的调用、Agent 工具内部的调用，以及 Flow 方法中直接发起的 `LLM.call(...)` 调用。这相当于 CrewAI Enterprise UI 中所显示总量的 SDK 侧对应物。
+
+```python Code
+from crewai import LLM
+from crewai.flow.flow import Flow, listen, start
+
+class UsageMetricsFlow(Flow):
+    @start()
+    def run_first_crew(self):
+        self.state.first_result = FirstCrew().crew().kickoff()
+
+    @listen(run_first_crew)
+    def call_llm_directly(self):
+        # Bare LLM call — still counted by flow.usage_metrics
+        llm = LLM(model="openai/gpt-4o-mini")
+        self.state.summary = llm.call("Summarize the key takeaways.")
+
+    @listen(call_llm_directly)
+    def run_second_crew(self):
+        self.state.second_result = SecondCrew().crew().kickoff()
+
+flow = UsageMetricsFlow()
+flow.kickoff()
+
+print(flow.usage_metrics)
+# UsageMetrics(total_tokens=8579, prompt_tokens=6210, completion_tokens=2369,
+#              cached_prompt_tokens=0, reasoning_tokens=0,
+#              cache_creation_tokens=0, successful_requests=5)
+```
+
+<Note>
+  `flow.usage_metrics` 与 `flow.kickoff().token_usage`**并不**相同。后者返回**最后一个**返回了 `CrewOutput` 的 `@listen` 方法的 `CrewOutput.token_usage`，
+  也就是说它只反映最后一个 Crew 的用量，完全忽略之前的 Crew 以及直接的
+  `LLM.call(...)` 调用。当您需要 Flow 执行的**完整**token 汇总时，请使用
+  `flow.usage_metrics`。
+</Note>
+
+### UsageMetrics 字段语义
+
+返回的 [`UsageMetrics`](https://github.com/crewAIInc/crewAI/blob/main/lib/crewai/src/crewai/types/usage_metrics.py) 对象采用与提供商无关的约定：
+
+| 字段 | 含义 |
+| --- | --- |
+| `total_tokens` | 计费总量：`prompt_tokens + completion_tokens` |
+| `prompt_tokens` | 请求计费的全部输入/提示词 token |
+| `completion_tokens` | 请求计费的输出/补全 token |
+| `cached_prompt_tokens` | 提示词 token 中缓存读取的部分（仅为细分数据） |
+| `cache_creation_tokens` | 提示词 token 中缓存写入的部分（仅为细分数据，Anthropic） |
+| `reasoning_tokens` | 提供商单独报告时的推理/思考 token 部分（仅为细分数据） |
+| `successful_requests` | 聚合的 LLM 调用次数 |
+
+`cached_prompt_tokens`、`cache_creation_tokens` 和 `reasoning_tokens` 等细分字段**不会**在 `total_tokens` 之上额外累加——它们描述的是已经包含在
+`prompt_tokens` 或 `completion_tokens` 中的部分。
+
+对于 Anthropic，缓存读取和缓存写入计数会被并入 `prompt_tokens`，因此带缓存的工作负载会完整反映在 `total_tokens` 中。OpenAI 风格的提供商已经将缓存输入包含在 `prompt_tokens` 内；CrewAI 会单独展示缓存部分以提高可见性。
+
+返回的 `UsageMetrics` 中的每一项，都是单次 `flow.kickoff()` 调用期间所有 LLM 调用的总和。计数器会在下一次 `kickoff()` 调用时（或 `kickoff_for_each` 的每次迭代时）重置，因此连续多次运行不会重复计数。该属性在 `kickoff()` 完成后的任意时刻读取都是安全的；在执行过程中读取会返回到目前为止累计的部分总量。

@@ -1,0 +1,112 @@
+---
+title: Langfuse 集成
+description: 了解如何使用 OpenLit 通过 OpenTelemetry 将 Langfuse 与 CrewAI 集成
+icon: vials
+mode: "wide"
+---
+
+# 将 Langfuse 与 CrewAI 集成
+
+本笔记本演示如何通过 **OpenLit** SDK 使用 OpenTelemetry 将 **Langfuse** 与 **CrewAI** 集成。在本笔记本结束时，您将能够使用 Langfuse 跟踪您的 CrewAI 应用程序，以提高可观察性和调试能力。
+
+> **Langfuse 是什么？** [朗福斯](https://langfuse.com) 是一个开源 LLM 工程平台。它为LLM应用程序提供跟踪和监控功能，帮助开发人员调试、分析和优化他们的AI系统。 Langfuse 通过本机集成、OpenTelemetry 和 API/SDK 与各种工具和框架集成。
+
+[![Langfuse概览视频](https://github.com/user-attachments/assets/3926b288-ff61-4b95-8aa1-45d041c70866)](https://langfuse.com/watch-demo)
+
+## 开始
+
+我们将演练一个使用 CrewAI 的简单示例，并使用 OpenLit 通过 OpenTelemetry 将其与 Langfuse 集成。
+
+### 第 1 步：安装依赖项
+
+
+```python
+%pip install langfuse openlit crewai crewai_tools
+```
+
+### 步骤 2：设置环境变量
+
+设置 Langfuse API 密钥并配置 OpenTelemetry 导出设置以将跟踪发送到 Langfuse。有关 Langfuse OpenTelemetry 端点 `/api/public/otel` 和身份验证的更多信息，请参阅[Langfuse OpenTelemetry 文档](https://langfuse.com/docs/opentelemetry/get-started)。
+
+
+```python
+import os
+ 
+# Get keys for your project from the project settings page: https://cloud.langfuse.com
+os.environ["LANGFUSE_PUBLIC_KEY"] = "pk-lf-..." 
+os.environ["LANGFUSE_SECRET_KEY"] = "sk-lf-..."
+os.environ["LANGFUSE_HOST"] = "https://cloud.langfuse.com" # 🇪🇺 EU region
+# os.environ["LANGFUSE_HOST"] = "https://us.cloud.langfuse.com" # 🇺🇸 US region
+ 
+ 
+# Your OpenAI key
+os.environ["OPENAI_API_KEY"] = "sk-proj-..."
+```
+设置环境变量后，我们现在可以初始化 Langfuse 客户端。 get_client() 使用环境变量中提供的凭据初始化 Langfuse 客户端。
+
+```python
+from langfuse import get_client
+ 
+langfuse = get_client()
+ 
+# Verify connection
+if langfuse.auth_check():
+    print("Langfuse client is authenticated and ready!")
+else:
+    print("Authentication failed. Please check your credentials and host.")
+```
+
+### 步骤 3：初始化 OpenLit
+
+初始化 OpenLit OpenTelemetry 仪器 SDK 以开始捕获 OpenTelemetry 跟踪。
+
+
+```python
+import openlit
+
+openlit.init()
+```
+
+### 步骤 4：创建简单的 CrewAI 应用程序
+
+我们将创建一个简单的 CrewAI 应用程序，多个代理在其中协作回答问题用户的问题。
+
+
+```python
+from crewai import Agent, Task, Crew
+
+from crewai_tools import (
+    WebsiteSearchTool
+)
+
+web_rag_tool = WebsiteSearchTool()
+
+writer = Agent(
+        role="Writer",
+        goal="You make math engaging and understandable for young children through poetry",
+        backstory="You're an expert in writing haikus but you know nothing of math.",
+        tools=[web_rag_tool],  
+    )
+
+task = Task(description=("What is {multiplication}?"),
+            expected_output=("Compose a haiku that includes the answer."),
+            agent=writer)
+
+crew = Crew(
+  agents=[writer],
+  tasks=[task],
+  share_crew=False
+)
+```
+
+### 第 5 步：在 Langfuse 中查看跟踪
+
+运行代理后，您可以在 [朗福斯](https://cloud.langfuse.com) 中查看 CrewAI 应用程序生成的跟踪。您应该看到 LLM 交互的详细步骤，这可以帮助您调试和优化 AI 代理。
+
+![Langfuse 中的 CrewAI 示例跟踪](https://langfuse.com/images/cookbook/integration_crewai/crewai-example-trace.png)
+
+_[Langfuse 中的公共示例跟踪](https://cloud.langfuse.com/project/cloramnkj0002jz088vzn1ja4/traces/e2cf380ffc8d47d28da98f136140642b?timestamp=2025-02-05T15%3A12%3A02.717Z&observation=3b32338ee6a5d9af)_
+
+## 参考文献
+
+- [Langfuse OpenTelemetry 文档](https://langfuse.com/docs/opentelemetry/get-started)

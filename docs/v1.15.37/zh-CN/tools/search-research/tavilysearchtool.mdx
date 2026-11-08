@@ -1,0 +1,125 @@
+---
+title: "Tavily 搜索工具"
+description: "使用 Tavily 搜索 API 进行全面的网络搜索"
+icon: "magnifying-glass"
+mode: "wide"
+---
+
+那个`TavilySearchTool` 提供了Tavily搜索API的接口,使CrewAI代理能够进行全面的网络搜索. 它允许指定搜索深度,主题,时间范围,包含/排除域,以及是否在结果中包含直接答案,原始内容,或图像.
+
+## 安装
+
+用来使用`TavilySearchTool`时,需要安装`tavily-python` 库 :
+
+```shell
+uv add 'crewai[tools]' tavily-python
+```
+
+## 环境变量
+
+确保您的 Tavily API 密钥被设置为环境变量 :
+
+```bash
+export TAVILY_API_KEY='your_tavily_api_key'
+```
+
+在 https://app.tavily.com/ 上获取 API 密钥(签名后创建密钥) 。
+
+## 示例使用
+
+这是如何初始化和使用`TavilySearchTool` 在CrewAI特工内部:
+
+```python
+import os
+from crewai import Agent, Task, Crew
+from crewai_tools import TavilySearchTool
+
+# Ensure the TAVILY_API_KEY environment variable is set
+# os.environ["TAVILY_API_KEY"] = "YOUR_TAVILY_API_KEY"
+
+# Initialize the tool
+tavily_tool = TavilySearchTool()
+
+# Create an agent that uses the tool
+researcher = Agent(
+    role='Market Researcher',
+    goal='Find information about the latest AI trends',
+    backstory='An expert market researcher specializing in technology.',
+    tools=[tavily_tool],
+    verbose=True
+)
+
+# Create a task for the agent
+research_task = Task(
+    description='Search for the top 3 AI trends in 2024.',
+    expected_output='A JSON report summarizing the top 3 AI trends found.',
+    agent=researcher
+)
+
+# Form the crew and kick it off
+crew = Crew(
+    agents=[researcher],
+    tasks=[research_task],
+    verbose=2
+)
+
+result = crew.kickoff()
+print(result)
+```
+
+## 配置选项
+
+那个`TavilySearchTool` 在初始化或调用时接受下列参数:`run` 方法 :
+
+- `query` (r): **要求数**. 搜索查询字符串 。
+- `search_depth` (线性["基本","先进"),可选: 寻之深处. 默认为`"basic"`.
+- `topic` ("通论"["通论","新闻","金融"],可选: 重点搜索的话题. 默认为`"general"`.
+- `time_range` ("日","周","月","年"),可选: 搜索的时间范围 。 默认为`None`.
+- `days` (int,可选): 寻还之日数. 如果`time_range` 未设置。 默认为`7`.
+- `max_results` (int,可选): 要返回的最大搜索结果数量 。 默认为`5`.
+- `include_domains` (顺序[str],可选): 搜索中要优先排序的域列表 。 默认为`None`.
+- `exclude_domains` (顺序[str],可选): 搜索中要排除的域列表 。 默认为`None`.
+- `include_answer` (Union[bool, literal['basic,'advanced']]],可选): 是否包含从搜索结果合成的直接答案 。 默认为`False`.
+- `include_raw_content` (醇,可选): 是否包含搜索页面的原始 HTML 内容 。 默认为`False`.
+- `include_images` (醇,可选): 是否包含图像结果 。 默认为`False`.
+- `timeout` (int,可选): 请求超时秒 。 默认为`60`.
+
+## 高级使用
+
+您可以使用自定义参数配置工具 :
+
+```python
+# Example: Initialize with specific parameters
+custom_tavily_tool = TavilySearchTool(
+    search_depth='advanced',
+    max_results=10,
+    include_answer=True
+)
+
+# The agent will use these defaults
+agent_with_custom_tool = Agent(
+    role="Advanced Researcher",
+    goal="Conduct detailed research with comprehensive results",
+    tools=[custom_tavily_tool]
+)
+```
+
+## 特征
+
+- "0":访问Tavily强大的搜索索引
+- "0":选择基本搜索模式和高级搜索模式
+- "0":集中搜索一般,新闻或财务专题.
+- ^0: 将结果限制在特定的时间段内
+- ○ :包括或排除具体领域
+- "0":从搜索结果中获取综合答案
+- \0\:防止上下文窗口出现自动内容截断的问题
+
+## 响应格式
+
+该工具以 JSON 字符串的形式返回搜索结果,其中包含:
+- 带有标题、 URL 和内容片段的搜索结果
+- 可选直接回答询问
+- 可选图像结果
+- 可选原始 HTML 内容( 当启用时)
+
+每个结果的内容自动切换,以防止上下文窗口问题,同时保持最相关的信息.

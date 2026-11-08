@@ -1,0 +1,229 @@
+---
+title: 创建自定义工具
+description: 有关在 CrewAI 框架内制作、使用和管理自定义工具的综合指南，包括新功能和错误处理。
+icon: hammer
+mode: "wide"
+---
+
+## 在 CrewAI 中创建和使用工具
+
+本指南提供了有关为 CrewAI 框架创建自定义工具以及如何有效管理和利用这些工具的详细说明，
+结合了工具委托、错误处理和动态工具调用等最新功能。它还强调了协作工具的重要性，
+使代理能够执行广泛的操作。
+
+<Tip>
+**想要为社区发布您的工具吗？** 如果您正在构建一个可供其他人受益的工具，请查看[发布自定义工具](/zh-CN/guides/tools/publish-custom-tools) 指南，了解如何在 PyPI 上打包和分发您的工具。
+</Tip>
+
+### 子类化`BaseTool`
+
+要创建个性化工具，请继承`BaseTool`并定义必要的属性，包括用于输入验证的`args_schema`和`_run`方法。
+
+```python Code
+from typing import Type
+from crewai.tools import BaseTool
+from pydantic import BaseModel, Field
+
+class MyToolInput(BaseModel):
+    """Input schema for MyCustomTool."""
+    argument: str = Field(..., description="Description of the argument.")
+
+class MyCustomTool(BaseTool):
+    name: str = "Name of my tool"
+    description: str = "What this tool does. It's vital for effective utilization."
+    args_schema: Type[BaseModel] = MyToolInput
+
+    def _run(self, argument: str) -> str:
+        # Your tool's logic here
+        return "Tool's result"
+```
+
+### 使用`tool`装饰器
+
+或者，您可以使用工具装饰器`@tool`。这种方法允许您直接在函数中定义工具的属性和功能，
+提供一种简洁有效的方法来创建适合您需求的专用工具。
+
+```python Code
+from crewai.tools import tool
+
+@tool("Tool Name")
+def my_simple_tool(question: str) -> str:
+    """Tool description for clarity."""
+    # Tool logic here
+    return "Tool output"
+```
+
+### 最佳实践：定义类型化输出
+
+当工具返回结构化数据时，定义 Pydantic 输出模型。这有助于代理将结果读取为清晰的字段，而不是从纯文本中猜测。
+
+类型化输出对于具有稳定字段的结果非常有用，例如 ID、状态值、分数、价格或列表。对于短散文结果来说，纯字符串仍然很好。
+
+直接 Python 调用仍然会收到您的工具返回的值。当代理使用类型化工具时，CrewAI 根据输出模型发送代理 JSON。
+
+#### 返回 Pydantic 模型
+
+当您的 `BaseTool` 具有 Pydantic 返回注释时，CrewAI 会推断输出模式。
+
+```python Code
+from crewai.tools import BaseTool
+from pydantic import BaseModel, Field
+
+class InventoryResult(BaseModel):
+    sku: str = Field(description="The product SKU.")
+    quantity: int = Field(description="Units available.")
+    needs_reorder: bool = Field(description="Whether the item should be reordered.")
+
+class InventoryTool(BaseTool):
+    name: str = "Inventory Check"
+    description: str = "Check current stock for a product SKU."
+
+    def _run(self, sku: str) -> InventoryResult:
+        quantity = {"SKU-123": 14, "SKU-456": 0}.get(sku, 0)
+        return InventoryResult(sku=sku, quantity=quantity, needs_reorder=quantity < 5)
+
+tool = InventoryTool()
+result = tool.run(sku="SKU-123")
+
+# Direct Python calls receive the raw Pydantic object.
+print(result.quantity)
+```
+
+当代理调用 `InventoryTool` 时，它会收到如下 JSON：
+
+```json
+{"sku":"SKU-123","quantity":14,"needs_reorder":false}
+```
+
+#### 将 `result_schema` 与字典结果一起使用
+
+如果您的工具返回字典，请显式设置`result_schema`。您可以在 `BaseTool` 子类上或使用 `@tool` 装饰器执行此操作：
+
+```python Code
+from crewai.tools import tool
+from pydantic import BaseModel, Field
+
+class ProductResult(BaseModel):
+    sku: str = Field(description="The product SKU.")
+    name: str = Field(description="The product name.")
+    in_stock: bool = Field(description="Whether the product is available.")
+
+@tool("Product Lookup", result_schema=ProductResult)
+def product_lookup(sku: str) -> dict[str, object]:
+    """Look up product availability by SKU."""
+    catalog = {
+        "SKU-123": ("Noise-canceling headset", True),
+        "SKU-456": ("USB-C dock", False),
+    }
+    name, in_stock = catalog.get(sku, ("Unknown product", False))
+    return {
+        "sku": sku,
+        "name": name,
+        "in_stock": in_stock,
+    }
+```
+
+#### 自定义发送给代理的文本
+
+默认情况下，类型化工具输出以 JSON 形式发送到代理。如果代理应该收到简短的摘要，请子类化 `BaseTool` 并覆盖 `format_output_for_agent`。
+
+```python Code
+from crewai.tools import BaseTool
+from pydantic import BaseModel, Field
+
+class InventoryResult(BaseModel):
+    sku: str = Field(description="The product SKU.")
+    quantity: int = Field(description="Units available.")
+    needs_reorder: bool = Field(description="Whether the item should be reordered.")
+
+class InventoryTool(BaseTool):
+    name: str = "Inventory Check"
+    description: str = "Check current stock for a product SKU."
+
+    def _run(self, sku: str) -> InventoryResult:
+        quantity = {"SKU-123": 14, "SKU-456": 0}.get(sku, 0)
+        return InventoryResult(sku=sku, quantity=quantity, needs_reorder=quantity < 5)
+
+    def format_output_for_agent(self, raw_result: object) -> str:
+        result = InventoryResult.model_validate(raw_result)
+        status = "reorder needed" if result.needs_reorder else "stock is healthy"
+        return f"{result.sku}: {result.quantity} units. {status}."
+
+tool = InventoryTool()
+result = tool.run(sku="SKU-123")
+
+# Direct Python calls receive the raw Pydantic object.
+print(result.quantity)
+```
+
+覆盖仅更改代理所看到的内容。直接调用 `tool.run(...)` 仍会返回正常的 Python 值。
+
+### 为工具定义缓存函数
+
+要通过缓存优化工具性能，请使用 `cache_function` 属性定义自定义缓存策略。
+
+```python Code
+@tool("Tool with Caching")
+def cached_tool(argument: str) -> str:
+    """Tool functionality description."""
+    return "Cacheable result"
+
+def my_cache_strategy(arguments: dict, result: str) -> bool:
+    # Define custom caching logic
+    return True if some_condition else False
+
+cached_tool.cache_function = my_cache_strategy
+```
+
+### 创建异步工具
+
+CrewAI 支持用于非阻塞 I/O 操作的异步工具。当您的工具需要发出 HTTP 请求、数据库查询或其他 I/O 密集型操作时，这非常有用。
+
+#### 将 `@tool` 装饰器与异步函数结合使用
+
+创建异步工具的最简单方法是使用 `@tool` 装饰器和异步函数：
+
+```python Code
+import aiohttp
+from crewai.tools import tool
+
+@tool("Async Web Fetcher")
+async def fetch_webpage(url: str) -> str:
+    """Fetch content from a webpage asynchronously."""
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            return await response.text()
+```
+
+#### 使用异步支持对 `BaseTool` 进行子类化
+
+要获得更多控制，请子类化`BaseTool`并实现`_run`（同步）和`_arun`（异步）方法：
+
+```python Code
+import requests
+import aiohttp
+from crewai.tools import BaseTool
+from pydantic import BaseModel, Field
+
+class WebFetcherInput(BaseModel):
+    """Input schema for WebFetcher."""
+    url: str = Field(..., description="The URL to fetch")
+
+class WebFetcherTool(BaseTool):
+    name: str = "Web Fetcher"
+    description: str = "Fetches content from a URL"
+    args_schema: type[BaseModel] = WebFetcherInput
+
+    def _run(self, url: str) -> str:
+        """Synchronous implementation."""
+        return requests.get(url).text
+
+    async def _arun(self, url: str) -> str:
+        """Asynchronous implementation for non-blocking I/O."""
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                return await response.text()
+```
+
+通过遵守这些准则并将新功能和协作工具纳入您的工具创建和管理流程中，
+您可以利用 CrewAI 框架的全部功能，增强 AI 代理的开发体验和效率。

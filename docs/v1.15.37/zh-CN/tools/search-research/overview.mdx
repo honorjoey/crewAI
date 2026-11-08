@@ -1,0 +1,120 @@
+---
+title: "概览"
+description: "在整个互联网上进行网络搜索、查找寄存器和研究信息"
+icon: "face-smile"
+mode: "wide"
+---
+
+这些工具使您的代理商能够搜索网络,研究话题,并找到包括搜索引擎,GitHub和YouTube在内的各种平台上的信息.
+
+## **可用工具**
+
+<CardGroup cols={2}>
+  <Card title="塞尔珀开发工具" icon="google" href="/zh-CN/tools/search-research/serperdevtool">
+    Google搜索API集成综合网络搜索能力.
+  </Card>
+
+  <Card title="勇敢的搜索工具" icon="shield" href="/zh-CN/tools/search-research/bravesearchtool">
+    用勇者号的独立搜索索引进行隐私聚焦搜索.
+  </Card>
+
+  <Card title="Exa 搜索工具" icon="magnifying-glass" href="/zh-CN/tools/search-research/exasearchtool">
+    AI授权搜索寻找具体和相关内容.
+  </Card>
+
+  <Card title="链接搜索工具" icon="link" href="/zh-CN/tools/search-research/linkupsearchtool">
+    以新鲜内容索引方式实时网页搜索.
+  </Card>
+
+  <Card title="GitHub 搜索工具" icon="github" href="/zh-CN/tools/search-research/githubsearchtool">
+    搜索 GitHub 寄存器、 代码、 问题和文件 。
+  </Card>
+
+  <Card title="网站搜索工具" icon="globe" href="/zh-CN/tools/search-research/websitesearchtool">
+    在特定网站和域内搜索.
+  </Card>
+
+  <Card title="代码 Docs 搜索工具" icon="code" href="/zh-CN/tools/search-research/codedocssearchtool">
+    通过代码文档和技术资源搜索.
+  </Card>
+
+  <Card title="YouTube 频道搜索" icon="youtube" href="/zh-CN/tools/search-research/youtubechannelsearchtool">
+    搜索YouTube频道特定内容和创建者.
+  </Card>
+
+  <Card title="YouTube 视频搜索" icon="play" href="/zh-CN/tools/search-research/youtubevideosearchtool">
+    按主题、关键词或标准查找和分析YouTube视频。
+  </Card>
+
+  <Card title="Tavily 搜索工具" icon="magnifying-glass" href="/zh-CN/tools/search-research/tavilysearchtool">
+    使用Tavily的AI动力搜索API进行全面的网络搜索.
+  </Card>
+
+  <Card title="Tavily 提取工具" icon="file-text" href="/zh-CN/tools/search-research/tavilyextractortool">
+    使用 Tavily API 从网页中提取结构化内容 。
+  </Card>
+
+  <Card title="Tavily 研究工具" icon="flask" href="/zh-CN/tools/search-research/tavilyresearchtool">
+    执行多步骤的研究任务,并利用Tavily Research API获得引用的报告.
+  </Card>
+
+  <Card title="Tavily 获取研究工具" icon="clipboard-list" href="/zh-CN/tools/search-research/tavilygetresearchtool">
+    获取现有的Tavily研究任务的现状和结果。
+  </Card>
+
+  <Card title="Arxiv 纸张工具" icon="box-archive" href="/zh-CN/tools/search-research/arxivpapertool">
+    搜索arXiv和可选下载PDF.
+  </Card>
+
+  <Card title="SerpApi 谷歌搜索" icon="search" href="/zh-CN/tools/search-research/serpapi-googlesearchtool">
+    Google通过SerpApi搜索,获得结构化结果.
+  </Card>
+
+  <Card title="SerpApi 谷歌购物" icon="cart-shopping" href="/zh-CN/tools/search-research/serpapi-googleshoppingtool">
+    Google通过SerpApi购物查询.
+  </Card>
+</CardGroup>
+
+## **常见使用案例**
+
+- ○ 寻找行业趋势和竞争者分析
+- "0":查找相关文章,视频和资源.
+- "0":搜索寄存器和解决方案文档
+- 研究公司和个人
+- 寻找学术文章和技术论文
+
+```python
+from crewai_tools import (
+    GitHubSearchTool,
+    SerperDevTool,
+    TavilyExtractorTool,
+    TavilyGetResearchTool,
+    TavilyResearchTool,
+    TavilySearchTool,
+    YoutubeVideoSearchTool,
+)
+
+# Create research tools
+web_search = SerperDevTool()
+code_search = GitHubSearchTool()
+video_research = YoutubeVideoSearchTool()
+tavily_search = TavilySearchTool()
+content_extractor = TavilyExtractorTool()
+tavily_research = TavilyResearchTool()
+tavily_get_research = TavilyGetResearchTool()
+
+# Add to your agent
+agent = Agent(
+    role="Research Analyst",
+    tools=[
+        web_search,
+        code_search,
+        video_research,
+        tavily_search,
+        content_extractor,
+        tavily_research,
+        tavily_get_research,
+    ],
+    goal="Gather comprehensive information on any topic"
+)
+```

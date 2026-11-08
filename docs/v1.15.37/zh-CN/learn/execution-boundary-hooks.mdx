@@ -1,0 +1,206 @@
+---
+title: 执行边界钩子
+description: 使用 @on 装饰器拦截船员和流程执行的开始、输入、输出和结束
+mode: "wide"
+---
+
+执行边界钩子拦截运行的最外层边缘——在任何运行之前
+当输入得到解决时、当最终结果准备就绪时、以及当
+执行完成。他们为船员和流量开火，是正确的
+用于运行级策略检查、输入重写和输出清理的地方。
+
+## 概述
+
+四个拦截点覆盖边界：
+
+| 观点 | 什么时候 | `ctx.payload` |
+|-------|------|---------------|
+| `EXECUTION_START` | 工作人员或流程即将开始 | 输入`dict` |
+| `INPUT` | 执行的解析输入 | 输入`dict` |
+| `OUTPUT` | 最终结果已准备就绪 | 输出对象 |
+| `EXECUTION_END` | 执行完成（成功或失败） | 输出对象，或失败时`None` |
+
+对于船员来说，输出有效负载是`CrewOutput`。对于流程来说，这是最终的
+流法结果。
+
+## 挂钩签名
+
+```python
+from crewai.hooks import on, HookAborted, InterceptionPoint
+
+@on(InterceptionPoint.EXECUTION_START)
+def boundary_hook(ctx) -> Any | None:
+    # Mutate ctx.payload in place, or
+    # return a non-None value to replace it, or
+    # raise HookAborted(reason, source) to stop the run
+    return None
+```
+
+边界钩子遵循标准契约：继续（`return None`），变异
+放置、通过返回替换或通过提升中止
+[`HookAborted`](/edge/zh-CN/learn/execution-hooks#aborting-an-operation)。随时中止
+边界及其原因从 `kickoff()` 传播出去。
+
+## 上下文模式
+
+每个点都会接收一个类型化的上下文。所有上下文共享基本字段：
+
+```python
+class InterceptionContext:
+    payload: Any            # The interceptable value (see table above)
+    agent: Any = None       # Not populated at execution boundaries
+    agent_role: str | None  # Not populated at execution boundaries
+    task: Any = None        # Not populated at execution boundaries
+    crew: Any = None        # The Crew instance (crew runs only)
+    flow: Any = None        # The Flow instance (flow runs only)
+```
+
+每点上下文为有效负载添加一个命名别名：
+
+```python
+class ExecutionStartContext(InterceptionContext):
+    inputs: dict            # Same dict as payload
+
+class InputContext(InterceptionContext):
+    inputs: dict            # Same dict as payload
+
+class OutputContext(InterceptionContext):
+    output: Any             # The output object
+
+class ExecutionEndContext(InterceptionContext):
+    output: Any                    # The output object (None when status == "failed")
+    status: str                    # "completed" or "failed"
+    error: BaseException | None    # The exception when status == "failed"
+```
+
+<Note>
+`ctx.inputs` 别名 **原始** 输入字典，因此可以通过进行就地编辑
+任一名称都是等效的。如果早期的钩子*替换*了有效负载
+返回一个新的字典，只有`ctx.payload`是反弹——总是读和写
+`ctx.payload` 当钩子可能连锁时。
+</Note>
+
+## 船员运行与流程运行
+
+边界钩子在两个运行时都会触发，并且工作人员的执行内部依赖于
+流运行时。在`crew.kickoff()`期间，全局边界钩子因此被触发
+对于机组边界（`ctx.crew` 集、`ctx.flow` `None`） **和** 对于
+内部流量（`ctx.flow` 设置，`ctx.crew` `None`）。按运行时区分：
+
+```python
+@on(InterceptionPoint.OUTPUT)
+def crew_output_only(ctx):
+    if ctx.crew is None:
+        return None  # Skip the internal flow (or a bare flow)
+    ctx.payload.raw = ctx.payload.raw.strip()
+```
+
+## 常见用例
+
+### 开始时的策略检查
+
+```python
+@on(InterceptionPoint.EXECUTION_START)
+def enforce_policy(ctx):
+    if ctx.crew is not None and not ctx.payload.get("authorized"):
+        raise HookAborted(reason="unauthorized execution", source="access-control")
+```
+
+### 输入重写
+
+```python
+@on(InterceptionPoint.INPUT)
+def add_defaults(ctx):
+    if ctx.crew is None:
+        return None
+    ctx.payload.setdefault("locale", "en-US")
+    ctx.payload["topic"] = ctx.payload["topic"].strip().lower()
+```
+
+重写的输入流入任务插值，因此运行的行为就像
+从修改后的字典开始。
+
+优先选择 `INPUT` 进行重写，并将 `EXECUTION_START` 视为允许/拒绝
+门。 `EXECUTION_START` 的重写仍然受到尊重——在工作人员中他们也是如此
+提供 `before_kickoff` 回调；在流量上，它们完全像
+`INPUT`重写。
+
+### 输出净化
+
+```python
+import re
+
+@on(InterceptionPoint.OUTPUT)
+def redact_emails(ctx):
+    if ctx.crew is None:
+        return None
+    ctx.payload.raw = re.sub(
+        r"\b[\w.+-]+@[\w-]+\.[\w.]+\b", "[EMAIL-REDACTED]", ctx.payload.raw
+    )
+```
+
+`OUTPUT` 在 `EXECUTION_END` 之前运行，并且两者都会看到（可能被替换）
+来自早期钩子的有效负载；最终重写的值是`kickoff()`
+返回。
+
+### 观察失败
+
+`EXECUTION_END` 每次执行成功和失败时都会触发一次
+一样。当运行引发时 — 任务错误、流程方法异常或
+`HookAborted` 之前的点 - 钩子接收 `status="failed"`
+`ctx.error` 中的异常，并且原始异常仍然传播出去
+`kickoff()` 不变：
+
+```python
+@on(InterceptionPoint.EXECUTION_END)
+def report_outcome(ctx):
+    if ctx.status == "failed":
+        notify_policy_engine(status="failed", error=repr(ctx.error))
+    else:
+        notify_policy_engine(status="completed")
+```
+
+两个警告：当 `EXECUTION_START` 从不触发时，`EXECUTION_END` 不会触发
+已调度（开始时中止意味着边界从未打开，因此没有
+结束对），并从失败路径 `EXECUTION_END` 引发 `HookAborted`
+调度被忽略 - 没有什么可以中止的，并且原始错误
+获胜。
+
+## 订购
+
+对于船员运行来说，边界顺序是：
+
+```
+EXECUTION_START → before_kickoff callbacks → INPUT → tasks execute → OUTPUT → EXECUTION_END
+```
+
+对于流程运行，边界钩子在生命周期之前解析输入
+活动开始：
+
+```
+EXECUTION_START → INPUT → FlowStartedEvent → flow methods execute → OUTPUT → EXECUTION_END → FlowFinishedEvent
+```
+
+`FlowStartedEvent` 携带钩子解析的输入，并重写
+边界钩子中的 `inputs["id"]` 重定向状态恢复。中止于
+`EXECUTION_START` 仍然显示为 `FlowStartedEvent` 后跟
+`FlowFailedEvent`，在中止时发出，有效负载由
+在它之前运行的钩子。
+
+同一点的钩子按注册顺序运行，先是全局钩子，然后是
+船员范围的挂钩。每次调度都会发出遥测 (`HookDispatchedEvent`)。
+
+## 管理测试中的 Hook
+
+```python
+from crewai.hooks import clear_all_hooks
+
+clear_all_hooks()  # Clears every point, including boundaries
+```
+
+## 相关文档
+
+- [执行挂钩概述 →](/edge/zh-CN/learn/execution-hooks)
+- [阶梯挂钩→](/edge/zh-CN/learn/step-hooks)
+- [LLM呼叫挂钩 →](/edge/zh-CN/learn/llm-hooks)
+- [工具调用挂钩 →](/edge/zh-CN/learn/tool-hooks)

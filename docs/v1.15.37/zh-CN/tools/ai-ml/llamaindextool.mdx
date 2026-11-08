@@ -1,0 +1,147 @@
+---
+title: "骆驼索引工具"
+description: "骆驼索引工具 工具文档。"
+icon: address-book
+mode: "wide"
+---
+
+# `LlamaIndexTool`
+
+## 描述
+
+这`LlamaIndexTool` 旨在成为 LlamaIndex 工具和查询引擎的通用包装器，使您能够利用 RAG/代理管道方面的 LlamaIndex 资源作为插入 CrewAI 代理的工具。该工具可让您将 LlamaIndex 强大的数据处理和检索功能无缝集成到您的 CrewAI 工作流程中。
+
+## 安装
+
+要使用此工具，您需要安装 LlamaIndex：
+
+```shell
+uv add llama-index
+```
+
+## 开始步骤
+
+为了有效地利用`LlamaIndexTool`，请按照下列步骤操作：
+
+1. **安装 LlamaIndex**：使用上面的命令安装 LlamaIndex 包。
+2. **设置 LlamaIndex**：按照[LlamaIndex 文档](https://docs.llamaindex.ai/) 设置 RAG/代理管道。
+3. **创建工具或查询引擎**：创建要与 CrewAI 一起使用的 LlamaIndex 工具或查询引擎。
+
+## 例子
+
+以下示例演示了如何从不同的 LlamaIndex 组件初始化该工具：
+
+### 来自 LlamaIndex 工具
+
+```python Code
+from crewai_tools import LlamaIndexTool
+from crewai import Agent
+from llama_index.core.tools import FunctionTool
+
+# Example 1: Initialize from FunctionTool
+def search_data(query: str) -> str:
+    """Search for information in the data."""
+    # Your implementation here
+    return f"Results for: {query}"
+
+# Create a LlamaIndex FunctionTool
+og_tool = FunctionTool.from_defaults(
+    search_data, 
+    name="DataSearchTool",
+    description="Search for information in the data"
+)
+
+# Wrap it with LlamaIndexTool
+tool = LlamaIndexTool.from_tool(og_tool)
+
+# Define an agent that uses the tool
+@agent
+def researcher(self) -> Agent:
+    '''
+    This agent uses the LlamaIndexTool to search for information.
+    '''
+    return Agent(
+        config=self.agents_config["researcher"],
+        tools=[tool]
+    )
+```
+
+### 来自 LlamaHub 工具
+
+```python Code
+from crewai_tools import LlamaIndexTool
+from llama_index.tools.wolfram_alpha import WolframAlphaToolSpec
+
+# Initialize from LlamaHub Tools
+wolfram_spec = WolframAlphaToolSpec(app_id="your_app_id")
+wolfram_tools = wolfram_spec.to_tool_list()
+tools = [LlamaIndexTool.from_tool(t) for t in wolfram_tools]
+```
+
+### 来自 LlamaIndex 查询引擎
+
+```python Code
+from crewai_tools import LlamaIndexTool
+from llama_index.core import VectorStoreIndex
+from llama_index.core.readers import SimpleDirectoryReader
+
+# Load documents
+documents = SimpleDirectoryReader("./data").load_data()
+
+# Create an index
+index = VectorStoreIndex.from_documents(documents)
+
+# Create a query engine
+query_engine = index.as_query_engine()
+
+# Create a LlamaIndexTool from the query engine
+query_tool = LlamaIndexTool.from_query_engine(
+    query_engine,
+    name="Company Data Query Tool",
+    description="Use this tool to lookup information in company documents"
+)
+```
+
+## 类方法
+
+这`LlamaIndexTool` 提供了两个主要的类方法来创建实例：
+
+### 来自工具
+
+创建一个`LlamaIndexTool` 来自 LlamaIndex 工具。
+
+```python Code
+@classmethod
+def from_tool(cls, tool: Any, **kwargs: Any) -> "LlamaIndexTool":
+    # Implementation details
+```
+
+### 来自查询引擎
+
+创建一个`LlamaIndexTool` 来自 LlamaIndex 查询引擎。
+
+```python Code
+@classmethod
+def from_query_engine(
+    cls,
+    query_engine: Any,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    return_direct: bool = False,
+    **kwargs: Any,
+) -> "LlamaIndexTool":
+    # Implementation details
+```
+
+## 参数
+
+这`from_query_engine` 方法接受以下参数：
+
+- **查询引擎**：必填。要包装的 LlamaIndex 查询引擎。
+- **姓名**：可选。工具的名称。
+- **描述**：可选。该工具的描述。
+- **返回直接**：可选。是否直接返回响应。默认为`False`.
+
+## 结论
+
+这`LlamaIndexTool` 提供了一种将 LlamaIndex 的功能集成到 CrewAI 代理中的强大方法。通过封装 LlamaIndex 工具和查询引擎，它使代理能够利用复杂的数据检索和处理功能，从而增强他们处理复杂信息源的能力。

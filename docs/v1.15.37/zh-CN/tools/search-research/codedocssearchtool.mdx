@@ -1,0 +1,85 @@
+---
+title: "代码 Docs RAG 搜索"
+description: "代码 Docs RAG 搜索 工具文档。"
+icon: code
+mode: "wide"
+---
+
+# `CodeDocsSearchTool`
+
+<Note>
+    我们仍在努力改进工具,
+</Note>
+
+## 说明
+
+代码DocsSearchToole是一个强大的RAG(Retrival-Augmented Generation)工具,用于代码文档内的语义搜索.
+它使用户能够有效地在代码文档中找到具体的信息或主题. 通过提供`docs_url` 在初始化期间,
+该工具将搜索范围缩小到该特定文件网站。 或者,没有具体说明`docs_url`, 
+它搜索了整个执行过程中已知或发现的各种编码文件,使其具有多种能力,满足各种文件搜索需要。
+
+## 安装
+
+要开始使用代码DocsSearch Tool,首先通过pip安装cetai tools包:
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 示例
+
+使用代码DocsSearchToole在代码文档中进行搜索如下:
+
+```python Code
+from crewai_tools import CodeDocsSearchTool
+
+# To search any code documentation content 
+# if the URL is known or discovered during its execution:
+tool = CodeDocsSearchTool()
+
+# OR
+
+# To specifically focus your search on a given documentation site 
+# by providing its URL:
+tool = CodeDocsSearchTool(docs_url='https://docs.example.com/reference')
+```
+<Note>  
+    替换“ https:// docs.example.com/ reference ” , 替换目标文档 URL
+    和“如何使用搜索工具”与与您需要相关的搜索查询。
+</Note>
+
+## 参数
+
+下列参数可用于自定义`CodeDocsSearchTool`'行为 :
+
+| 参数| 类型| 说明|
+|:---------------|:---------|:-------------------------------------------------------------------------------------------------------------------------------------|
+| **文档url**    | `弦 '|  可选 . 指定要搜索的代码文档的 URL。| 
+
+## 自定义模式和嵌入
+
+默认情况下,该工具同时使用OpenAI进行嵌入和概括. 要自定义模型,可以使用配置词典如下:
+
+```python Code
+tool = CodeDocsSearchTool(
+    config=dict(
+        llm=dict(
+            provider="ollama", # or google, openai, anthropic, llama2, ...
+            config=dict(
+                model="llama2",
+                # temperature=0.5,
+                # top_p=1,
+                # stream=true,
+            ),
+        ),
+        embedder=dict(
+            provider="google-generativeai", # or openai, ollama, ...
+            config=dict(
+                model_name="gemini-embedding-001",
+                task_type="RETRIEVAL_DOCUMENT",
+                # title="Embeddings",
+            ),
+        ),
+    )
+)
+```

@@ -1,0 +1,460 @@
+---
+title: 机组人员
+description: 了解和利用机组人员框架具有全面的属性和功能。
+icon: people-group
+mode: "wide"
+---
+
+## 概览
+
+机组人员AI代表着一组合作的特工,共同完成一系列任务. 每个机组人员都确定了任务执行,代理协作以及总体工作流程的战略.
+
+## 乘员属性
+
+|属性|参数|说明|
+| :------------------------------------ | :--------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|** 任务**| `tasks`                |分配给船员的任务清单.|
+|** 代理人**| `agents`               |机组人员名单.|
+|** 处理**  (可选) | `process`              |过程流(如顺序流,等级流) 船员遵循. 默认为`sequential`.                                                                                                                                                              |
+|** Verbose**  (可选) | `verbose`              |执行时记录的动词级别. 默认为`False`.                                                                                                                                                                                    |
+|** 经理 LLM**  (可选) | `manager_llm`          |管理代理在分级过程中所使用的语言模型. ** 在使用分级程序时需要。 **|
+|** 职能调用LLM** (可选) | `function_calling_llm` |如果通过,机组人员将使用这种LLM来完成功能,要求机组中所有特工使用工具. 每个特工可以拥有自己的LLM,它比起船员的LLM进行函数调用.|
+|** 组合**  (可选)  | `config`               |船员的可选配置设置, 以`Json`或`Dict[str, Any]`格式。|
+|** 最大RPM** (可选) | `max_rpm`              |执行期间机组人员遵守的每分钟最高要求。 默认为`None`.                                                                                                                                                                     |
+|** 记忆**  (可选) | `memory`               |用于存储执行记忆(短期,长期,实体内存).|                                                                                                                                                                                       |
+|** 缓存**  (可选)  | `cache`                |指定是否使用缓存存储工具执行结果。 默认为`True`.                                                                                                                                                         |
+|** Embedder **  (可选)  | `embedder`             |机组使用的嵌入器配置. 目前主要被内存使用. 默认为`{"provider": "openai"}`.                                                                                                                                |
+|** 步骤召回**  (可选) | `step_callback`        |在每个代理的每个步骤之后都称为函数 。 这可以用来记录代理的动作或者进行其他操作;它不会覆盖指定代理的操作.`step_callback`.                                                               |
+|** 任务召回**  (可选) | `task_callback`        |在每个任务完成后称为函数 。 可用于监测或任务执行后的额外操作.|
+|** 共用乘员** (可选) | `share_crew`           |是否希望与船员AI团队共享完整的船员信息及执行,使图书馆更好,并允许我们训练模型.|
+|** 输出日志文件**  (可选) | `output_log_file`      |设定为 True 将日志保存为当前目录中的log.txt或提供文件路径 。 如果文件名以 .json 结尾,则日志将以 JSON 格式显示, 否则为 .txt 。 默认为`None`.                                                                      |
+|** 管理代理人** (可选) | `manager_agent`        | `manager`设置将用作管理器的自定义代理。|
+|** Prompt 文件**  (可选)  | `prompt_file`          |用于船员的 JSON 提示文件的路径 。|
+|*(可选) *| `planning`             |给船员增加了规划能力. 当每次乘员迭代前启动时,所有乘员数据都会发送到将计划任务和本计划添加到每个任务描述中的AgentPlanner.|
+|** 规划LLM** *(可选) *| `planning_llm`         |AgentPlanner在规划过程中使用的语言模型.|
+|** 知识来源**  (可选) | `knowledge_sources`    |机组人员拥有知识源,所有特工人员都可以使用.|
+|** Stream **  (可选)  | `stream`                      |允许流输出在乘员执行时接受实时更新. 回返a`CrewStreamingOutput`可按块排列的对象。 默认为`False`.                                                                                    |
+|** 聊天LLM** (可选) | `chat_llm`                    |用来协调的语言模型`crewai chat`CLI与船员互动. 接受模型名称字符串或`LLM`举个例子 默认为`None`.                                                                                                    |
+|** 在Kickoff召回之前**  (可选) | `before_kickoff_callbacks`    |机组人员开始前执行的可调用功能列表**. 每个回调接收并可以修改输入命令. 区别于`@before_kickoff`装饰师. 默认为`[]`.                                                                   |
+|** Kickoff 调用后**  (可选)  | `after_kickoff_callbacks`     |机组完成后执行的可调用功能列表 **。 每个回调接收并可以修改`CrewOutput`. 与`@after_kickoff`装饰师. 默认为`[]`.                                                                  |
+|** 追踪**  (可选) | `tracing`                     |监控人员追踪`True`总是可以,`False`=总是禁用,`None`= 从环境/用户设置继承。 默认为`None`.                                                                                      |
+|** 技能** (可选) | `skills`                      |名单`Path`对象(技能搜索目录)或预装`Skill`适用于全体船员的物体。 默认为`None`.                                                                                                                    |
+|** 安全配置** (可选) | `security_config`              |页:1`SecurityConfig`管理船员指纹和身份。 默认为`SecurityConfig()`.                                                                                                                                                      |
+|** 检查点**  (可选)  | `checkpoint`                  |启用自动检查。 过`True`对明智的默认,a`CheckpointConfig`完全控制,`False`选择退出,或`None`继承。 见[检查](#checkpointing)下节。 默认为`None`.                             |
+
+<Tip>
+** 船员Max RPM**: 那个`max_rpm`属性设定每分钟最高请求数 船员可以执行以避免费率限制 并且将覆盖单个特工'`max_rpm`设置。
+</Tip>
+
+## 创建船员
+
+CrewAI有两种常见的创建机组的方法:使用**JSONC项目配置(建议新机组人员使用)**或直接在代码**中定义它们.
+
+### JSONC 配置( 建议)
+
+创建的新项目`crewai create crew <name>`使用情况`crew.jsonc`用于机组级别的设置和任务,每名代理员加一个文件`agents/`.
+
+`crewai run`自动检测`crew.jsonc`或`crew.json`,加载引用的代理,提示丢失的占位符,并踢出船员。
+
+#### 示例`crew.jsonc`
+
+```jsonc crew.jsonc
+{
+  "name": "Market Research Crew",
+  "agents": ["researcher", "analyst"],
+  "tasks": [
+    {
+      "name": "research",
+      "description": "Research {topic} and collect the most relevant facts.",
+      "expected_output": "Structured research notes about {topic}.",
+      "agent": "researcher"
+    },
+    {
+      "name": "analysis",
+      "description": "Analyze the research and write a concise report.",
+      "expected_output": "A markdown report with findings and recommendations.",
+      "agent": "analyst",
+      "context": ["research"],
+      "output_file": "output/report.md"
+    }
+  ],
+  "process": "sequential",
+  "verbose": true,
+  "memory": true,
+  "inputs": {
+    "topic": "AI Agents"
+  }
+}
+```
+
+每个字符串`agents`决定`agents/<name>.jsonc`先说`agents/<name>.json`.
+
+```jsonc agents/researcher.jsonc
+{
+  "role": "{topic} Senior Researcher",
+  "goal": "Find accurate and current information about {topic}.",
+  "backstory": "You are a careful researcher who cites clear evidence.",
+  "llm": "openai/gpt-4o",
+  "tools": ["SerperDevTool"]
+}
+```
+
+<Note>
+任务按其出现顺序运行`tasks`何时`process`这是`"sequential"`.
+</Note>
+
+对分级船员,设定`"process": "hierarchical"`并提供`manager_llm`或`manager_agent`A级`manager_agent`可参考`agents/<name>.jsonc`未包含在顶层的文件`agents`列表中选项。
+
+JSON船员定义支持船员级别领域,例如:`process`, `verbose`, `memory`, `cache`, `max_rpm`, `planning`, `planning_llm`, `manager_llm`, `manager_agent`, `function_calling_llm`, `output_log_file`, `stream`, `tracing`, `before_kickoff_callbacks`,以及`after_kickoff_callbacks`.
+
+Python 回调和自定义类使用`{"python": "module.attribute"}`。自定义工具的使用`"custom:<name>"`装入`tools/<name>.py`在运行时间。
+
+<Warning>
+JSON机组只从你信任的线人 来管理项目`custom:<name>`工具和工具`{"python": "module.attribute"}`引用在乘员加载时执行本地 Python 代码.
+</Warning>
+
+### 经典 Python/ YAML 配置
+
+经典项目创建于`crewai create crew <name> --classic`使用情况`crew.py`, `config/agents.yaml`, `config/tasks.yaml`,则`@CrewBase`, `@agent`, `@task`,以及`@crew`装饰者. 这一模式仍然得到支持,并在[使用说明](/zh-CN/learn/using-annotations).
+
+### 直接编码定义(备选)
+
+或者,可以不用YAML配置文件在代码中直接定义船员.
+
+```python code
+from crewai import Agent, Crew, Task, Process
+from crewai_tools import YourCustomTool
+
+class YourCrewName:
+    def agent_one(self) -> Agent:
+        return Agent(
+            role="Data Analyst",
+            goal="Analyze data trends in the market",
+            backstory="An experienced data analyst with a background in economics",
+            verbose=True,
+            tools=[YourCustomTool()]
+        )
+
+    def agent_two(self) -> Agent:
+        return Agent(
+            role="Market Researcher",
+            goal="Gather information on market dynamics",
+            backstory="A diligent researcher with a keen eye for detail",
+            verbose=True
+        )
+
+    def task_one(self) -> Task:
+        return Task(
+            description="Collect recent market data and identify trends.",
+            expected_output="A report summarizing key trends in the market.",
+            agent=self.agent_one()
+        )
+
+    def task_two(self) -> Task:
+        return Task(
+            description="Research factors affecting market dynamics.",
+            expected_output="An analysis of factors influencing the market.",
+            agent=self.agent_two()
+        )
+
+    def crew(self) -> Crew:
+        return Crew(
+            agents=[self.agent_one(), self.agent_two()],
+            tasks=[self.task_one(), self.task_two()],
+            process=Process.sequential,
+            verbose=True
+        )
+```
+如何运行上述代码 :
+
+```python code
+YourCrewName().crew().kickoff(inputs={})
+```
+
+举例来说:
+
+- 代理和任务在班级内直接定义,不设装饰.
+- 我们手动创建和管理代理和任务清单.
+- 这种办法提供了更多的控制,但对于较大的项目来说可能更难以维持。
+
+## 乘员输出
+
+机组人员在CrewAI框架内的输出被封装在`CrewOutput`课。
+这个班次为获取船员执行的结果提供了一种结构化的方法,包括各种格式,如原始字符串,JSON,和Pydantic模型.
+那个`CrewOutput`包括最后任务产出、象征性使用和个别任务产出的结果。
+
+### 乘员输出属性
+
+|属性|参数|类型|说明|
+| :--------------- | :------------- | :------------------------- | :--------------------------------------------------------------------------------------------------- |
+|页:1| `raw`          | `str`                      |船员的原始输出. 这是输出的默认格式 。|
+|页:1| `pydantic`     | `Optional[BaseModel]`      |一个代表机组结构输出的Pydantic模型天体.|
+|**杰森·迪克特**| `json_dict`    | `Optional[Dict[str, Any]]` |代表机组JSON输出的词典.|
+|** 任务产出**| `tasks_output` | `List[TaskOutput]`         |名单`TaskOutput`对象,每个代表机组任务输出。|
+|** 使用量**| `token_usage`  | `Dict[str, Any]`           |征兆使用概要,为语言模型在执行期间的表现提供了深刻见解.|
+
+### 乘员输出方法和属性
+
+|方法/财产|说明|
+| :-------------- | :------------------------------------------------------------------------------------------------ |
+|页:1|如果输出格式为JSON,则返回机组输出的 JSON 字符串表示,或`None`如果输出无法转换。|
+|** 选编**|将 JSON 和 Pydantic 输出转换为词典。|
+|时间轴:|返回机组输出的字符串表示,优先排序为Pydantic,然后是JSON,然后是原始的.|
+
+### 访问机组人员产出
+
+一旦一个机组人员被执行,其输出就可以通过`output`属性`Crew`对象。 那个`CrewOutput`类提供了与此输出交互和显示的各种方式。
+
+#### 示例
+
+```python Code
+# Example crew execution
+crew = Crew(
+    agents=[research_agent, writer_agent],
+    tasks=[research_task, write_article_task],
+    verbose=True
+)
+
+crew_output = crew.kickoff()
+
+# Accessing the crew output
+print(f"Raw Output: {crew_output.raw}")
+if crew_output.json_dict:
+    print(f"JSON Output: {json.dumps(crew_output.json_dict, indent=2)}")
+if crew_output.pydantic:
+    print(f"Pydantic Output: {crew_output.pydantic}")
+print(f"Tasks Output: {crew_output.tasks_output}")
+print(f"Token Usage: {crew_output.token_usage}")
+```
+
+## 访问机组日志
+
+您可以通过设置看到船员行刑的实时记录`output_log_file`作为`True(Boolean)`或一个`file_name(str)`支持对事件进行记录`file_name.txt`和`file_name.json`.
+如果出现`True(Boolean)`将保存为`logs.txt`.
+
+如果出现`output_log_file`设置为`False(Boolean)`或`None`木头不会有人居住
+
+```python Code
+# Save crew logs
+crew = Crew(output_log_file = True)  # Logs will be saved as logs.txt
+crew = Crew(output_log_file = file_name)  # Logs will be saved as file_name.txt
+crew = Crew(output_log_file = file_name.txt)  # Logs will be saved as file_name.txt
+crew = Crew(output_log_file = file_name.json)  # Logs will be saved as file_name.json
+```
+
+
+
+## 检查
+
+检查点让一个机组在关键事件(例如任务完成)后自动保存状态,这样可以恢复长期运行或中断运行的准确位置,而无需重新执行完成的任务.
+
+### 快速启动
+
+过`checkpoint=True`允许在合理默认情况下检查(保存到`.checkpoints/`在每项任务之后:
+
+```python Code
+from crewai import Crew, Process
+
+crew = Crew(
+    agents=[researcher, writer],
+    tasks=[research_task, write_task],
+    process=Process.sequential,
+    checkpoint=True,  # saves to .checkpoints/ after every task
+)
+
+crew.kickoff(inputs={"topic": "AI trends"})
+```
+
+### 全控方式`CheckpointConfig`
+
+使用`CheckpointConfig`用于精确控制位置、触发事件、存储后端和保留:
+
+```python Code
+from crewai import Crew, Process
+from crewai.state.checkpoint_config import CheckpointConfig
+
+crew = Crew(
+    agents=[researcher, writer],
+    tasks=[research_task, write_task],
+    process=Process.sequential,
+    checkpoint=CheckpointConfig(
+        location="./.checkpoints",       # directory for JSON files (default)
+        on_events=["task_completed"],    # trigger after each task (default)
+        max_checkpoints=5,               # keep only the 5 most recent checkpoints
+    ),
+)
+
+crew.kickoff(inputs={"topic": "AI trends"})
+```
+
+### 从一个检查站恢复
+
+使用`Crew.from_checkpoint()`从保存的检查站文件恢复船员,然后打电话`kickoff()`恢复:
+
+```python Code
+# Resume from the most recent checkpoint
+crew = Crew.from_checkpoint(".checkpoints/latest.json")
+crew.kickoff()
+```
+
+<Note>
+当从检查站恢复时,`checkpoint_inputs`, `checkpoint_train`,以及`checkpoint_kickoff_event_id`自动重建 – 您不需要手动设置 。
+</Note>
+
+### `CheckpointConfig`属性
+
+|属性|类型|默认|说明|
+| :----------------- | :------------------------------------- | :------------------- | :-------------------------------------------------------------------------------------------- |
+| `location`         | `str`                                  | `"./.checkpoints"`   |存储目的地。 对于`JsonProvider`这是目录路径;用于`SqliteProvider`数据库文件路径。|
+| `on_events`        | `list[str]`                            | `["task_completed"]` |触发检查点写入的事件类型 。 使用`["*"]`在每次活动时都去检查站|
+| `provider`         |`杰森提供人'|Sqlite 提供商| `JsonProvider()`     |存储后端. 默认为`JsonProvider`(原告JSON档案).|
+| `max_checkpoints`  |int|无`| `None`               |最大关卡。 每次写完后,老的都会被撕碎`None`留着吧|
+
+## 内存利用
+
+机组人员可以利用内存(短期,长期,和实体内存),在一段时间内加强其执行和学习. 该功能允许船员存储和召回执行记忆,协助决策和任务执行策略.
+
+## 缓存利用率
+
+Caches可以用来存储工具执行的结果,通过减少重新执行相同任务的需要,使过程更加有效.
+
+## 乘员使用量度表
+
+机组执行后,你可以进入`usage_metrics`属性以查看机组人员执行的所有任务的语言模型(LLM)使用量度。 这使人们深入了解业务效率和需要改进的领域。
+
+`total_tokens`是计费总额(`prompt_tokens + completion_tokens`) (中文(简体) ). 细分字段,例如`cached_prompt_tokens`和`cache_creation_tokens`描述这些总数中已经包含的子集,而不添加到`total_tokens`。见全合同流程概念文件中的**UsageMetrics 字段语义**。
+
+```python Code
+# Access the crew's usage metrics
+crew = Crew(agents=[agent1, agent2], tasks=[task1, task2])
+crew.kickoff()
+print(crew.usage_metrics)
+```
+
+## 乘员执行程序
+
+- ** 顺序进程**:任务逐一执行,允许工作线性流动。
+- ** 等级程序**:一名经理代理协调机组人员、下放任务和在进行前核实结果。 ** 注:A`manager_llm`或`manager_agent`这对验证流程至关重要
+
+### 踢出一个船员
+
+一旦你的船员组装完毕 启动工作流程`kickoff()`方法。 这将根据定义的进程流启动执行进程 。
+
+```python Code
+# Start the crew's task execution
+result = my_crew.kickoff()
+print(result)
+```
+
+### 不同的方式踢出一个船员
+
+一旦你的船员组装完毕, 启动工作流程 适当的启动方法。 CrewAI为更好地控制开球过程提供了几种方法.
+
+#### 同步方法
+
+- `kickoff()`:根据定义的进程流程启动执行进程。
+- `kickoff_for_each()`:对收藏中的每个输入事件或项目按顺序执行任务.
+
+#### 同步方法
+
+CrewAI 提供了两种同步执行的方法:
+
+|方法|类型|说明|
+|--------|------|-------------|
+| `akickoff()` |原生自动同步|整个执行链中真实的同步/等待|
+| `akickoff_for_each()` |原生自动同步|列表中每个输入的原生同步执行|
+| `kickoff_async()` |基于线索|环绕同步执行`asyncio.to_thread` |
+| `kickoff_for_each_async()` |基于线索|列表中每个输入以线索为基础的同步|
+
+<Note>
+对于高货币工作量,`akickoff()`和`akickoff_for_each()`被推荐,因为它们使用本土的Aync进行任务执行,内存操作和知识检索.
+</Note>
+
+```python Code
+# Start the crew's task execution
+result = my_crew.kickoff()
+print(result)
+
+# Example of using kickoff_for_each
+inputs_array = [{'topic': 'AI in healthcare'}, {'topic': 'AI in finance'}]
+results = my_crew.kickoff_for_each(inputs=inputs_array)
+for result in results:
+    print(result)
+
+# Example of using native async with akickoff
+inputs = {'topic': 'AI in healthcare'}
+async_result = await my_crew.akickoff(inputs=inputs)
+print(async_result)
+
+# Example of using native async with akickoff_for_each
+inputs_array = [{'topic': 'AI in healthcare'}, {'topic': 'AI in finance'}]
+async_results = await my_crew.akickoff_for_each(inputs=inputs_array)
+for async_result in async_results:
+    print(async_result)
+
+# Example of using thread-based kickoff_async
+inputs = {'topic': 'AI in healthcare'}
+async_result = await my_crew.kickoff_async(inputs=inputs)
+print(async_result)
+
+# Example of using thread-based kickoff_for_each_async
+inputs_array = [{'topic': 'AI in healthcare'}, {'topic': 'AI in finance'}]
+async_results = await my_crew.kickoff_for_each_async(inputs=inputs_array)
+for async_result in async_results:
+    print(async_result)
+```
+
+这些方法为您如何管理和执行船员内部的任务提供了灵活性,允许同步和同步的工作流程适合您的需要. 详情请参见[Kickoff 乘员同步](/zh-CN/learn/kickoff-async)向导。
+
+### 编组执行
+
+对于实时可见度进入乘务员执行,您可以使流线接收输出,因为它生成:
+
+```python Code
+# Enable streaming
+crew = Crew(
+    agents=[researcher],
+    tasks=[task],
+    stream=True
+)
+
+# Iterate over streaming output
+streaming = crew.kickoff(inputs={"topic": "AI"})
+for chunk in streaming:
+    print(chunk.content, end="", flush=True)
+
+# Access final result
+result = streaming.result
+```
+
+学习更多关于溪流在[编组执行](/zh-CN/learn/streaming-crew-execution)向导。
+
+### 从特定任务重播
+
+您现在可以使用 CLI 命令从特定的任务中重播`replay`.
+
+CrewAI的重播功能允许您使用命令行界面(CLI)从特定任务中重播. 通过运行命令`crewai replay -t <task_id>`,您可以指定`task_id`用于重播进程。
+
+Kickwops 现在会在当地保存最新的 Kickwops 返回的任务输出, 以便您能够重播 。
+
+### 使用 CLI 从特定任务重播
+
+要使用重播功能,请遵循这些步骤:
+
+1. 打开您的终端或命令提示 。
+2. 导航到您的 CrewAI 项目所在的目录 。
+3. 运行以下命令 :
+
+要查看最新的启动任务ID, 请使用 :
+
+```shell
+crewai log-tasks-outputs
+```
+
+然后,为了从特定的任务中重放,使用:
+
+```shell
+crewai replay -t <task_id>
+```
+
+这些命令允许您从您最近的启动任务中重放, 仍然保留以前执行的任务的背景 。

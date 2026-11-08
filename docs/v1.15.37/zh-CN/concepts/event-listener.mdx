@@ -1,0 +1,415 @@
+---
+title: "事件监听器"
+description: "接入 CrewAI 事件，构建自定义集成与监控"
+icon: spinner
+mode: "wide"
+---
+
+## 概述
+
+CrewAI 提供了一个强大的事件系统，允许您监听并响应 Crew 执行过程中发生的各种事件。借助此功能，您可以构建自定义集成、监控方案、日志系统，或任何需要基于 CrewAI 内部事件触发的功能。
+
+## 工作原理
+
+CrewAI 使用事件总线架构在整个执行生命周期中发出事件。事件系统由以下组件构成：
+
+1. **CrewAIEventsBus**：单例事件总线，负责管理事件的注册与发出
+2. **BaseEvent**：系统中所有事件的基类
+3. **BaseEventListener**：用于创建自定义事件监听器的抽象基类
+
+当 CrewAI 中发生特定动作时（例如 Crew 开始执行、Agent 完成 task 或工具被使用），系统会发出相应的事件。您可以为这些事件注册处理器，在事件发生时执行自定义代码。
+
+<Note type="info" title="企业版增强：提示词追踪">
+CrewAI AMP 提供内置的提示词追踪（Prompt Tracing）功能，它利用事件系统来跟踪、存储和可视化所有提示词、补全结果及相关元数据。这为您的 agent 操作提供了强大的调试能力和透明度。
+
+![Prompt Tracing Dashboard](/images/enterprise/traces-overview.png)
+
+借助提示词追踪，您可以：
+
+- 查看发送给 LLM 的所有提示词的完整历史
+- 跟踪 token 用量与成本
+- 调试 agent 推理失败
+- 与团队共享提示词序列
+- 比较不同的提示词策略
+- 导出追踪记录用于合规与审计
+</Note>
+
+## 创建自定义事件监听器
+
+要创建自定义事件监听器，您需要：
+
+1. 创建一个继承自 `BaseEventListener` 的类
+2. 实现 `setup_listeners` 方法
+3. 为您感兴趣的事件注册处理器
+4. 在合适的文件中创建监听器的实例
+
+以下是一个简单的自定义事件监听器类示例：
+
+```python
+from crewai.events import (
+    CrewKickoffStartedEvent,
+    CrewKickoffCompletedEvent,
+    AgentExecutionCompletedEvent,
+)
+from crewai.events import BaseEventListener
+
+class MyCustomListener(BaseEventListener):
+    def __init__(self):
+        super().__init__()
+
+    def setup_listeners(self, crewai_event_bus):
+        @crewai_event_bus.on(CrewKickoffStartedEvent)
+        def on_crew_started(source, event):
+            print(f"Crew '{event.crew_name}' has started execution!")
+
+        @crewai_event_bus.on(CrewKickoffCompletedEvent)
+        def on_crew_completed(source, event):
+            print(f"Crew '{event.crew_name}' has completed execution!")
+            print(f"Output: {event.output}")
+
+        @crewai_event_bus.on(AgentExecutionCompletedEvent)
+        def on_agent_execution_completed(source, event):
+            print(f"Agent '{event.agent.role}' completed task")
+            print(f"Output: {event.output}")
+```
+
+## 正确注册监听器
+
+仅仅定义监听器类是不够的。您需要创建它的实例，并确保它在您的应用中被导入。这可以确保：
+
+1. 事件处理器已在事件总线上注册
+2. 监听器实例保留在内存中（不会被垃圾回收）
+3. 事件发出时监听器处于活动状态
+
+### 方式一：在 Crew 或 Flow 实现中导入并实例化
+
+最重要的是在定义和执行 Crew 或 Flow 的文件中创建监听器的实例：
+
+#### 对于基于 Crew 的应用
+
+在 Crew 实现文件的顶部创建并导入您的监听器：
+
+```python
+# In your crew.py file
+from crewai import Agent, Crew, Task
+from my_listeners import MyCustomListener
+
+# Create an instance of your listener
+my_listener = MyCustomListener()
+
+class MyCustomCrew:
+    # Your crew implementation...
+
+    def crew(self):
+        return Crew(
+            agents=[...],
+            tasks=[...],
+            # ...
+        )
+```
+
+#### 对于基于 Flow 的应用
+
+在 Flow 实现文件的顶部创建并导入您的监听器：
+
+```python
+# In your main.py or flow.py file
+from crewai.flow import Flow, listen, start
+from my_listeners import MyCustomListener
+
+# Create an instance of your listener
+my_listener = MyCustomListener()
+
+class MyCustomFlow(Flow):
+    # Your flow implementation...
+
+    @start()
+    def first_step(self):
+        # ...
+```
+
+这可以确保在执行 Crew 或 Flow 时，您的监听器已被加载并处于活动状态。
+
+### 方式二：为监听器创建一个包
+
+如果您有多个监听器，可以采用更有条理的方式：
+
+1. 为监听器创建一个包：
+
+```
+my_project/
+  ├── listeners/
+  │   ├── __init__.py
+  │   ├── my_custom_listener.py
+  │   └── another_listener.py
+```
+
+2. 在 `my_custom_listener.py` 中定义监听器类并创建实例：
+
+```python
+# my_custom_listener.py
+from crewai.events import BaseEventListener
+# ... import events ...
+
+class MyCustomListener(BaseEventListener):
+    # ... implementation ...
+
+# Create an instance of your listener
+my_custom_listener = MyCustomListener()
+```
+
+3. 在 `__init__.py` 中导入监听器实例，确保它们被加载：
+
+```python
+# __init__.py
+from .my_custom_listener import my_custom_listener
+from .another_listener import another_listener
+
+# Optionally export them if you need to access them elsewhere
+__all__ = ['my_custom_listener', 'another_listener']
+```
+
+4. 在 Crew 或 Flow 文件中导入监听器包：
+
+```python
+# In your crew.py or flow.py file
+import my_project.listeners  # This loads all your listeners
+
+class MyCustomCrew:
+    # Your crew implementation...
+```
+
+CrewAI 代码库中的第三方事件监听器就是通过这种方式注册的。
+
+## 可用的事件类型
+
+CrewAI 提供了丰富的事件供您监听：
+
+### Crew 事件
+
+- **CrewKickoffStartedEvent**：当 Crew 开始执行时发出
+- **CrewKickoffCompletedEvent**：当 Crew 完成执行时发出
+- **CrewKickoffFailedEvent**：当 Crew 未能完成执行时发出
+- **CrewTestStartedEvent**：当 Crew 开始测试时发出
+- **CrewTestCompletedEvent**：当 Crew 完成测试时发出
+- **CrewTestFailedEvent**：当 Crew 未能完成测试时发出
+- **CrewTrainStartedEvent**：当 Crew 开始训练时发出
+- **CrewTrainCompletedEvent**：当 Crew 完成训练时发出
+- **CrewTrainFailedEvent**：当 Crew 未能完成训练时发出
+- **CrewTestResultEvent**：当 Crew 测试结果可用时发出。包含质量得分、执行时长和所使用的模型。
+
+### Agent 事件
+
+- **AgentExecutionStartedEvent**：当 Agent 开始执行 task 时发出
+- **AgentExecutionCompletedEvent**：当 Agent 完成 task 执行时发出
+- **AgentExecutionErrorEvent**：当 Agent 在执行过程中遇到错误时发出
+- **LiteAgentExecutionStartedEvent**：当 LiteAgent 开始执行时发出。包含 agent 信息、工具和消息。
+- **LiteAgentExecutionCompletedEvent**：当 LiteAgent 完成执行时发出。包含 agent 信息和输出。
+- **LiteAgentExecutionErrorEvent**：当 LiteAgent 在执行过程中遇到错误时发出。包含 agent 信息和错误消息。
+- **AgentEvaluationStartedEvent**：当 agent 评估开始时发出。包含 agent ID、agent 角色、可选的 task ID 和迭代次数。
+- **AgentEvaluationCompletedEvent**：当 agent 评估完成时发出。包含 agent ID、agent 角色、可选的 task ID、迭代次数、指标类别和得分。
+- **AgentEvaluationFailedEvent**：当 agent 评估失败时发出。包含 agent ID、agent 角色、可选的 task ID、迭代次数和错误消息。
+
+### Task 事件
+
+- **TaskStartedEvent**：当 Task 开始执行时发出
+- **TaskCompletedEvent**：当 Task 完成执行时发出
+- **TaskFailedEvent**：当 Task 未能完成执行时发出
+- **TaskEvaluationEvent**：当 Task 被评估时发出
+
+### 工具使用事件
+
+- **ToolUsageStartedEvent**：当工具开始执行时发出
+- **ToolUsageFinishedEvent**：当工具执行完成时发出
+- **ToolUsageErrorEvent**：当工具执行遇到错误时发出
+- **ToolValidateInputErrorEvent**：当工具输入验证遇到错误时发出
+- **ToolExecutionErrorEvent**：当工具执行遇到错误时发出
+- **ToolSelectionErrorEvent**：当选择工具出错时发出
+
+### MCP 事件
+
+- **MCPConnectionStartedEvent**：当开始连接 MCP 服务器时发出。包含服务器名称、URL、传输类型、连接超时时间，以及是否为重连尝试。
+- **MCPConnectionCompletedEvent**：当成功连接到 MCP 服务器时发出。包含服务器名称、连接耗时（毫秒），以及是否为重连。
+- **MCPConnectionFailedEvent**：当连接 MCP 服务器失败时发出。包含服务器名称、错误消息和错误类型（`timeout`、`authentication`、`network` 等）。
+- **MCPToolExecutionStartedEvent**：当开始执行 MCP 工具时发出。包含服务器名称、工具名称和工具参数。
+- **MCPToolExecutionCompletedEvent**：当 MCP 工具执行成功完成时发出。包含服务器名称、工具名称、结果和执行耗时（毫秒）。
+- **MCPToolExecutionFailedEvent**：当 MCP 工具执行失败时发出。包含服务器名称、工具名称、错误消息和错误类型（`timeout`、`validation`、`server_error` 等）。
+- **MCPConfigFetchFailedEvent**：当获取 MCP 服务器配置失败时发出（例如该 MCP 未在您的账户中连接、API 错误，或获取配置后连接失败）。包含 slug、错误消息和错误类型（`not_connected`、`api_error`、`connection_failed`）。
+
+### 知识事件
+
+- **KnowledgeRetrievalStartedEvent**：当知识检索开始时发出
+- **KnowledgeRetrievalCompletedEvent**：当知识检索完成时发出
+- **KnowledgeQueryStartedEvent**：当知识查询开始时发出
+- **KnowledgeQueryCompletedEvent**：当知识查询完成时发出
+- **KnowledgeQueryFailedEvent**：当知识查询失败时发出
+- **KnowledgeSearchQueryFailedEvent**：当知识搜索查询失败时发出
+
+### LLM 护栏事件
+
+- **LLMGuardrailStartedEvent**：当护栏验证开始时发出。包含所应用护栏的详细信息和重试次数。
+- **LLMGuardrailCompletedEvent**：当护栏验证完成时发出。包含验证成功/失败的详细信息、结果，以及错误消息（如有）。
+- **LLMGuardrailFailedEvent**：当护栏验证失败时发出。包含错误消息和重试次数。
+
+### Flow 事件
+
+- **FlowCreatedEvent**：当 Flow 被创建时发出
+- **FlowStartedEvent**：当 Flow 开始执行时发出
+- **FlowFinishedEvent**：当 Flow 完成执行时发出
+- **FlowFailedEvent**：当 Flow 执行失败时发出。包含 flow 名称和终止执行的异常。
+- **FlowPausedEvent**：当 Flow 暂停以等待人工反馈时发出。包含 flow 名称、flow ID、方法名称、当前状态、请求反馈时显示的消息，以及用于路由的可选结果列表。
+- **FlowPlotEvent**：当 Flow 被绘制时发出
+- **MethodExecutionStartedEvent**：当 Flow 方法开始执行时发出
+- **MethodExecutionFinishedEvent**：当 Flow 方法完成执行时发出
+- **MethodExecutionFailedEvent**：当 Flow 方法未能完成执行时发出
+- **MethodExecutionPausedEvent**：当 Flow 方法暂停以等待人工反馈时发出。包含 flow 名称、方法名称、当前状态、flow ID、请求反馈时显示的消息，以及用于路由的可选结果列表。
+
+### 人工介入（Human In The Loop）事件
+
+- **FlowInputRequestedEvent**：当 Flow 通过 `Flow.ask()` 请求用户输入时发出。包含 flow 名称、方法名称、向用户展示的问题或提示，以及可选的元数据（例如用户 ID、渠道、会话上下文）。
+- **FlowInputReceivedEvent**：当 `Flow.ask()` 之后收到用户输入时发出。包含 flow 名称、方法名称、原始问题、用户的回复（超时则为 `None`）、可选的请求元数据，以及来自提供方的可选响应元数据（例如回复者、线程 ID、时间戳）。
+- **HumanFeedbackRequestedEvent**：当使用 `@human_feedback` 装饰的方法需要人工审阅者输入时发出。包含 flow 名称、方法名称、向人工展示以供审阅的方法输出、请求反馈时显示的消息，以及用于路由的可选结果列表。
+- **HumanFeedbackReceivedEvent**：当人工针对 `@human_feedback` 装饰的方法提供反馈时发出。包含 flow 名称、方法名称、人工提供的原始文本反馈，以及折叠后的结果字符串（如果指定了 emit）。
+
+### LLM 事件
+
+- **LLMCallStartedEvent**：当 LLM 调用开始时发出
+- **LLMCallCompletedEvent**：当 LLM 调用完成时发出
+- **LLMCallFailedEvent**：当 LLM 调用失败时发出
+- **LLMStreamChunkEvent**：在流式 LLM 响应期间，每收到一个分块时发出
+- **LLMThinkingChunkEvent**：当从思考模型收到思考/推理分块时发出。包含分块文本和可选的响应 ID。
+
+### 记忆事件
+
+- **MemoryQueryStartedEvent**：当记忆查询开始时发出。包含查询内容、limit 和可选的分数阈值。
+- **MemoryQueryCompletedEvent**：当记忆查询成功完成时发出。包含查询内容、结果、limit、分数阈值和查询执行时间。
+- **MemoryQueryFailedEvent**：当记忆查询失败时发出。包含查询内容、limit、分数阈值和错误消息。
+- **MemorySaveStartedEvent**：当记忆保存操作开始时发出。包含要保存的值、元数据和可选的 agent 角色。
+- **MemorySaveCompletedEvent**：当记忆保存操作成功完成时发出。包含已保存的值、元数据、agent 角色和保存执行时间。
+- **MemorySaveFailedEvent**：当记忆保存操作失败时发出。包含值、元数据、agent 角色和错误消息。
+- **MemoryRetrievalStartedEvent**：当针对 task 提示词的记忆检索开始时发出。包含可选的 task ID。
+- **MemoryRetrievalCompletedEvent**：当针对 task 提示词的记忆检索成功完成时发出。包含 task ID、记忆内容和检索执行时间。
+- **MemoryRetrievalFailedEvent**：当针对 task 提示词的记忆检索失败时发出。包含可选的 task ID 和错误消息。
+
+### 推理事件
+
+- **AgentReasoningStartedEvent**：当 agent 开始对 task 进行推理时发出。包含 agent 角色、task ID 和尝试次数。
+- **AgentReasoningCompletedEvent**：当 agent 完成推理过程时发出。包含 agent 角色、task ID、生成的计划，以及 agent 是否准备好继续。
+- **AgentReasoningFailedEvent**：当推理过程失败时发出。包含 agent 角色、task ID 和错误消息。
+
+### 观察事件
+
+- **StepObservationStartedEvent**：当 Planner 开始观察某一步骤的结果时发出。在每次步骤执行之后、观察 LLM 调用之前触发。包含 agent 角色、步骤编号和步骤描述。
+- **StepObservationCompletedEvent**：当 Planner 完成对某一步骤结果的观察时发出。包含该步骤是否成功完成、学到的关键信息、剩余计划是否仍然有效、是否需要完全重新规划，以及建议的改进。
+- **StepObservationFailedEvent**：当观察 LLM 调用本身失败时发出。系统默认继续执行计划。包含错误消息。
+- **PlanRefinementEvent**：当 Planner 优化后续步骤描述时发出
+- **PlanReplanTriggeredEvent**：当 Planner 因剩余计划被判定为根本性错误而触发完全重新规划时发出。包含重新规划的原因、重新规划次数，以及保留的已完成步骤数量。
+- **GoalAchievedEarlyEvent**：当 Planner 检测到目标提前达成、剩余步骤将被跳过时发出。包含剩余步骤数和已完成步骤数。
+
+### A2A（Agent-to-Agent）事件
+
+#### 委派事件
+
+- **A2ADelegationStartedEvent**：当 A2A 委派开始时发出。包含端点 URL、task 描述、agent ID、上下文 ID、是否为多轮、轮次编号、agent 卡片元数据、协议版本、提供方信息，以及可选的技能 ID。
+- **A2ADelegationCompletedEvent**：当 A2A 委派完成时发出。包含完成状态（`completed`、`input_required`、`failed` 等）、结果、错误消息、上下文 ID 和 agent 卡片元数据。
+- **A2AParallelDelegationStartedEvent**：当开始向多个 A2A agent 并行委派时发出。包含端点列表和 task 描述。
+- **A2AParallelDelegationCompletedEvent**：当向多个 A2A agent 的并行委派完成时发出。包含端点列表、成功数量、失败数量和结果摘要。
+
+#### 会话事件
+
+- **A2AConversationStartedEvent**：在多轮 A2A 会话开始时、首次消息交换之前发出一次。包含 agent ID、端点、上下文 ID、agent 卡片元数据、协议版本和提供方信息。
+- **A2AMessageSentEvent**：当向 A2A agent 发送消息时发出。包含消息内容、轮次编号、上下文 ID、消息 ID，以及是否为多轮。
+- **A2AResponseReceivedEvent**：当从 A2A agent 收到响应时发出。包含响应内容、轮次编号、上下文 ID、消息 ID、状态，以及是否为最终响应。
+- **A2AConversationCompletedEvent**：在多轮 A2A 会话结束时发出一次。包含最终状态（`completed` 或 `failed`）、最终结果、错误消息、上下文 ID 和总轮次数。
+
+#### 流式事件
+
+- **A2AStreamingStartedEvent**：当 A2A 委派进入流式模式时发出。包含 task ID、上下文 ID、端点、轮次编号，以及是否为多轮。
+- **A2AStreamingChunkEvent**：当收到流式分块时发出。包含分块文本、分块索引、是否为最后一个分块、task ID、上下文 ID 和轮次编号。
+
+#### 轮询与推送通知事件
+
+- **A2APollingStartedEvent**：当 A2A 委派进入轮询模式时发出。包含 task ID、上下文 ID、轮询间隔（秒）和端点。
+- **A2APollingStatusEvent**：在每次轮询迭代时发出。包含 task ID、上下文 ID、当前 task 状态、已耗时（秒）和轮询次数。
+- **A2APushNotificationRegisteredEvent**：当推送通知回调被注册时发出。包含 task ID、上下文 ID、回调 URL 和端点。
+- **A2APushNotificationReceivedEvent**：当从远程 A2A agent 收到推送通知时发出。包含 task ID、上下文 ID 和当前状态。
+- **A2APushNotificationSentEvent**：当向回调 URL 发送推送通知时发出。包含 task ID、上下文 ID、回调 URL、状态、投递是否成功，以及可选的错误消息。
+- **A2APushNotificationTimeoutEvent**：当等待推送通知超时时发出。包含 task ID、上下文 ID 和超时时长（秒）。
+
+#### 连接与认证事件
+
+- **A2AAgentCardFetchedEvent**：当成功获取 agent 卡片时发出。包含端点、agent 名称、agent 卡片元数据、协议版本、提供方信息、是否来自缓存，以及获取耗时（毫秒）。
+- **A2AAuthenticationFailedEvent**：当对 A2A agent 的认证失败时发出。包含端点、尝试的认证类型（例如 `bearer`、`oauth2`、`api_key`）、错误消息和 HTTP 状态码。
+- **A2AConnectionErrorEvent**：当 A2A 通信过程中发生连接错误时发出。包含端点、错误消息、错误类型（例如 `timeout`、`connection_refused`、`dns_error`）、HTTP 状态码，以及正在尝试的操作。
+- **A2ATransportNegotiatedEvent**：当与 A2A agent 协商传输协议时发出。包含协商后的传输方式、协商后的 URL、选择来源（`client_preferred`、`server_preferred`、`fallback`），以及客户端/服务器支持的传输方式。
+- **A2AContentTypeNegotiatedEvent**：当与 A2A agent 协商内容类型时发出。包含客户端/服务器的输入/输出模式、协商后的输入/输出模式，以及协商是否成功。
+
+#### 工件事件
+
+- **A2AArtifactReceivedEvent**：当从远程 A2A agent 收到工件时发出。包含 task ID、工件 ID、工件名称、描述、MIME 类型、大小（字节），以及内容是否应追加。
+
+#### 服务器 Task 事件
+
+- **A2AServerTaskStartedEvent**：当 A2A 服务器 task 开始执行时发出。包含 task ID 和上下文 ID。
+- **A2AServerTaskCompletedEvent**：当 A2A 服务器 task 执行完成时发出。包含 task ID、上下文 ID 和结果。
+- **A2AServerTaskCanceledEvent**：当 A2A 服务器 task 执行被取消时发出。包含 task ID 和上下文 ID。
+- **A2AServerTaskFailedEvent**：当 A2A 服务器 task 执行失败时发出。包含 task ID、上下文 ID 和错误消息。
+
+#### 上下文生命周期事件
+
+- **A2AContextCreatedEvent**：当 A2A 上下文被创建时发出。上下文将会话或工作流中的相关 task 分组。包含上下文 ID 和创建时间戳。
+- **A2AContextExpiredEvent**：当 A2A 上下文因 TTL 到期时发出。包含上下文 ID、创建时间戳、存在时长（秒）和 task 数量。
+- **A2AContextIdleEvent**：当 A2A 上下文变为空闲（在配置的阈值内无活动）时发出。包含上下文 ID、空闲时间（秒）和 task 数量。
+- **A2AContextCompletedEvent**：当 A2A 上下文中的所有 task 完成时发出。包含上下文 ID、task 总数和持续时间（秒）。
+- **A2AContextPrunedEvent**：当 A2A 上下文被清理（删除）时发出。包含上下文 ID、task 数量和存在时长（秒）。
+
+## 事件处理器结构
+
+每个事件处理器接收两个参数：
+
+1. **source**：发出事件的对象
+2. **event**：事件实例，包含该事件特有的数据
+
+事件对象的结构取决于事件类型，但所有事件都继承自 `BaseEvent` 并包含：
+
+- **timestamp**：事件发出的时间
+- **type**：事件类型的字符串标识符
+
+其他字段因事件类型而异。例如，`CrewKickoffCompletedEvent` 包含 `crew_name` 和 `output` 字段。
+
+## 高级用法：作用域处理器
+
+对于临时性的事件处理（在测试或特定操作中很有用），您可以使用 `scoped_handlers` 上下文管理器：
+
+```python
+from crewai.events import crewai_event_bus, CrewKickoffStartedEvent
+
+with crewai_event_bus.scoped_handlers():
+    @crewai_event_bus.on(CrewKickoffStartedEvent)
+    def temp_handler(source, event):
+        print("This handler only exists within this context")
+
+    # Do something that emits events
+
+# Outside the context, the temporary handler is removed
+```
+
+## 使用场景
+
+事件监听器可用于多种用途：
+
+1. **日志与监控**：跟踪 Crew 的执行并记录重要事件
+2. **分析**：收集有关 Crew 性能和行为的数据
+3. **调试**：设置临时监听器来调试特定问题
+4. **集成**：将 CrewAI 与监控平台、数据库或通知服务等外部系统连接
+5. **自定义行为**：基于特定事件触发自定义动作
+
+## 最佳实践
+
+1. **保持处理器轻量**：事件处理器应当轻量，避免阻塞操作
+2. **错误处理**：在事件处理器中包含恰当的错误处理，防止异常影响主执行流程
+3. **清理**：如果您的监听器获取了资源，请确保妥善清理
+4. **选择性监听**：只监听您真正需要处理的事件
+5. **测试**：对事件监听器进行隔离测试，确保其行为符合预期
+
+通过利用 CrewAI 的事件系统，您可以扩展其功能，并将其与现有基础设施无缝集成。

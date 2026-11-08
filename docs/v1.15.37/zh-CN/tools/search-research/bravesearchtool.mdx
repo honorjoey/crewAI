@@ -1,0 +1,316 @@
+---
+title: 勇敢的搜索工具
+description: 一套用于查询勇者搜索API的工具——覆盖网络,新闻,图像和视频搜索.
+icon: searchengin
+mode: "wide"
+---
+
+# 勇敢的搜索工具
+
+## 说明
+
+CrewAI提供了一套勇敢的搜索工具,每个工具都针对一个特定的"0"终点.
+而不是一个单一的包罗万象的工具,你可以选择与你经纪人需要的结果匹配的工具:
+
+| 工具| 终点| 使用大小写|
+| --- | --- | --- |
+| `BraveWebSearch工具 '| 网络搜索| 一般网络结果、片段和 URL|
+| " 布拉夫新闻搜索工具 "| 新闻搜索| 最近的新闻文章和头条|
+| `BraveImageSearch工具 '| 图像搜索| 带有尺寸和源 URL 的图像结果|
+| `BraveVideoSearch工具 '| 视频搜索| 整个网络的录像结果|
+| " Brave 本地邮轮工具 "| 本地属性| 寻找兴趣点(如餐馆)|
+| `Brave localPOIS 描述工具 '| 本地属性| 获取 AI 生成的位置描述|
+| " BraveLLMContext Tool " 软件| LLM 背景| 对AI代理,LLM定位,以及RAG管道进行预提取的网络内容优化.|
+
+所有工具都有一个共同的基类(`BraveSearchToolBase`)提供一致的行为——在`429` 响应,页眉和参数验证,以及可选文件保存.
+
+<Note>
+  长者`BraveSearchTool` 类仍然可以进行反向兼容,但被认为是“0 ” ,今后不会得到同样的关注。 我们建议转向上述具体工具,这些工具提供了更丰富的配置和更集中的界面。
+</Note>
+
+<Note>
+    虽然许多工具(如 BraveWebSearchToole , BraveNewsSearchToole , BraveImageSearchToole ,以及 BraveVideoSearchToole )可以使用自由的勇敢搜索API订阅/计划,但一些参数(如.`enable_snippets`)和工具(如 Brave LocalPOIsTool 和 Brave LocalPOIsDescriptionTool )需要付费计划. 咨询你的订阅计划的能力 澄清。
+</Note>
+
+## 安装
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 开始
+
+1. - 确认一下`crewai[tools]` 安装在您的 Python 环境中。
+2. (笑声) (掌声) (掌声) (掌声) (掌声) (掌声) (掌声) (掌声) (掌声)
+3. - 把你的钥匙作为`BRAVE_API_KEY`,或直接通过`api_key` 参数。
+
+## 快速示例
+
+### 网络搜索
+
+```python Code
+from crewai_tools import BraveWebSearchTool
+
+tool = BraveWebSearchTool()
+results = tool.run(q="CrewAI agent framework")
+print(results)
+```
+
+### 新闻搜索
+
+```python Code
+from crewai_tools import BraveNewsSearchTool
+
+tool = BraveNewsSearchTool()
+results = tool.run(q="latest AI breakthroughs")
+print(results)
+```
+
+### 图像搜索
+
+```python Code
+from crewai_tools import BraveImageSearchTool
+
+tool = BraveImageSearchTool()
+results = tool.run(q="northern lights photography")
+print(results)
+```
+
+### 视频搜索
+
+```python Code
+from crewai_tools import BraveVideoSearchTool
+
+tool = BraveVideoSearchTool()
+results = tool.run(q="how to build AI agents")
+print(results)
+```
+
+### 位置 POI 描述
+
+```python Code
+from crewai_tools import (
+    BraveWebSearchTool,
+    BraveLocalPOIsDescriptionTool,
+)
+
+web_search = BraveWebSearchTool(raw=True)
+poi_details = BraveLocalPOIsDescriptionTool()
+
+results = web_search.run(q="italian restaurants in pensacola, florida")
+
+if "locations" in results:
+    location_ids = [ loc["id"] for loc in results["locations"]["results"] ]
+    if location_ids:
+        descriptions = poi_details.run(ids=location_ids)
+        print(descriptions)
+```
+
+## 通用构造参数
+
+每个勇者搜索工具在初始化时接受以下参数:
+
+| 参数| 类型| 默认| 说明|
+| --- | --- | --- | --- |
+| “ api  key” 键| str| 无`| `无'| 勇敢的 API 键 。 回到“ BRAVE API KEY” 环境变量。|
+| `头目 '| 判决| 无`| `无'| 附加HTTP头随每个请求一起发送(如`api-version',地理定位头).|
+| `请求 每秒'| " 浮动 "| `1.0` | 最高请求率 。 工具会在呼叫之间睡眠,以停留在这个限度内.|
+| `保存文件'| `波尔'| `虚假 '| 当`True'时,每一份答复都写在一个时间标记的`.txt ' 文件上。|
+| " raw " 号| `波尔'| `虚假 '| 当`True ' 出现时,API JSON的完整反应不作任何改进。|
+| " 超时 "| " 准备 "| `30` | HTTP请求超时数秒.|
+| `国家 '| str| 无`| `无'| 地理目标遗留问题(如`美国')。 倾向于直接使用 " 国家 " 查询参数。|
+| “无结果”| " 准备 "| `10` | 遗产的速记结果。 倾向于直接使用“计数”查询参数。|
+
+<Warning>
+  那个`country` 和`n_results` 为反向兼容性而存在的构造参数 。 当相应的查询参数时,它们作为默认值应用(`country`, `count`未在呼叫时提供。 对于新的代码,我们建议通过`country` 和`count` 直接作为查询参数。
+</Warning>
+
+## 查询参数
+
+每个工具在发送请求前都会对照一个 Pydantic 计划验证其查询参数.
+每个终点的参数略有不同——这里概括了最常用的参数:
+
+### 勇者网搜索工具
+
+| 参数| 说明|
+| --- | --- |
+| `q ' 号| 搜索查询字符串( 最多 400 个字符) 。|
+| `国家 '| 地理目标双字母国家代码(如`美国')。|
+| “搜索”| 结果双字母语言代码(如‘en').|
+| " 计算 "| 最多结果数返回(1-20).|
+| `抵销 '| 略过第一个N页的结果(0–9).|
+| `安全搜查 '| 内容过滤器:`关闭'、`中度'或`严格'。|
+| `新鲜 '| 静脉滤波器:`pd''(过去一天),`pw'(过去一周),`pm'(过去一个月),`py'(过去一年),或日期范围如`2025-01-01to2025-06-01'。|
+| " 外部片段 "| 每个结果包含最多5个额外的文本片段.|
+| " 眼镜 "| 勇敢的 Gogles URL 和/或自定义重排的源代码 。|
+
+完整的参数和页眉参考,见“0”字。
+
+### 勇敢的新闻搜索工具
+
+| 参数| 说明|
+| --- | --- |
+| `q ' 号| 搜索查询字符串( 最多 400 个字符) 。|
+| `国家 '| 地理目标双字母国家代码.|
+| “搜索”| 结果双字母语言代码.|
+| " 计算 "| 返回的最大结果数( 1- 50) 。|
+| `抵销 '| 略过第一个N页的结果(0–9).|
+| `安全搜查 '| 内容过滤器:`关闭'、`中度'或`严格'。|
+| `新鲜 '| 紧急过滤器( 与 Web 搜索 相同 ) 。|
+| " 眼镜 "| 勇敢的 Gogles URL 和/或自定义重排的源代码 。|
+
+完整的参数和页眉参考,见“0”字。
+
+### 勇敢的图像搜索工具
+
+| 参数| 说明|
+| --- | --- |
+| `q ' 号| 搜索查询字符串( 最多 400 个字符) 。|
+| `国家 '| 地理目标双字母国家代码.|
+| “搜索”| 结果双字母语言代码.|
+| " 计算 "| 最多结果数返回(1–200).|
+| `安全搜查 '| 内容过滤器:`关闭'或`严格'。|
+| `检查'| 试图纠正查询中的拼写错误.|
+
+完整的参数和页眉参考,见“0”字。
+
+### 勇者视频搜索工具
+
+| 参数| 说明|
+| --- | --- |
+| `q ' 号| 搜索查询字符串( 最多 400 个字符) 。|
+| `国家 '| 地理目标双字母国家代码.|
+| “搜索”| 结果双字母语言代码.|
+| " 计算 "| 返回的最大结果数( 1- 50) 。|
+| `抵销 '| 略过第一个N页的结果(0–9).|
+| `安全搜查 '| 内容过滤器:`关闭'、`中度'或`严格'。|
+| `新鲜 '| 紧急过滤器( 与 Web 搜索 相同 ) 。|
+
+完整的参数和页眉参考,见“0”字。
+
+### 勇敢的本地POISTOL
+
+| 参数| 说明|
+| --- | --- |
+| `编号 '| 理想地点的独特识别资料清单。|
+| “搜索”| 结果双字母语言代码.|
+
+关于完整的参数和页眉,参见“0”。
+
+### 勇敢的本地POIS 描述工具
+
+| 参数| 说明|
+| --- | --- |
+| `编号 '| 理想地点的独特识别资料清单。|
+
+关于完整的参数和页眉,参见“0”。
+
+## 自定义信头
+
+所有工具都支持自定义的HTTP请求头. 例如,Web搜索工具接受位置识别结果的地理定位头:
+
+```python Code
+from crewai_tools import BraveWebSearchTool
+
+tool = BraveWebSearchTool(
+    headers={
+        "x-loc-lat": "37.7749",
+        "x-loc-long": "-122.4194",
+        "x-loc-city": "San Francisco",
+        "x-loc-state": "CA",
+        "x-loc-country": "US",
+    }
+)
+
+results = tool.run(q="best coffee shops nearby")
+```
+
+您也可以在初始化后使用`set_headers()` 方法 :
+
+```python Code
+tool.set_headers({"api-version": "2025-01-01"})
+```
+
+## 原始模式
+
+默认情况下,每个工具都会将API响应精炼成一个简明的成果列表. 如果您需要完整且未处理的 API 响应, 启用原始模式 :
+
+```python Code
+from crewai_tools import BraveWebSearchTool
+
+tool = BraveWebSearchTool(raw=True)
+full_response = tool.run(q="Brave Search API")
+```
+
+## 代理集成示例
+
+以下是如何为CrewAI代理配备多个勇者搜索工具:
+
+```python Code
+from crewai import Agent
+from crewai.project import agent
+from crewai_tools import BraveWebSearchTool, BraveNewsSearchTool
+
+web_search = BraveWebSearchTool()
+news_search = BraveNewsSearchTool()
+
+@agent
+def researcher(self) -> Agent:
+    return Agent(
+        config=self.agents_config["researcher"],
+        tools=[web_search, news_search],
+    )
+```
+
+## 高级示例
+
+结合多个参数进行目标搜索:
+
+```python Code
+from crewai_tools import BraveWebSearchTool
+
+tool = BraveWebSearchTool(
+    requests_per_second=0.5,  # conservative rate limit
+    save_file=True,
+)
+
+results = tool.run(
+    q="artificial intelligence news",
+    country="US",
+    search_lang="en",
+    count=5,
+    freshness="pm",           # past month only
+    extra_snippets=True,
+)
+print(results)
+```
+
+## 从`BraveSearchTool` (莱格西)
+
+如果您正在使用`BraveSearchTool`,切换到新工具是直截了当的:
+
+```python Code
+# Before (legacy)
+from crewai_tools import BraveSearchTool
+
+tool = BraveSearchTool(country="US", n_results=5, save_file=True)
+results = tool.run(search_query="AI agents")
+
+# After (recommended)
+from crewai_tools import BraveWebSearchTool
+
+tool = BraveWebSearchTool(save_file=True)
+results = tool.run(q="AI agents", country="US", count=5)
+```
+
+关键差异 :
+- **导入**:使用`BraveWebSearchTool` (或新闻/图像/视频变体)而不是`BraveSearchTool`.
+- **查询参数**:使用`q` 改为`search_query`. (两个`search_query` 和`query` 仍然被接受为方便,但`q` 是首选参数。 )
+- 0:通过`count` 作为查询参数而不是`n_results` 在时间。
+- 0:通过`country` 作为查询参数而不是在init时间。
+- `0':现在可直接通过`api_key=` 加 计`BRAVE_API_KEY` 环境变量。
+- "0":通过配置`requests_per_second` 自动重试`429` 回应。
+
+## 结论
+
+勇者搜索工具套件让你的CrewAI代理灵活,端点特定的访问勇者搜索API. 无论您需要网页,即时新闻,图像,还是视频,都有一个具有验证参数和内置复原力的专用工具. 选择适合您使用大小写的工具, 并参考“ 0 ” 来详细了解可用的参数和响应格式。

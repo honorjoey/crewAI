@@ -1,0 +1,432 @@
+---
+title: 记忆
+description: 利用 CrewAI 的统一记忆系统增强 agent 的能力。
+icon: database
+mode: "wide"
+---
+
+## 概述
+
+CrewAI 提供了**统一记忆系统**——一个单一的 `Memory` 类，用一套智能 API 取代了原来相互独立的短期记忆、长期记忆、实体记忆和外部记忆类型。记忆在保存时使用 LLM 分析内容（推断作用域、类别和重要性），并支持自适应深度的召回，其复合评分融合了语义相似度、时效性和重要性。
+
+你可以通过四种方式使用记忆：**独立使用**（脚本、notebook）、**配合 Crew**、**配合 Agent**，或**在 Flow 中使用**。
+
+## 快速开始
+
+```python
+from crewai import Memory
+
+memory = Memory()
+
+# Store -- the LLM infers scope, categories, and importance
+memory.remember("We decided to use PostgreSQL for the user database.")
+
+# Retrieve -- results ranked by composite score (semantic + recency + importance)
+matches = memory.recall("What database did we choose?")
+for m in matches:
+    print(f"[{m.score:.2f}] {m.record.content}")
+
+# Tune scoring for a fast-moving project
+memory = Memory(recency_weight=0.5, recency_half_life_days=7)
+
+# Forget
+memory.forget(scope="/project/old")
+
+# Explore the self-organized scope tree
+print(memory.tree())
+print(memory.info("/"))
+```
+
+## 使用记忆的四种方式
+
+### 独立使用
+
+在脚本、notebook、CLI 工具中使用记忆，或将其作为独立的知识库——无需 agent 或 crew。
+
+```python
+from crewai import Memory
+
+memory = Memory()
+
+# Build up knowledge
+memory.remember("The API rate limit is 1000 requests per minute.")
+memory.remember("Our staging environment uses port 8080.")
+memory.remember("The team agreed to use feature flags for all new releases.")
+
+# Later, recall what you need
+matches = memory.recall("What are our API limits?", limit=5)
+for m in matches:
+    print(f"[{m.score:.2f}] {m.record.content}")
+
+# Extract atomic facts from a longer text
+raw = """Meeting notes: We decided to migrate from MySQL to PostgreSQL
+next quarter. The budget is $50k. Sarah will lead the migration."""
+
+facts = memory.extract_memories(raw)
+# ["Migration from MySQL to PostgreSQL planned for next quarter",
+#  "Database migration budget is $50k",
+#  "Sarah will lead the database migration"]
+
+for fact in facts:
+    memory.remember(fact)
+```
+
+### 配合 Crew
+
+传入 `memory=True` 使用默认设置，或传入已配置的 `Memory` 实例以自定义行为。
+
+```python
+from crewai import Crew, Agent, Task, Process, Memory
+
+# Option 1: Default memory
+crew = Crew(
+    agents=[researcher, writer],
+    tasks=[research_task, writing_task],
+    process=Process.sequential,
+    memory=True,
+    verbose=True,
+)
+
+# Option 2: Custom memory with tuned scoring
+memory = Memory(
+    recency_weight=0.4,
+    semantic_weight=0.4,
+    importance_weight=0.2,
+    recency_half_life_days=14,
+)
+crew = Crew(
+    agents=[researcher, writer],
+    tasks=[research_task, writing_task],
+    memory=memory,
+)
+```
+
+当 `memory=True` 时，crew 会创建一个默认的 `Memory()`，并自动传入 crew 的 `embedder` 配置。除非某个 agent 拥有自己的记忆，否则 crew 中的所有 agent 都共享 crew 的记忆。若未配置自定义 `embedder`，记忆使用 OpenAI `text-embedding-3-large` 嵌入模型。
+
+每个 task 完成后，crew 会自动从 task 输出中提取离散的事实并存储。每个 task 开始前，agent 会从记忆中召回相关上下文并注入到 task 提示词中。
+
+### 配合 Agent
+
+Agent 可以使用 crew 的共享记忆（默认），或获得一个限定作用域的视图作为私有上下文。
+
+```python
+from crewai import Agent, Memory
+
+memory = Memory()
+
+# Researcher gets a private scope -- only sees /agent/researcher
+researcher = Agent(
+    role="Researcher",
+    goal="Find and analyze information",
+    backstory="Expert researcher with attention to detail",
+    memory=memory.scope("/agent/researcher"),
+)
+
+# Writer uses crew shared memory (no agent-level memory set)
+writer = Agent(
+    role="Writer",
+    goal="Produce clear, well-structured content",
+    backstory="Experienced technical writer",
+    # memory not set -- uses crew._memory when crew has memory enabled
+)
+```
+
+这种模式让 researcher 拥有私有的发现，而 writer 则从共享的 crew 记忆中读取。
+
+### 配合 Flow
+
+每个 Flow 都内置了记忆。在任意 flow 方法中使用 `self.remember()`、`self.recall()` 和 `self.extract_memories()`。
+
+```python
+from crewai.flow.flow import Flow, listen, start
+
+class ResearchFlow(Flow):
+    @start()
+    def gather_data(self):
+        findings = "PostgreSQL handles 10k concurrent connections. MySQL caps at 5k."
+        self.remember(findings, scope="/research/databases")
+        return findings
+
+    @listen(gather_data)
+    def write_report(self, findings):
+        # Recall past research to provide context
+        past = self.recall("database performance benchmarks")
+        context = "\n".join(f"- {m.record.content}" for m in past)
+        return f"Report:\nNew findings: {findings}\nPrevious context:\n{context}"
+```
+
+有关 Flow 中记忆的更多信息，请参阅 [Flow 文档](/concepts/flows)。
+
+
+## 层级作用域
+
+### 什么是作用域
+
+记忆被组织成一棵层级化的作用域树，类似于文件系统。每个作用域是一个路径，如 `/`、`/project/alpha` 或 `/agent/researcher/findings`。
+
+```
+/
+  /company
+    /company/engineering
+    /company/product
+  /project
+    /project/alpha
+    /project/beta
+  /agent
+    /agent/researcher
+    /agent/writer
+```
+
+作用域提供了**依赖上下文的记忆**——当你在某个作用域内召回时，只会搜索树的该分支，从而同时提升精确度和性能。
+
+### 作用域推断的工作原理
+
+当你调用 `remember()` 而未指定作用域时，LLM 会分析内容和现有的作用域树，然后建议最佳的存放位置。如果没有合适的现有作用域，它会创建一个新的。随着时间推移，作用域树会根据内容本身自然生长——你无需预先设计模式。
+
+```python
+memory = Memory()
+
+# LLM infers scope from content
+memory.remember("We chose PostgreSQL for the user database.")
+# -> might be placed under /project/decisions or /engineering/database
+
+# You can also specify scope explicitly
+memory.remember("Sprint velocity is 42 points", scope="/team/metrics")
+```
+
+### 可视化作用域树
+
+```python
+print(memory.tree())
+# / (15 records)
+#   /project (8 records)
+#     /project/alpha (5 records)
+#     /project/beta (3 records)
+#   /agent (7 records)
+#     /agent/researcher (4 records)
+#     /agent/writer (3 records)
+
+print(memory.info("/project/alpha"))
+# ScopeInfo(path='/project/alpha', record_count=5,
+#           categories=['architecture', 'database'],
+#           oldest_record=datetime(...), newest_record=datetime(...),
+#           child_scopes=[])
+```
+
+### MemoryScope：子树视图
+
+`MemoryScope` 将所有操作限制在树的某个分支内。使用它的 agent 或代码只能在该子树内查看和写入。
+
+```python
+memory = Memory()
+
+# Create a scope for a specific agent
+agent_memory = memory.scope("/agent/researcher")
+
+# Everything is relative to /agent/researcher
+agent_memory.remember("Found three relevant papers on LLM memory.")
+# -> stored under /agent/researcher
+
+agent_memory.recall("relevant papers")
+# -> searches only under /agent/researcher
+
+# Narrow further with subscope
+project_memory = agent_memory.subscope("project-alpha")
+# -> /agent/researcher/project-alpha
+```
+
+### 作用域设计最佳实践
+
+- **从扁平开始，让 LLM 来组织。**不要预先过度设计作用域层级。先使用 `memory.remember(content)`，让 LLM 的作用域推断随着内容积累而创建结构。
+
+- **使用 `/{entity_type}/{identifier}` 模式。**自然的层级结构会从 `/project/alpha`、`/agent/researcher`、`/company/engineering`、`/customer/acme-corp` 这类模式中逐渐形成。
+
+- **按关注点划分作用域，而不是按数据类型。**使用 `/project/alpha/decisions` 而不是 `/decisions/project/alpha`。这样可以让相关内容聚集在一起。
+
+- **保持层级浅（2-3 层）。**嵌套过深的作用域会变得过于稀疏。`/project/alpha/architecture` 是好的；`/project/alpha/architecture/decisions/databases/postgresql` 则太深了。
+
+- **知道作用域时显式指定，不确定时让 LLM 推断。**如果你要存储一个已知的项目决策，传入 `scope="/project/alpha/decisions"`。如果存储的是自由格式的 agent 输出，则省略作用域，让 LLM 自行判断。
+
+### 使用场景示例**多项目团队：**```python
+memory = Memory()
+# Each project gets its own branch
+memory.remember("Using microservices architecture", scope="/project/alpha/architecture")
+memory.remember("GraphQL API for client apps", scope="/project/beta/api")
+
+# Recall across all projects
+memory.recall("API design decisions")
+
+# Or within a specific project
+memory.recall("API design", scope="/project/beta")
+```**agent 私有上下文与共享知识并存：**```python
+memory = Memory()
+
+# Researcher has private findings
+researcher_memory = memory.scope("/agent/researcher")
+
+# Writer can read from both its own scope and shared company knowledge
+writer_view = memory.slice(
+    scopes=["/agent/writer", "/company/knowledge"],
+    read_only=True,
+)
+```**客户支持（按客户划分上下文）：**```python
+memory = Memory()
+
+# Each customer gets isolated context
+memory.remember("Prefers email communication", scope="/customer/acme-corp")
+memory.remember("On enterprise plan, 50 seats", scope="/customer/acme-corp")
+
+# Shared product docs are accessible to all agents
+memory.remember("Rate limit is 1000 req/min on enterprise plan", scope="/product/docs")
+```
+
+
+## 记忆切片
+
+### 什么是切片
+
+`MemorySlice` 是跨越多个（可能不相连的）作用域的视图。与作用域（限制在单个子树）不同，切片允许你同时从多个分支召回。
+
+### 何时使用切片，何时使用作用域
+
+- **作用域**：当某个 agent 或代码块应被限制在单个子树内时使用。例如：只能看到 `/agent/researcher` 的 agent。
+- **切片**：当你需要组合来自多个分支的上下文时使用。例如：既读取自身作用域又读取公司共享知识的 agent。
+
+### 只读切片
+
+最常见的模式：让 agent 可以读取多个分支，但不允许它向共享区域写入。
+
+```python
+memory = Memory()
+
+# Agent can recall from its own scope AND company knowledge,
+# but cannot write to company knowledge
+agent_view = memory.slice(
+    scopes=["/agent/researcher", "/company/knowledge"],
+    read_only=True,
+)
+
+matches = agent_view.recall("company security policies", limit=5)
+# Searches both /agent/researcher and /company/knowledge, merges and ranks results
+
+agent_view.remember("new finding")  # Raises PermissionError (read-only)
+```
+
+### 读写切片
+
+禁用只读后，你可以写入任何包含的作用域，但必须显式指定写入哪个作用域。
+
+```python
+view = memory.slice(scopes=["/team/alpha", "/team/beta"], read_only=False)
+
+# Must specify scope when writing
+view.remember("Cross-team decision", scope="/team/alpha", categories=["decisions"])
+```
+
+
+## 复合评分
+
+召回结果按三个信号的加权组合进行排序：
+
+```
+composite = semantic_weight * similarity + recency_weight * decay + importance_weight * importance
+```
+
+其中：
+- **similarity**（相似度）= 来自向量索引的 `1 / (1 + distance)`（0 到 1）
+- **decay**（衰减）= `0.5^(age_days / half_life_days)`——指数衰减（当天为 1.0，到达半衰期时为 0.5）
+- **importance**（重要性）= 记录的重要性分数（0 到 1），在编码时设定
+
+可直接在 `Memory` 构造函数上配置：
+
+```python
+# Sprint retrospective: favor recent memories, short half-life
+memory = Memory(
+    recency_weight=0.5,
+    semantic_weight=0.3,
+    importance_weight=0.2,
+    recency_half_life_days=7,
+)
+
+# Architecture knowledge base: favor important memories, long half-life
+memory = Memory(
+    recency_weight=0.1,
+    semantic_weight=0.5,
+    importance_weight=0.4,
+    recency_half_life_days=180,
+)
+```
+
+每个 `MemoryMatch` 都包含一个 `match_reasons` 列表，让你能看到某条结果为何排在当前位置（例如 `["semantic", "recency", "importance"]`）。
+
+
+## LLM 分析层
+
+记忆在三种场景中使用 LLM：
+
+1. **保存时**——当你未指定作用域、类别或重要性时，LLM 会分析内容并建议作用域、类别、重要性和元数据（实体、日期、主题）。
+2. **召回时**——对于深度/自动召回，LLM 会分析查询（关键词、时间线索、建议的作用域、复杂度）以指导检索。
+3. **提取记忆**——`extract_memories(content)` 将原始文本（如 task 输出）拆分为离散的记忆语句。agent 会先调用它，再对每条语句调用 `remember()`，这样存储的是原子化的事实而不是一个大块文本。
+
+所有分析在 LLM 失败时都会优雅降级——参见[失败行为](#失败行为)。
+
+
+## 记忆整合
+
+保存新内容时，编码管道会自动检查存储中是否存在相似的既有记录。如果相似度高于 `consolidation_threshold`（默认 0.85），LLM 会决定如何处理：
+
+- **keep**——既有记录仍然准确且不冗余。
+- **update**——既有记录应使用新信息进行更新（LLM 提供合并后的内容）。
+- **delete**——既有记录已过时、被取代或被推翻。
+- **insert_new**——新内容是否还应作为独立记录插入。
+
+这可以防止重复内容不断累积。例如，如果你把"CrewAI ensures reliable operation"保存三次，整合机制会识别出重复并只保留一条记录。
+
+### 批内去重
+
+使用 `remember_many()` 时，同一批次内的条目会在写入存储之前相互比较。如果两个条目的余弦相似度 >= `batch_dedup_threshold`（默认 0.98），后面的条目会被静默丢弃。这可以在单个批次内捕获完全重复或接近重复的内容，且不产生任何 LLM 调用（纯向量计算）。
+
+```python
+# Only 2 records are stored (the third is a near-duplicate of the first)
+memory.remember_many([
+    "CrewAI supports complex workflows.",
+    "Python is a great language.",
+    "CrewAI supports complex workflows.",  # dropped by intra-batch dedup
+])
+```
+
+
+## 非阻塞保存
+
+`remember_many()` 是**非阻塞的**——它将编码管道提交到后台线程并立即返回。这意味着 agent 可以在记忆保存的同时继续执行下一个 task。
+
+```python
+# Returns immediately -- save happens in background
+memory.remember_many(["Fact A.", "Fact B.", "Fact C."])
+
+# recall() automatically waits for pending saves before searching
+matches = memory.recall("facts")  # sees all 3 records
+```
+
+### 读屏障
+
+每次调用 `recall()` 都会在搜索前自动调用 `drain_writes()`，确保查询始终能看到最新持久化的记录。这是透明的——你完全不需要操心。
+
+### Crew 关闭时
+
+当 crew 结束时，`kickoff()` 会在其 `finally` 块中排空所有待处理的记忆保存，因此即使 crew 在后台保存仍在进行时完成，也不会丢失任何保存。
+
+### 独立使用时
+
+对于没有 crew 生命周期的脚本或 notebook，请显式调用 `drain_writes()` 或 `close()`：
+
+```python
+memory = Memory()
+memory.remember_many(["Fact A.", "Fact B."])
+
+# Option 1: Wait for pending saves
+memory.drain_writes()
+
+# Option 2: Drain and shut down the background pool
+memory.close()
+```

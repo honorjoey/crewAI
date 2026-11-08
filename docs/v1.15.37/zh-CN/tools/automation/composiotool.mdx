@@ -1,0 +1,88 @@
+---
+title: 合成工具
+description: Composio 为 AI 代理提供了 250 多个生产就绪工具，并具有灵活的身份验证管理。
+icon: gear-code
+mode: "wide"
+---
+
+# `ComposioToolSet`
+
+## 描述
+Composio 是一个集成平台，可让您将 AI 代理连接到 250 多种工具。主要特点包括：
+
+- **企业级身份验证**：内置支持 OAuth、API 密钥、JWT，并具有自动令牌刷新功能
+- **完全可观察性**：详细的工具使用日志、执行时间戳等
+
+## 安装
+
+要将 Composio 工具合并到您的项目中，请按照以下说明操作：
+
+```shell
+pip install composio composio-crewai
+pip install crewai
+```
+
+安装完成后，将您的 Composio API 密钥设置为`COMPOSIO_API_KEY`。从 [这里](https://platform.composio.dev) 获取您的 Composio API 密钥
+
+## 例子
+
+以下示例演示了如何初始化该工具并执行 github 操作：
+
+1. 使用 CrewAI Provider 初始化 Composio
+
+```python Code
+from composio_crewai import ComposioProvider
+from composio import Composio
+from crewai import Agent, Task, Crew
+
+composio = Composio(provider=ComposioProvider())
+```
+
+2. 创建一个新的 Composio 会话并检索工具
+<CodeGroup>
+```python
+session = composio.create(
+    user_id="your-user-id",
+    toolkits=["gmail", "github"] # optional, default is all toolkits
+)
+tools = session.tools()
+```
+了解有关会话和用户管理的更多信息[这里](https://docs.composio.dev/docs/configuring-sessions)
+</CodeGroup>
+
+3. 手动验证用户身份
+
+Composio 在代理聊天会话期间自动对用户进行身份验证。但是，您也可以通过调用手动验证用户身份`authorize` 方法。
+```python Code
+connection_request = session.authorize("github")
+print(f"Open this URL to authenticate: {connection_request.redirect_url}")
+```
+
+4. 定义代理
+
+```python Code
+crewai_agent = Agent(
+    role="GitHub Agent",
+    goal="You take action on GitHub using GitHub APIs",
+    backstory="You are AI agent that is responsible for taking actions on GitHub on behalf of users using GitHub APIs",
+    verbose=True,
+    tools=tools,
+    llm= # pass an llm
+)
+```
+
+5. 执行任务
+
+```python Code
+task = Task(
+    description="Star a repo composiohq/composio on GitHub",
+    agent=crewai_agent,
+    expected_output="Status of the operation",
+)
+
+crew = Crew(agents=[crewai_agent], tasks=[task])
+
+crew.kickoff()
+```
+
+* 更详细的工具列表可以找到[这里](https://docs.composio.dev/toolkits)

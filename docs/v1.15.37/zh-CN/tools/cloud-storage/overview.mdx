@@ -1,0 +1,51 @@
+---
+title: "概述"
+description: "与云服务、存储系统和基于云的人工智能平台交互"
+icon: "face-smile"
+mode: "wide"
+---
+
+这些工具使您的代理能够与云服务交互、访问云存储并利用基于云的 AI 平台进行可扩展的操作。
+
+## **可用工具**
+
+<CardGroup cols={2}>
+  <Card title="S3阅读器工具" icon="cloud" href="/zh-CN/tools/cloud-storage/s3readertool">
+    从 Amazon S3 存储桶读取文件和数据。
+  </Card>
+
+  <Card title="S3烧录工具" icon="cloud-arrow-up" href="/zh-CN/tools/cloud-storage/s3writertool">
+    将文件写入并上传到 Amazon S3 存储。
+  </Card>
+
+  <Card title="基岩调用代理" icon="aws" href="/zh-CN/tools/integration/bedrockinvokeagenttool">
+    调用 Amazon Bedrock 代理来执行 AI 支持的任务。
+  </Card>
+
+  <Card title="基岩 KB 猎犬" icon="database" href="/zh-CN/tools/cloud-storage/bedrockkbretriever">
+    从 Amazon Bedrock 知识库检索信息。
+  </Card>
+</CardGroup>
+
+## **常见用例**
+
+- **文件存储**：从云存储系统存储和检索文件
+- **数据备份**：将重要数据备份到云存储
+- **人工智能服务**：访问基于云的人工智能模型和服务
+- **知识检索**：查询云托管知识库
+- **可扩展的运营**：利用云基础设施进行处理
+
+```python
+from crewai_tools import S3ReaderTool, S3WriterTool, BedrockInvokeAgentTool
+
+# Create cloud tools
+s3_reader = S3ReaderTool()
+s3_writer = S3WriterTool()
+bedrock_agent = BedrockInvokeAgentTool()
+
+# Add to your agent
+agent = Agent(
+    role="Cloud Operations Specialist",
+    tools=[s3_reader, s3_writer, bedrock_agent],
+    goal="Manage cloud resources and AI services"
+)

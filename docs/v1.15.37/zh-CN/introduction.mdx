@@ -1,0 +1,152 @@
+---
+title: 简介
+description: 构建可协同工作的 AI agent 团队以解决复杂任务
+icon: handshake
+mode: "wide"
+---
+
+# 什么是 CrewAI？
+
+**CrewAI 是用于编排自治 AI agents 并构建复杂工作流的领先开源框架。**
+
+它将 **Crews** 的协作智能与 **Flows** 的精细控制结合起来，帮助开发者构建生产可用的多智能体系统。
+
+- **[CrewAI Flows](/zh-CN/guides/flows/first-flow)**：AI 应用的骨架。Flow 让你创建结构化、事件驱动的工作流，管理状态并控制执行，为 agents 提供运行框架。
+- **[CrewAI Crews](/zh-CN/guides/crews/first-crew)**：Flow 内的执行单元。Crew 是由自治 agents 组成的团队，协作解决 Flow 委派的特定任务。
+
+已有超过 100,000 名开发者通过我们的社区课程认证，CrewAI 已成为企业级 AI 自动化标准。
+
+### 观看：使用 Coding Agent Skills 构建 CrewAI Agents 与 Flows
+
+安装我们的 coding agent skills（Claude Code、Codex 等），即可快速让你的 coding agents 与 CrewAI 跑起来。
+
+你可以使用 `npx skills add crewaiinc/skills` 进行安装。
+
+<iframe src="https://www.loom.com/embed/befb9f68b81f42ad8112bfdd95a780af" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style={{width: "100%", height: "400px"}}></iframe>
+
+## CrewAI 架构
+
+CrewAI 的架构设计在自治能力与可控性之间取得平衡。
+
+### 1. Flows：骨架
+
+<Note>
+  可以把 Flow 理解为应用的“管理者”或“流程定义”。它定义步骤、逻辑，以及数据如何在系统内流动。
+</Note>
+
+<Frame caption="CrewAI Framework Overview">
+  <img src="/images/flows.png" alt="CrewAI Framework Overview" />
+</Frame>
+
+Flows 提供：
+- **状态管理**：在步骤与执行之间持久化数据。
+- **事件驱动执行**：基于事件或外部输入触发动作。
+- **控制流**：支持条件逻辑、循环和分支。
+
+### 2. Crews：智能层
+
+<Note>
+  Crew 是“真正做事”的团队。在 Flow 中，你可以触发一个 Crew 去处理需要创造力与协作的复杂问题。
+</Note>
+
+<Frame caption="CrewAI Framework Overview">
+  <img src="/images/crews.png" alt="CrewAI Framework Overview" />
+</Frame>
+
+Crews 提供：
+- **角色化 Agents**：拥有明确目标和工具的专长 agent。
+- **自治协作**：agents 共同完成任务。
+- **任务委派**：基于 agent 能力分配与执行任务。
+
+## 它们如何协同工作
+
+1. **Flow** 触发事件或启动流程。
+2. **Flow** 管理状态并决定下一步。
+3. **Flow** 将复杂任务委派给 **Crew**。
+4. **Crew** 内 agents 协作完成任务。
+5. **Crew** 将结果返回给 **Flow**。
+6. **Flow** 基于结果继续执行。
+
+## 核心特性
+
+<CardGroup cols={2}>
+  <Card title="生产级 Flows" icon="arrow-progress">
+    构建可靠、有状态的工作流，支持长时运行流程与复杂逻辑。
+  </Card>
+  <Card title="自治 Crews" icon="users">
+    部署可规划、可执行、可协作的 agent 团队，实现高层目标。
+  </Card>
+  <Card title="灵活工具" icon="screwdriver-wrench">
+     将 agents 连接到任意 API、数据库或本地工具。
+  </Card>
+  <Card title="企业级安全" icon="lock">
+    面向企业部署，按安全与合规要求设计。
+  </Card>
+</CardGroup>
+
+## 何时使用 Crews 与 Flows
+
+**简短答案：两者都用。**
+
+对于任何生产应用，建议 **先从 Flow 开始**。
+
+- **使用 Flow** 定义应用整体结构、状态与逻辑。
+- 在 Flow 的某一步需要自治团队完成复杂任务时，**使用 Crew**。
+
+| Use Case | Architecture |
+| :--- | :--- |
+| **Simple Automation** | Single Flow with Python tasks |
+| **Complex Research** | Flow managing state -> Crew performing research |
+| **Application Backend** | Flow handling API requests -> Crew generating content -> Flow saving to DB |
+
+## 为什么选择 CrewAI？
+
+- 🧠 **自治运行**：agents 基于角色与可用工具做出智能决策
+- 📝 **自然协作**：agents 像人类团队成员一样沟通协作
+- 🛠️ **可扩展设计**：易于增加新工具、角色与能力
+- 🚀 **生产可用**：面向真实世界可靠性与可扩展性构建
+- 🔒 **安全优先**：按企业安全要求设计
+- 💰 **成本高效**：优化 token 使用与 API 调用
+
+## 准备开始构建？
+
+<CardGroup cols={2}>
+  <Card
+    title="构建你的第一个 Flow"
+    icon="diagram-project"
+    href="/zh-CN/guides/flows/first-flow"
+  >
+    学习如何创建结构化、事件驱动的工作流，并精确控制执行。
+  </Card>
+  <Card
+    title="构建你的第一个 Crew"
+    icon="users-gear"
+    href="/zh-CN/guides/crews/first-crew"
+  >
+    按步骤创建协作式 AI 团队，共同解决复杂问题。
+  </Card>
+</CardGroup>
+
+<CardGroup cols={3}>
+  <Card
+    title="安装 CrewAI"
+    icon="wrench"
+    href="/zh-CN/installation"
+  >
+    在你的开发环境中快速开始使用 CrewAI。
+  </Card>
+  <Card
+    title="快速开始"
+    icon="bolt"
+    href="zh-CN/quickstart"
+  >
+    脚手架一个 Flow，运行一个单 agent crew，并端到端生成报告。
+  </Card>
+  <Card
+    title="加入社区"
+    icon="comments"
+    href="https://community.crewai.com"
+  >
+    与其他开发者交流、获取帮助并分享 CrewAI 实践。
+  </Card>
+</CardGroup>

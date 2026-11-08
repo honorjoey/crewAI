@@ -1,0 +1,113 @@
+---
+title: "Arxiv 纸张工具"
+description: "Arxiv 纸张工具 工具文档。"
+icon: box-archive
+mode: "wide"
+---
+
+# `ArxivPaperTool`
+
+## 说明
+
+那个`ArxivPaperTool` 查询 arXiv API 的学术论文和返回压缩,可读结果。 它还可以可选地将PDF下载到磁盘中.
+
+## 安装
+
+此工具除此之外没有特殊安装`crewai-tools`.
+
+```shell
+uv add crewai-tools
+```
+
+不需要 API 密钥 。 此工具使用公共arXiv Atom API.
+
+## 开始的步骤
+
+1. 初始化工具 。
+2. 提供a`search_query` (如"变形神经网络").
+3. 可选设置`max_results` (1-100),并启用构造器中的PDF下载.
+
+## 示例
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import ArxivPaperTool
+
+tool = ArxivPaperTool(
+    download_pdfs=False,
+    save_dir="./arxiv_pdfs",
+    use_title_as_filename=True,
+)
+
+agent = Agent(
+    role="Researcher",
+    goal="Find relevant arXiv papers",
+    backstory="Expert at literature discovery",
+    tools=[tool],
+    verbose=True,
+)
+
+task = Task(
+    description="Search arXiv for 'transformer neural network' and list top 5 results.",
+    expected_output="A concise list of 5 relevant papers with titles, links, and summaries.",
+    agent=agent,
+)
+
+crew = Crew(agents=[agent], tasks=[task])
+result = crew.kickoff()
+```
+
+### 直接使用( 没有代理)
+
+```python Code
+from crewai_tools import ArxivPaperTool
+
+tool = ArxivPaperTool(
+    download_pdfs=True, 
+    save_dir="./arxiv_pdfs",
+)
+print(tool.run(search_query="mixture of experts", max_results=3))
+```
+
+## 参数
+
+### 初始化参数
+
+- `download_pdfs` (醇,默认值)`False`:是否下载PDF.
+- `save_dir` (str, 默认)`./arxiv_pdfs`: 保存PDF的目录.
+- `use_title_as_filename` (醇,默认值)`False`: 文件名使用纸张标题。
+
+### 运行参数
+
+- `search_query` (str,要求): arXiv 搜索查询 。
+- `max_results` (int, 默认)`5`,范围1-100):结果数量。
+
+## 输出格式
+
+该工具返回一个人可读的论文列表:
+- 标题
+- 链接(空白页)
+- 片段/摘要(已完成)
+
+何时`download_pdfs=True`,PDF被保存到磁盘中,摘要中提到了保存的文件.
+
+## 使用说明
+
+- 该工具返回带有关键元数据和链接的格式文本。
+- 何时`download_pdfs=True`,PDF将存储在`save_dir`.
+
+## 解决问题
+
+- 如果您收到网络超时, 请重新尝试或减少`max_results`.
+- 无效的 XML 错误表示 arXiv 响应解析问题; 尝试更简单的查询 。
+- 保存 PDF 时可能发生文件系统错误( 如不允许) ; 确保`save_dir` 可写。
+
+## 相关链接
+
+- arXiv API docs:https://info.arxiv.org/help/api/index.html 互联网档案馆的存檔,存档日期2014-03-02.
+
+## 处理错误
+
+- 网络问题,无效的XML,以及OS错误都用信息信息处理.
+
+

@@ -1,0 +1,151 @@
+---
+title: "工具概览"
+description: "发现CrewAI的40+工具库 超量充电你的AI代理"
+icon: "toolbox"
+mode: "wide"
+---
+
+CrewAI提供了一个广泛的预建工具库,以提高你的特工的能力. 从文件处理到网络刮刮,数据库查询到AI服务 - 我们已经覆盖你.
+
+## **工具类别**
+
+<CardGroup cols={2}>
+  <Card
+    title="文件文档( D)"
+    icon="folder-open"
+    href="/zh-CN/tools/file-document/overview"
+    color="#3B82F6"
+  >
+    通过PDF,DOCX,JSON,CSV等多种文件格式读取,书写,搜索. 适合文件处理工作流程。
+  </Card>
+
+  <Card
+    title="网页浏览( B)"
+    icon="globe"
+    href="/zh-CN/tools/web-scraping/overview"
+    color="#10B981"
+  >
+    从网站提取数据,自动实现浏览器交互,并用Firecrawl,Selenium等工具大规模刮去内容.
+  </Card>
+
+  <Card
+    title="搜索与研究"
+    icon="magnifying-glass"
+    href="/zh-CN/tools/search-research/overview"
+    color="#F59E0B"
+  >
+    进行网络搜索,找到代码寄存器,研究YouTube内容,并发现互联网上的信息.
+  </Card>
+
+  <Card
+    title="数据库数据( D)"
+    icon="database"
+    href="/zh-CN/tools/database-data/overview"
+    color="#8B5CF6"
+  >
+    连接数据库、矢量储存和数据仓库。 腾讯 MySQL, PostgreSQL, 蒙戈DB, 雪花, Qudrant, 和Weviate.
+  </Card>
+
+  <Card
+    title="AI 机器学习( M)"
+    icon="brain"
+    href="/zh-CN/tools/ai-ml/overview"
+    color="#EF4444"
+  >
+    以DALL-E生成图像,处理视觉任务,与LangChain整合,构建RAG系统,以及杠杆代码解释器.
+  </Card>
+
+  <Card
+    title="云存储( S)"
+    icon="cloud"
+    href="/zh-CN/tools/cloud-storage/overview"
+    color="#06B6D4"
+  >
+    与云服务互动,包括AWS S3,Amazon Bedrock,以及其他云存储和AI服务.
+  </Card>
+
+  <Card
+    title="自动化"
+    icon="bolt"
+    href="/zh-CN/tools/automation/overview"
+    color="#84CC16"
+  >
+    自动将工作流程与Apify,Composio等平台连接到您的代理与外部服务.
+  </Card>
+
+  <Card
+    title="一体化"
+    icon="plug"
+    href="/zh-CN/tools/tool-integrations/overview"
+    color="#0891B2"
+  >
+    将CrewAI与亚马逊Bedrock和CrewAI自动化工具包等外部系统整合.
+  </Card>
+</CardGroup>
+
+## **快速访问**
+
+需要特定工具吗? 这里有一些流行的选择:
+
+<CardGroup cols={2}>
+  <Card title="RAG 工具" icon="image" href="/zh-CN/tools/ai-ml/ragtool">
+    执行检索增强生成
+  </Card>
+  <Card title="塞尔珀·德夫" icon="book-atlas" href="/zh-CN/tools/search-research/serperdevtool">
+    谷歌搜索 API
+  </Card>
+  <Card title="文件已读" icon="file" href="/zh-CN/tools/file-document/filereadtool">
+    读取任何文件类型
+  </Card>
+  <Card title="目录已读" icon="folder-open" href="/zh-CN/tools/file-document/directoryreadtool">
+    列出和读取目录内容
+  </Card>
+  <Card title="Scrape 网站" icon="globe" href="/zh-CN/tools/web-scraping/scrapewebsitetool">
+    提取网络内容
+  </Card>
+  <Card title="代码口译员" icon="code" href="/zh-CN/tools/ai-ml/codeinterpretertool">
+    执行 Python 代码
+  </Card>
+  <Card title="S3 读取器" icon="cloud" href="/zh-CN/tools/cloud-storage/s3readertool">
+    访问 AWS S3 文件
+  </Card>
+  <Card title="MongoDB 矢量搜索" icon="database" href="/zh-CN/tools/database-data/mongodbvectorsearchtool">
+    在 MongoDB 上运行向量相似性查询
+  </Card>
+</CardGroup>
+
+## **开始**
+
+要使用您的 CrewAI 项目中的任何工具:
+
+1. 机组配置中的工具
+2. 放到你经纪人的工具清单里
+3. 需要的 API 密钥或设置
+
+```python
+from crewai_tools import FileReadTool, SerperDevTool
+
+# Add tools to your agent
+agent = Agent(
+    role="Research Analyst",
+    tools=[FileReadTool(), SerperDevTool()],
+    # ... other configuration
+)
+```
+
+## **最大使用量计数**
+
+可以设置一个工具的最大使用量,防止它被使用超过一定次数.
+默认情况下,最大使用量是无限的.
+
+
+
+```python
+from crewai_tools import FileReadTool
+
+tool = FileReadTool(max_usage_count=5, ...)
+```
+
+
+
+准备好了吗? 在上面选择一个类别来发现适合您使用的工具 !

@@ -1,0 +1,214 @@
+---
+title: 代码解释器
+description: “CodeInterpreterTool”是一款功能强大的工具，旨在在安全、隔离的环境中执行 Python 3 代码。
+icon: code-simple
+mode: "wide"
+---
+
+# `CodeInterpreterTool`
+
+<Warning>
+  **已弃用：** `CodeInterpreterTool` 已被删除`crewai-tools`。这`allow_code_execution` 和`code_execution_mode` 参数上`Agent` 也已弃用。使用专用沙箱服务 - [E2B](https://e2b.dev) 或 [莫代尔](https://modal.com) - 实现安全、隔离的代码执行。
+</Warning>
+
+## 描述
+
+这`CodeInterpreterTool` 使 CrewAI 代理能够执行它们自主生成的 Python 3 代码。此功能特别有价值，因为它允许代理创建代码、执行代码、获取结果并利用该信息来通知后续决策和操作。
+
+有多种方法可以使用此工具：
+
+### Docker 容器（推荐）
+
+这是主要选项。代码在安全、隔离的 Docker 容器中运行，无论其内容如何，​​都能确保安全。
+确保 Docker 已安装并在您的系统上运行。如果没有，可以从[这里](https://docs.docker.com/get-docker/)开始安装。
+
+### 沙箱环境
+
+如果 Docker 不可用（未安装或因任何原因无法访问），代码将在受限制的 Python 环境（称为沙箱）中执行。
+这个环境非常有限，对很多模块和内置功能都有严格的限制。
+
+### 不安全执行
+
+**不推荐用于生产**
+此模式允许执行任何 Python 代码，包括危险的调用`sys, os..` 和类似的模块。 [查看](/zh-CN/tools/ai-ml/codeinterpretertool#enabling-unsafe_mode) 如何启用此模式
+
+## 记录
+
+这`CodeInterpreterTool` 将选定的执行策略记录到 STDOUT
+
+
+## 安装
+
+要使用该工具，您需要安装CrewAI工具包：
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 例子
+
+下面的例子演示了如何使用`CodeInterpreterTool` 使用 CrewAI 代理：
+
+```python Code
+from crewai import Agent, Task, Crew, Process
+from crewai_tools import CodeInterpreterTool
+
+# Initialize the tool
+code_interpreter = CodeInterpreterTool()
+
+# Define an agent that uses the tool
+programmer_agent = Agent(
+    role="Python Programmer",
+    goal="Write and execute Python code to solve problems",
+    backstory="An expert Python programmer who can write efficient code to solve complex problems.",
+    tools=[code_interpreter],
+    verbose=True,
+)
+
+# Example task to generate and execute code
+coding_task = Task(
+    description="Write a Python function to calculate the Fibonacci sequence up to the 10th number and print the result.",
+    expected_output="The Fibonacci sequence up to the 10th number.",
+    agent=programmer_agent,
+)
+
+# Create and run the crew
+crew = Crew(
+    agents=[programmer_agent],
+    tasks=[coding_task],
+    verbose=True,
+    process=Process.sequential,
+)
+result = crew.kickoff()
+```
+
+您还可以在创建代理时直接启用代码执行：
+
+```python Code
+from crewai import Agent
+
+# Create an agent with code execution enabled
+programmer_agent = Agent(
+    role="Python Programmer",
+    goal="Write and execute Python code to solve problems",
+    backstory="An expert Python programmer who can write efficient code to solve complex problems.",
+    allow_code_execution=True,  # This automatically adds the CodeInterpreterTool
+    verbose=True,
+)
+```
+
+### 启用`unsafe_mode`
+
+```python Code
+from crewai_tools import CodeInterpreterTool
+
+code = """
+import os
+os.system("ls -la")
+"""
+
+CodeInterpreterTool(unsafe_mode=True).run(code=code)
+```
+
+## 参数
+
+这`CodeInterpreterTool` 初始化期间接受以下参数：
+
+- **用户_docker文件_路径**：可选。用于代码解释器容器的自定义 Dockerfile 的路径。
+- **用户_docker_base_url**：可选。用于运行容器的 Docker 守护程序的 URL。
+- **不安全模式**：可选。是否直接在主机上运行代码，而不是在 Docker 容器或沙箱中运行。默认为`False`。谨慎使用！
+- **默认图像标签**：可选。默认 Docker 镜像标签。默认为`code-interpreter:latest`
+
+与代理一起使用该工具时，代理需要提供：
+
+- **代码**：必填。要执行的 Python 3 代码。
+- **使用的库**：可选。代码中使用的需要安装的库的列表。默认为`[]`
+
+## 代理集成示例
+
+这是有关如何集成的更详细示例`CodeInterpreterTool` 使用 CrewAI 代理：
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import CodeInterpreterTool
+
+# Initialize the tool
+code_interpreter = CodeInterpreterTool()
+
+# Define an agent that uses the tool
+data_analyst = Agent(
+    role="Data Analyst",
+    goal="Analyze data using Python code",
+    backstory="""You are an expert data analyst who specializes in using Python
+    to analyze and visualize data. You can write efficient code to process
+    large datasets and extract meaningful insights.""",
+    tools=[code_interpreter],
+    verbose=True,
+)
+
+# Create a task for the agent
+analysis_task = Task(
+    description="""
+    Write Python code to:
+    1. Generate a random dataset of 100 points with x and y coordinates
+    2. Calculate the correlation coefficient between x and y
+    3. Create a scatter plot of the data
+    4. Print the correlation coefficient and save the plot as 'scatter.png'
+
+    Make sure to handle any necessary imports and print the results.
+    """,
+    expected_output="The correlation coefficient and confirmation that the scatter plot has been saved.",
+    agent=data_analyst,
+)
+
+# Run the task
+crew = Crew(
+    agents=[data_analyst],
+    tasks=[analysis_task],
+    verbose=True,
+    process=Process.sequential,
+)
+result = crew.kickoff()
+```
+
+## 实施细节
+
+这`CodeInterpreterTool` 使用 Docker 创建安全的代码执行环境：
+
+```python Code
+class CodeInterpreterTool(BaseTool):
+    name: str = "Code Interpreter"
+    description: str = "Interprets Python3 code strings with a final print statement."
+    args_schema: Type[BaseModel] = CodeInterpreterSchema
+    default_image_tag: str = "code-interpreter:latest"
+
+    def _run(self, **kwargs) -> str:
+        code = kwargs.get("code", self.code)
+        libraries_used = kwargs.get("libraries_used", [])
+
+        if self.unsafe_mode:
+            return self.run_code_unsafe(code, libraries_used)
+        else:
+            return self.run_code_safety(code, libraries_used)
+```
+
+该工具执行以下步骤：
+1. 验证 Docker 映像是否存在或在必要时构建它
+2. 创建一个挂载当前工作目录的 Docker 容器
+3. 安装代理指定的任何所需库
+4. 执行容器中的Python代码
+5. 返回代码执行的输出
+6. 通过停止并移除容器来进行清理
+
+## 安全考虑
+
+默认情况下，`CodeInterpreterTool` 在隔离的 Docker 容器中运行代码，该容器提供了一层安全性。但是，仍然需要牢记一些安全注意事项：
+
+1. Docker 容器可以访问当前工作目录，因此敏感文件可能会被访问​​。
+2. 如果Docker容器不可用并且代码需要安全运行，则会在沙箱环境中执行。出于安全原因，不允许安装任意库
+3. 这`unsafe_mode` 参数允许代码直接在主机上执行，这应该只在受信任的环境中使用。
+4. 允许代理安装任意库时要小心，因为它们可能包含恶意代码。
+
+## 结论
+
+这`CodeInterpreterTool` 为 CrewAI 代理提供了一种在相对安全的环境中执行 Python 代码的强大方法。通过使代理能够编写和运行代码，它显着扩展了他们解决问题的能力，尤其是涉及数据分析、计算或其他计算工作的任务。该工具对于需要执行复杂操作的代理特别有用，这些操作用代码比自然语言更有效地表达。

@@ -1,0 +1,112 @@
+---
+title: 亮度数据工具
+description: 用于SERP搜索的亮数据集成,Web Unlocker刮,和Dataset API.
+icon: spider
+mode: "wide"
+---
+
+# 亮度数据工具
+
+这组工具集成了Bright Data服务,用于网页提取.
+
+## 安装
+
+```shell
+uv add crewai-tools requests aiohttp
+```
+
+## 环境变量
+
+- `BRIGHT_DATA_API_KEY` (必须)
+- `BRIGHT_DATA_ZONE` (用于SERP/Web解锁器).
+
+在 https://brightdata.com/ 上创建证书(签名后再创建API令牌和区).
+见其文件:https://developers.brightdata.com/
+
+## 包含工具
+
+- `BrightDataSearchTool`: SERP搜索(Google/Bing/Yandex),带有地理/语言/设备选项.
+- `BrightDataWebUnlockerTool`: Scrape 页面带有反机器人绕行和渲染.
+- `BrightDataDatasetTool`: 运行 Dataset API 任务并获取结果.
+
+## 实例
+
+### SERP 搜索
+
+```python Code
+from crewai_tools import BrightDataSearchTool
+
+tool = BrightDataSearchTool(
+    query="CrewAI", 
+    country="us",
+)
+
+print(tool.run())
+```
+
+### Web 解锁器
+
+```python Code
+from crewai_tools import BrightDataWebUnlockerTool
+
+tool = BrightDataWebUnlockerTool(
+    url="https://example.com", 
+    format="markdown",
+)
+
+print(tool.run(url="https://example.com"))
+```
+
+### 数据集 API
+
+```python Code
+from crewai_tools import BrightDataDatasetTool
+
+tool = BrightDataDatasetTool(
+    dataset_type="ecommerce", 
+    url="https://example.com/product",
+)
+
+print(tool.run())
+```
+
+## 解决问题
+
+- 401/403:核查`BRIGHT_DATA_API_KEY` 和`BRIGHT_DATA_ZONE`.
+- 空/ 锁定内容: 启用渲染或尝试不同的区域 。
+
+## 示例
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import BrightDataSearchTool
+
+tool = BrightDataSearchTool(
+    query="CrewAI", 
+    country="us",
+)
+
+agent = Agent(
+    role="Web Researcher",
+    goal="Search with Bright Data",
+    backstory="Finds reliable results",
+    tools=[tool],
+    verbose=True,
+)
+
+task = Task(
+    description="Search for CrewAI and summarize top results",
+    expected_output="Short summary with links",
+    agent=agent,
+)
+
+crew = Crew(
+    agents=[agent], 
+    tasks=[task],
+    verbose=True,
+)
+
+result = crew.kickoff()
+```
+
+

@@ -1,0 +1,284 @@
+---
+title: LLM 呼叫挂钩
+description: 了解如何使用 LLM 调用挂钩来拦截、修改和控制 CrewAI 中的语言模型交互
+mode: "wide"
+---
+
+LLM Call Hooks 提供对语言模型交互的细粒度控制
+在代理执行期间。这些钩子允许你拦截LLM调用，修改
+提示、转换响应、实施审批门以及添加自定义日志记录
+或监控。
+
+## 概述
+
+LLM 钩子在两个拦截点执行：
+
+| 观点 | 什么时候 | 钩子接收 |
+|-------|------|---------------|
+| `PRE_MODEL_CALL` | 在每次 LLM 通话之前 | `LLMCallHookContext` |
+| `POST_MODEL_CALL` | 每次LLM通话后 | `LLMCallHookContext`（带`response`组） |
+
+使用 [`@on` 装饰器](/edge/zh-CN/learn/execution-hooks) 编写它们。这
+[旧版 `@before_llm_call` / `@after_llm_call` 装饰器](#legacy-decorators)
+保持工作不变 - 两种样式在同一引擎上注册并在一个引擎中运行
+订购链。
+
+## 挂钩签名
+
+```python
+from crewai.hooks import on, HookAborted, InterceptionPoint, LLMCallHookContext
+
+@on(InterceptionPoint.PRE_MODEL_CALL)
+def before_hook(ctx: LLMCallHookContext) -> None:
+    # Mutate ctx.messages in place, or
+    # raise HookAborted(reason, source) to block the call
+    ...
+
+@on(InterceptionPoint.POST_MODEL_CALL)
+def after_hook(ctx: LLMCallHookContext) -> str | None:
+    # Return a string to replace ctx.response
+    # Return None to keep the original response
+    ...
+```
+
+与边界点和步骤点不同，模型调用点通过丰富的
+`LLMCallHookContext` 直接作为钩子参数（没有单独的
+`ctx.payload`)：在调用之前对 `ctx.messages` 进行变异，并返回
+字符串来替换其后的响应。
+
+阻止呼叫会引发`ValueError("LLM call blocked by before_llm_call hook")`
+执行者内部； `HookAborted` 原因和来源记录在
+[遥测](/edge/zh-CN/learn/execution-hooks#telemetry)。
+
+## LLM 挂钩上下文
+
+`LLMCallHookContext` 对象提供对执行状态的全面访问：
+
+```python
+class LLMCallHookContext:
+    executor: AgentExecutor | LiteAgent | None  # Executor (None for direct LLM calls)
+    messages: list               # Mutable message list
+    agent: Agent | None          # Current agent (None for direct LLM calls)
+    task: Task | None            # Current task (None for direct calls or LiteAgent)
+    crew: Crew | None            # Crew instance (None for direct calls or LiteAgent)
+    llm: BaseLLM | None          # LLM instance
+    iterations: int              # Current iteration count (0 for direct calls)
+    response: str | None         # LLM response (POST_MODEL_CALL only)
+```
+
+`AgentExecutor` 是从 `crewai.agents` 导入的。 `CrewAgentExecutor` 和`crewai.experimental.agent_executor` 导入路径已被删除。
+
+上下文还公开了`request_human_input(prompt, default_message)`，其中
+暂停实时控制台更新并收集来自终端的输入 - 对于
+审批门。
+
+### 修改消息
+
+**重要：** 始终就地修改消息：
+
+```python
+# ✅ Correct - modify in-place
+@on(InterceptionPoint.PRE_MODEL_CALL)
+def add_context(ctx: LLMCallHookContext) -> None:
+    ctx.messages.append({"role": "system", "content": "Be concise"})
+
+# ❌ Wrong - replaces list reference and breaks the executor
+@on(InterceptionPoint.PRE_MODEL_CALL)
+def wrong_approach(ctx: LLMCallHookContext) -> None:
+    ctx.messages = [{"role": "system", "content": "Be concise"}]
+```
+
+## 报名方式
+
+### 1. 全局钩子
+
+适用于所有船员的所有 LLM 呼叫。使用 `agents=` 过滤器来确定范围
+挂钩特定代理角色：
+
+```python
+from crewai.hooks import on, InterceptionPoint
+
+@on(InterceptionPoint.PRE_MODEL_CALL)
+def log_llm_call(ctx):
+    print(f"LLM call by {ctx.agent.role} at iteration {ctx.iterations}")
+
+@on(InterceptionPoint.POST_MODEL_CALL, agents=["Researcher"])
+def log_researcher_responses(ctx):
+    print(f"Response length: {len(ctx.response)}")
+```
+
+### 2. 船员范围的钩子
+
+将相同的装饰器应用于 `@CrewBase` 类中的方法以限定范围
+仅挂钩该船员：
+
+```python
+from crewai.hooks import on, InterceptionPoint
+
+@CrewBase
+class MyProjCrew:
+    @on(InterceptionPoint.PRE_MODEL_CALL)
+    def validate_inputs(self, ctx):
+        # Only applies to this crew
+        if ctx.iterations == 0:
+            print(f"Starting task: {ctx.task.description}")
+
+    @crew
+    def crew(self) -> Crew:
+        return Crew(agents=self.agents, tasks=self.tasks, process=Process.sequential)
+```
+
+## 常见用例
+
+### 1. 迭代限制
+
+```python
+@on(InterceptionPoint.PRE_MODEL_CALL)
+def limit_iterations(ctx: LLMCallHookContext) -> None:
+    if ctx.iterations > 15:
+        raise HookAborted(reason="exceeded 15 iterations", source="loop-guard")
+```
+
+### 2. 人工审批门
+
+```python
+@on(InterceptionPoint.PRE_MODEL_CALL)
+def require_approval(ctx: LLMCallHookContext) -> None:
+    if ctx.iterations > 5:
+        response = ctx.request_human_input(
+            prompt=f"Iteration {ctx.iterations}: Approve LLM call?",
+            default_message="Press Enter to approve, or type 'no' to block:",
+        )
+        if response.lower() == "no":
+            raise HookAborted(reason="blocked by user", source="approval-gate")
+```
+
+### 3. 添加系统上下文
+
+```python
+@on(InterceptionPoint.PRE_MODEL_CALL)
+def add_guardrails(ctx: LLMCallHookContext) -> None:
+    ctx.messages.append({
+        "role": "system",
+        "content": "Ensure responses are factual and cite sources when possible."
+    })
+```
+
+### 4. 响应清理
+
+```python
+import re
+
+@on(InterceptionPoint.POST_MODEL_CALL)
+def sanitize_sensitive_data(ctx: LLMCallHookContext) -> str | None:
+    if not ctx.response:
+        return None
+    sanitized = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[SSN-REDACTED]', ctx.response)
+    return re.sub(r'\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b', '[CARD-REDACTED]', sanitized)
+```
+
+### 5. 调试日志记录
+
+```python
+@on(InterceptionPoint.PRE_MODEL_CALL)
+def debug_request(ctx: LLMCallHookContext) -> None:
+    print(f"Agent: {ctx.agent.role}, iteration {ctx.iterations}, "
+          f"{len(ctx.messages)} messages")
+
+@on(InterceptionPoint.POST_MODEL_CALL)
+def debug_response(ctx: LLMCallHookContext) -> None:
+    if ctx.response:
+        print(f"Response preview: {ctx.response[:100]}...")
+```
+
+## 挂钩管理
+
+```python
+from crewai.hooks import (
+    InterceptionPoint,
+    clear_all_hooks,
+    clear_hooks,
+    get_hooks,
+    unregister_hook,
+)
+
+# Unregister a specific hook
+unregister_hook(InterceptionPoint.PRE_MODEL_CALL, my_hook)
+
+# Clear one point, or everything (e.g. between tests)
+clear_hooks(InterceptionPoint.POST_MODEL_CALL)
+clear_all_hooks()
+
+# Inspect what's registered
+print(len(get_hooks(InterceptionPoint.PRE_MODEL_CALL)))
+```
+
+遗留管理 API (`register_before_llm_call_hook`,
+`unregister_before_llm_call_hook`、`clear_before_llm_call_hooks`、
+`clear_all_llm_call_hooks`、`get_before_llm_call_hooks` 和他们的 `after_`
+对应方）在相同的底层注册表上运行，因此任一 API 都可以
+管理对方注册的钩子。
+
+## 遗留装饰器
+
+原始的每点装饰器保持工作不变并在相同的环境中运行
+注册顺序链为 `@on` 钩子：
+
+```python
+from crewai.hooks import before_llm_call, after_llm_call
+
+@before_llm_call
+def validate_iteration_count(context):
+    if context.iterations > 10:
+        return False  # Block execution
+    return None
+
+@after_llm_call(agents=["Researcher"])
+def sanitize_response(context):
+    if context.response and "API_KEY" in context.response:
+        return context.response.replace("API_KEY", "[REDACTED]")
+    return None
+```
+
+与`@on`的区别：
+
+- **阻塞**是来自 before hook 的 `return False` — 相当于加注
+`HookAborted`，但没有自定义原因或遥测来源。
+- **签名**是特定于点的：在钩子返回`bool | None`之前，在之后
+钩子返回`str | None`。上下文对象是相同的
+`LLMCallHookContext`。
+- **过滤器和人员范围**的工作方式相同：`@before_llm_call(agents=[...])`，
+并将装饰器应用于 `@CrewBase` 方法，将其范围限定为该人员。
+
+对于新代码，首选`@on`；保留已使用的遗留样式 -
+没有行为处罚。
+
+## 最佳实践
+
+1. **保持 hooks 集中且快速** - 它们在每个 LLM 调用上运行
+2. **就地修改** - 始终改变`ctx.messages`，从不替换列表
+3. **使用类型提示** — 使用 `LLMCallHookContext` 进行注释以获得 IDE 支持
+4. **大声中止** — 用有意义的理由和来源提出`HookAborted`；
+任何其他异常都会被吞掉（失败打开）
+5. **清除测试中的钩子** - 在测试运行之间调用`clear_all_hooks()`
+
+## 故障排除
+
+### 钩子不执行
+- 在船员执行之前验证钩子是否已注册
+- 检查较早的钩子是否中止（后续钩子不运行）
+
+### 消息修改不持久
+- 使用就地修改：`ctx.messages.append(...)`
+- 不要替换列表：`ctx.messages = []`
+
+### 响应修改不起作用
+- 从 `POST_MODEL_CALL` 钩子返回修改后的字符串
+- 返回`None` 保留原始响应
+
+## 相关文档
+
+- [执行挂钩概述 →](/edge/zh-CN/learn/execution-hooks)
+- [工具调用挂钩 →](/edge/zh-CN/learn/tool-hooks)
+- [执行边界挂钩→](/edge/zh-CN/learn/execution-boundary-hooks)
+- [阶梯挂钩→](/edge/zh-CN/learn/step-hooks)

@@ -80321,6 +80321,445 @@
             ]
           }
         ]
+      },
+      {
+        "language": "zh-Hans",
+        "global": {
+          "anchors": [
+            {
+              "anchor": "网站",
+              "href": "https://crewai.com",
+              "icon": "globe"
+            },
+            {
+              "anchor": "论坛",
+              "href": "https://community.crewai.com",
+              "icon": "discourse"
+            },
+            {
+              "anchor": "博客",
+              "href": "https://blog.crewai.com",
+              "icon": "newspaper"
+            },
+            {
+              "anchor": "CrewGPT",
+              "href": "https://chatgpt.com/g/g-qqTuUWsBY-crewai-assistant",
+              "icon": "robot"
+            }
+          ]
+        },
+        "versions": [
+          {
+            "version": "v1.15.37",
+            "tabs": [
+              {
+                "tab": "首页",
+                "icon": "house",
+                "groups": [
+                  {
+                    "group": "欢迎",
+                    "pages": [
+                      "index"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tab": "文档",
+                "icon": "book-open",
+                "groups": [
+                  {
+                    "group": "快速开始",
+                    "pages": [
+                      "v1.15.37/zh-CN/introduction",
+                      "v1.15.37/zh-CN/guides/coding-tools/build-with-ai",
+                      "v1.15.37/zh-CN/skills",
+                      "v1.15.37/zh-CN/installation",
+                      "v1.15.37/zh-CN/quickstart"
+                    ]
+                  },
+                  {
+                    "group": "指南",
+                    "pages": [
+                      {
+                        "group": "策略",
+                        "icon": "compass",
+                        "pages": [
+                          "v1.15.37/zh-CN/guides/concepts/evaluating-use-cases"
+                        ]
+                      },
+                      {
+                        "group": "智能体",
+                        "icon": "user",
+                        "pages": [
+                          "v1.15.37/zh-CN/guides/agents/crafting-effective-agents",
+                          "v1.15.37/zh-CN/guides/agents/standalone-agent-projects"
+                        ]
+                      },
+                      {
+                        "group": "团队",
+                        "icon": "users",
+                        "pages": [
+                          "v1.15.37/zh-CN/guides/crews/first-crew"
+                        ]
+                      },
+                      {
+                        "group": "流程",
+                        "icon": "code-branch",
+                        "pages": [
+                          "v1.15.37/zh-CN/guides/flows/first-flow",
+                          "v1.15.37/zh-CN/guides/flows/mastering-flow-state",
+                          "v1.15.37/zh-CN/guides/flows/conversational-flows",
+                          "v1.15.37/zh-CN/guides/flows/inputs-id-deprecation"
+                        ]
+                      },
+                      {
+                        "group": "前端",
+                        "icon": "browser",
+                        "pages": [
+                          "v1.15.37/zh-CN/guides/frontend/overview",
+                          "v1.15.37/zh-CN/guides/frontend/conversational-flows",
+                          "v1.15.37/zh-CN/guides/frontend/generative-ui",
+                          "v1.15.37/zh-CN/guides/frontend/tool-based-generative-ui",
+                          "v1.15.37/zh-CN/guides/frontend/agentic-generative-ui",
+                          "v1.15.37/zh-CN/guides/frontend/reasoning",
+                          "v1.15.37/zh-CN/guides/frontend/a2ui",
+                          "v1.15.37/zh-CN/guides/frontend/human-in-the-loop",
+                          "v1.15.37/zh-CN/guides/frontend/shared-state",
+                          "v1.15.37/zh-CN/guides/frontend/frontend-actions",
+                          "v1.15.37/zh-CN/guides/frontend/predictive-state-updates",
+                          "v1.15.37/zh-CN/guides/frontend/channels"
+                        ]
+                      },
+                      {
+                        "group": "工具",
+                        "icon": "wrench",
+                        "pages": [
+                          "v1.15.37/zh-CN/guides/tools/publish-custom-tools"
+                        ]
+                      },
+                      {
+                        "group": "编码工具",
+                        "icon": "terminal",
+                        "pages": [
+                          "v1.15.37/zh-CN/guides/coding-tools/agents-md",
+                          "v1.15.37/zh-CN/guides/coding-tools/build-with-ai"
+                        ]
+                      },
+                      {
+                        "group": "高级",
+                        "icon": "gear",
+                        "pages": [
+                          "v1.15.37/zh-CN/guides/advanced/customizing-prompts",
+                          "v1.15.37/zh-CN/guides/advanced/fingerprinting"
+                        ]
+                      },
+                      {
+                        "group": "迁移",
+                        "icon": "shuffle",
+                        "pages": [
+                          "v1.15.37/zh-CN/guides/migration/migrating-from-langgraph",
+                          "v1.15.37/zh-CN/guides/migration/upgrading-crewai"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "group": "核心概念",
+                    "pages": [
+                      "v1.15.37/zh-CN/concepts/agents",
+                      "v1.15.37/zh-CN/concepts/agent-capabilities",
+                      "v1.15.37/zh-CN/concepts/tasks",
+                      "v1.15.37/zh-CN/concepts/crews",
+                      "v1.15.37/zh-CN/concepts/flows",
+                      "v1.15.37/zh-CN/concepts/streaming",
+                      "v1.15.37/zh-CN/concepts/production-architecture",
+                      "v1.15.37/zh-CN/concepts/knowledge",
+                      "v1.15.37/zh-CN/concepts/skills",
+                      "v1.15.37/zh-CN/concepts/llms",
+                      "v1.15.37/zh-CN/concepts/files",
+                      "v1.15.37/zh-CN/concepts/processes",
+                      "v1.15.37/zh-CN/concepts/collaboration",
+                      "v1.15.37/zh-CN/concepts/training",
+                      "v1.15.37/zh-CN/concepts/memory",
+                      "v1.15.37/zh-CN/concepts/reasoning",
+                      "v1.15.37/zh-CN/concepts/planning",
+                      "v1.15.37/zh-CN/concepts/testing",
+                      "v1.15.37/zh-CN/concepts/cli",
+                      "v1.15.37/zh-CN/concepts/tools",
+                      "v1.15.37/zh-CN/concepts/event-listener",
+                      "v1.15.37/zh-CN/concepts/checkpointing"
+                    ]
+                  },
+                  {
+                    "group": "MCP 集成",
+                    "pages": [
+                      "v1.15.37/zh-CN/mcp/overview",
+                      "v1.15.37/zh-CN/mcp/dsl-integration",
+                      "v1.15.37/zh-CN/mcp/stdio",
+                      "v1.15.37/zh-CN/mcp/sse",
+                      "v1.15.37/zh-CN/mcp/streamable-http",
+                      "v1.15.37/zh-CN/mcp/multiple-servers",
+                      "v1.15.37/zh-CN/mcp/security"
+                    ]
+                  },
+                  {
+                    "group": "工具",
+                    "pages": [
+                      "v1.15.37/zh-CN/tools/overview",
+                      {
+                        "group": "文件与文档",
+                        "icon": "folder-open",
+                        "pages": [
+                          "v1.15.37/zh-CN/tools/file-document/overview",
+                          "v1.15.37/zh-CN/tools/file-document/filereadtool",
+                          "v1.15.37/zh-CN/tools/file-document/filewritetool",
+                          "v1.15.37/zh-CN/tools/file-document/pdfsearchtool",
+                          "v1.15.37/zh-CN/tools/file-document/docxsearchtool",
+                          "v1.15.37/zh-CN/tools/file-document/mdxsearchtool",
+                          "v1.15.37/zh-CN/tools/file-document/xmlsearchtool",
+                          "v1.15.37/zh-CN/tools/file-document/txtsearchtool",
+                          "v1.15.37/zh-CN/tools/file-document/jsonsearchtool",
+                          "v1.15.37/zh-CN/tools/file-document/csvsearchtool",
+                          "v1.15.37/zh-CN/tools/file-document/directorysearchtool",
+                          "v1.15.37/zh-CN/tools/file-document/directoryreadtool",
+                          "v1.15.37/zh-CN/tools/file-document/ocrtool",
+                          "v1.15.37/zh-CN/tools/file-document/pdf-text-writing-tool"
+                        ]
+                      },
+                      {
+                        "group": "网页抓取与浏览",
+                        "icon": "globe",
+                        "pages": [
+                          "v1.15.37/zh-CN/tools/web-scraping/overview",
+                          "v1.15.37/zh-CN/tools/web-scraping/scrapewebsitetool",
+                          "v1.15.37/zh-CN/tools/web-scraping/scrapeelementfromwebsitetool",
+                          "v1.15.37/zh-CN/tools/web-scraping/scrapflyscrapetool",
+                          "v1.15.37/zh-CN/tools/web-scraping/seleniumscrapingtool",
+                          "v1.15.37/zh-CN/tools/web-scraping/scrapegraphscrapetool",
+                          "v1.15.37/zh-CN/tools/web-scraping/spidertool",
+                          "v1.15.37/zh-CN/tools/web-scraping/browserbaseloadtool",
+                          "v1.15.37/zh-CN/tools/web-scraping/hyperbrowserloadtool",
+                          "v1.15.37/zh-CN/tools/web-scraping/stagehandtool",
+                          "v1.15.37/zh-CN/tools/web-scraping/firecrawlcrawlwebsitetool",
+                          "v1.15.37/zh-CN/tools/web-scraping/firecrawlscrapewebsitetool",
+                          "v1.15.37/zh-CN/tools/web-scraping/oxylabsscraperstool",
+                          "v1.15.37/zh-CN/tools/web-scraping/brightdata-tools",
+                          "v1.15.37/zh-CN/tools/web-scraping/youai-contents"
+                        ]
+                      },
+                      {
+                        "group": "搜索与研究",
+                        "icon": "magnifying-glass",
+                        "pages": [
+                          "v1.15.37/zh-CN/tools/search-research/overview",
+                          "v1.15.37/zh-CN/tools/search-research/serperdevtool",
+                          "v1.15.37/zh-CN/tools/search-research/bravesearchtool",
+                          "v1.15.37/zh-CN/tools/search-research/exasearchtool",
+                          "v1.15.37/zh-CN/tools/search-research/linkupsearchtool",
+                          "v1.15.37/zh-CN/tools/search-research/githubsearchtool",
+                          "v1.15.37/zh-CN/tools/search-research/websitesearchtool",
+                          "v1.15.37/zh-CN/tools/search-research/codedocssearchtool",
+                          "v1.15.37/zh-CN/tools/search-research/youtubechannelsearchtool",
+                          "v1.15.37/zh-CN/tools/search-research/youtubevideosearchtool",
+                          "v1.15.37/zh-CN/tools/search-research/tavilysearchtool",
+                          "v1.15.37/zh-CN/tools/search-research/tavilyextractortool",
+                          "v1.15.37/zh-CN/tools/search-research/tavilyresearchtool",
+                          "v1.15.37/zh-CN/tools/search-research/arxivpapertool",
+                          "v1.15.37/zh-CN/tools/search-research/serpapi-googlesearchtool",
+                          "v1.15.37/zh-CN/tools/search-research/serpapi-googleshoppingtool",
+                          "v1.15.37/zh-CN/tools/search-research/databricks-query-tool",
+                          "v1.15.37/zh-CN/tools/search-research/youai-search"
+                        ]
+                      },
+                      {
+                        "group": "数据库与数据",
+                        "icon": "database",
+                        "pages": [
+                          "v1.15.37/zh-CN/tools/database-data/overview",
+                          "v1.15.37/zh-CN/tools/database-data/mysqltool",
+                          "v1.15.37/zh-CN/tools/database-data/pgsearchtool",
+                          "v1.15.37/zh-CN/tools/database-data/snowflakesearchtool",
+                          "v1.15.37/zh-CN/tools/database-data/nl2sqltool",
+                          "v1.15.37/zh-CN/tools/database-data/qdrantvectorsearchtool",
+                          "v1.15.37/zh-CN/tools/database-data/weaviatevectorsearchtool",
+                          "v1.15.37/zh-CN/tools/database-data/mongodbvectorsearchtool",
+                          "v1.15.37/zh-CN/tools/database-data/singlestoresearchtool",
+                          "v1.15.37/zh-CN/tools/database-data/db2searchtool"
+                        ]
+                      },
+                      {
+                        "group": "AI 与机器学习",
+                        "icon": "brain",
+                        "pages": [
+                          "v1.15.37/zh-CN/tools/ai-ml/overview",
+                          "v1.15.37/zh-CN/tools/ai-ml/dalletool",
+                          "v1.15.37/zh-CN/tools/ai-ml/visiontool",
+                          "v1.15.37/zh-CN/tools/ai-ml/aimindtool",
+                          "v1.15.37/zh-CN/tools/ai-ml/llamaindextool",
+                          "v1.15.37/zh-CN/tools/ai-ml/langchaintool",
+                          "v1.15.37/zh-CN/tools/ai-ml/ragtool",
+                          "v1.15.37/zh-CN/tools/ai-ml/codeinterpretertool",
+                          "v1.15.37/zh-CN/tools/ai-ml/daytona",
+                          "v1.15.37/zh-CN/tools/ai-ml/e2bsandboxtools"
+                        ]
+                      },
+                      {
+                        "group": "云与存储",
+                        "icon": "cloud",
+                        "pages": [
+                          "v1.15.37/zh-CN/tools/cloud-storage/overview",
+                          "v1.15.37/zh-CN/tools/cloud-storage/s3readertool",
+                          "v1.15.37/zh-CN/tools/cloud-storage/s3writertool",
+                          "v1.15.37/zh-CN/tools/cloud-storage/bedrockkbretriever"
+                        ]
+                      },
+                      {
+                        "group": "集成",
+                        "icon": "plug",
+                        "pages": [
+                          "v1.15.37/zh-CN/tools/integration/overview",
+                          "v1.15.37/zh-CN/tools/integration/bedrockinvokeagenttool",
+                          "v1.15.37/zh-CN/tools/integration/crewaiautomationtool",
+                          "v1.15.37/zh-CN/tools/integration/mergeagenthandlertool"
+                        ]
+                      },
+                      {
+                        "group": "自动化",
+                        "icon": "bolt",
+                        "pages": [
+                          "v1.15.37/zh-CN/tools/automation/overview",
+                          "v1.15.37/zh-CN/tools/automation/apifyactorstool",
+                          "v1.15.37/zh-CN/tools/automation/composiotool",
+                          "v1.15.37/zh-CN/tools/automation/multiontool",
+                          "v1.15.37/zh-CN/tools/automation/waittool",
+                          "v1.15.37/zh-CN/tools/automation/zapieractionstool"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "group": "可观测性",
+                    "pages": [
+                      "v1.15.37/zh-CN/observability/tracing",
+                      "v1.15.37/zh-CN/observability/overview",
+                      "v1.15.37/zh-CN/observability/arize-phoenix",
+                      "v1.15.37/zh-CN/observability/braintrust",
+                      "v1.15.37/zh-CN/observability/datadog",
+                      "v1.15.37/zh-CN/observability/galileo",
+                      "v1.15.37/zh-CN/observability/langdb",
+                      "v1.15.37/zh-CN/observability/langfuse",
+                      "v1.15.37/zh-CN/observability/langtrace",
+                      "v1.15.37/zh-CN/observability/maxim",
+                      "v1.15.37/zh-CN/observability/mlflow",
+                      "v1.15.37/zh-CN/observability/neatlogs",
+                      "v1.15.37/zh-CN/observability/openlit",
+                      "v1.15.37/zh-CN/observability/opik",
+                      "v1.15.37/zh-CN/observability/patronus-evaluation",
+                      "v1.15.37/zh-CN/observability/portkey",
+                      "v1.15.37/zh-CN/observability/weave",
+                      "v1.15.37/zh-CN/observability/truefoundry"
+                    ]
+                  },
+                  {
+                    "group": "学习",
+                    "pages": [
+                      "v1.15.37/zh-CN/learn/overview",
+                      "v1.15.37/zh-CN/learn/llm-selection-guide",
+                      "v1.15.37/zh-CN/learn/conditional-tasks",
+                      "v1.15.37/zh-CN/learn/coding-agents",
+                      "v1.15.37/zh-CN/learn/create-custom-tools",
+                      "v1.15.37/zh-CN/learn/custom-llm",
+                      "v1.15.37/zh-CN/learn/custom-manager-agent",
+                      "v1.15.37/zh-CN/learn/customizing-agents",
+                      "v1.15.37/zh-CN/learn/dalle-image-generation",
+                      "v1.15.37/zh-CN/learn/force-tool-output-as-result",
+                      "v1.15.37/zh-CN/learn/hierarchical-process",
+                      "v1.15.37/zh-CN/learn/human-input-on-execution",
+                      "v1.15.37/zh-CN/learn/human-in-the-loop",
+                      "v1.15.37/zh-CN/learn/human-feedback-in-flows",
+                      "v1.15.37/zh-CN/learn/kickoff-async",
+                      "v1.15.37/zh-CN/learn/kickoff-for-each",
+                      "v1.15.37/zh-CN/learn/streaming-runtime-contract",
+                      "v1.15.37/zh-CN/learn/consuming-streams",
+                      "v1.15.37/zh-CN/learn/llm-connections",
+                      "v1.15.37/zh-CN/learn/litellm-removal-guide",
+                      "v1.15.37/zh-CN/learn/multimodal-agents",
+                      "v1.15.37/zh-CN/learn/replay-tasks-from-latest-crew-kickoff",
+                      "v1.15.37/zh-CN/learn/sequential-process",
+                      "v1.15.37/zh-CN/learn/using-annotations",
+                      {
+                        "group": "Execution Hooks",
+                        "pages": [
+                          "v1.15.37/zh-CN/learn/execution-hooks",
+                          "v1.15.37/zh-CN/learn/llm-hooks",
+                          "v1.15.37/zh-CN/learn/tool-hooks",
+                          "v1.15.37/zh-CN/learn/execution-boundary-hooks",
+                          "v1.15.37/zh-CN/learn/step-hooks",
+                          "v1.15.37/zh-CN/learn/before-and-after-kickoff-hooks"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "group": "Telemetry",
+                    "pages": [
+                      "v1.15.37/zh-CN/telemetry"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tab": "AMP",
+                "icon": "briefcase",
+                "href": "https://docs-platform.crewai.com/platform/zh-CN/introduction"
+              },
+              {
+                "tab": "API 参考",
+                "icon": "magnifying-glass",
+                "groups": [
+                  {
+                    "group": "Getting Started",
+                    "pages": [
+                      "v1.15.37/zh-CN/api-reference/introduction",
+                      "v1.15.37/zh-CN/api-reference/inputs",
+                      "v1.15.37/zh-CN/api-reference/kickoff",
+                      "v1.15.37/zh-CN/api-reference/resume",
+                      "v1.15.37/zh-CN/api-reference/status"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tab": "示例",
+                "icon": "code",
+                "groups": [
+                  {
+                    "group": "示例",
+                    "pages": [
+                      "v1.15.37/zh-CN/examples/example",
+                      "v1.15.37/zh-CN/examples/cookbooks"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tab": "更新日志",
+                "icon": "clock",
+                "groups": [
+                  {
+                    "group": "Release Notes",
+                    "pages": [
+                      "v1.15.37/zh-CN/changelog"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "tag": "Latest",
+            "default": true
+          }
+        ]
       }
     ]
   },

@@ -1,0 +1,68 @@
+---
+title: 推理
+description: 自动在聊天中展示模型的想法，无需构建任何组件。
+icon: brain
+mode: "wide"
+---
+
+## 无需额外开发即可渲染推理过程
+
+当具有推理能力的模型在回答之前进行思考时，CopilotKit 会在聊天中正确呈现该思考。这是整个部分中最简单的生成式 UI 模式：无需构建任何内容。没有钩子，没有组件，没有道具。使用具有推理能力的模型，保留 Flows 已有的流包装器，[概述](/edge/zh-CN/guides/frontend/overview) 中的聊天界面将完成其余的工作。
+
+## 使用具有推理能力的模型
+
+推理由 `copilotkit_stream` 自动呈现，每个 Flow 示例都已将模型调用包装在其中。桥读取模型的推理增量并将其发送到前端。它与提供商无关并且有效在 CrewAI 的两种流传输上，因此您唯一需要更改的是模型。
+
+```python
+# recipe_flow.py
+from crewai.flow.flow import Flow, start
+from ag_ui_crewai.sdk import copilotkit_stream, CopilotKitState
+from litellm import acompletion
+
+
+class RecipeFlow(Flow[CopilotKitState]):
+    @start()
+    async def chat(self):
+        response = await copilotkit_stream(
+            acompletion(
+                # any reasoning-capable model, e.g. deepseek-reasoner
+                model="deepseek/deepseek-reasoner",
+                messages=self.state.messages,
+                stream=True,
+            )
+        )
+        message = response.choices[0].message
+        self.state.messages.append(message)
+```
+
+通过标准通道发出推理的模型包括 DeepSeek `deepseek-reasoner`、人择扩展思维 (Claude) 和 Gemini 思维等。将 `model` 替换为其中之一，它的思考就开始了流过。
+
+这对于 Crew 和 Flow 都是一样的，因为两者都通过 `copilotkit_stream` 运行模型调用。
+
+## 渲染它
+
+没有前端步骤。您已安装的 `CopilotChat`、`CopilotSidebar` 或 `CopilotPopup` 表面会在其产生的答案之上显示流式传输的推理。
+
+```tsx
+import { CopilotChat } from "@copilotkit/react-core/v2";
+
+<CopilotChat agentId="recipe" />
+```
+
+<Note>
+没有 `useReasoning` 钩子，也没有要编写的推理组件。推理不是你在前端连接的东西；而是你在前端连接的东西。只要模型发出它，它就会自动渲染。
+</Note>
+
+## 有关的
+
+<CardGroup cols={2}>
+ <Card title="生成式用户界面" icon="wand-magic-sparkles" href="/edge/zh-CN/guides/frontend/generative-ui">
+全方位，从作者控制到代理发明的 UI。
+ </Card>
+ <Card title="代理生成 UI" icon="list-check" href="/edge/zh-CN/guides/frontend/agentic-generative-ui">
+当 Flow 工作时渲染实时代理状态。
+ </Card>
+ <Card title="前端概述" icon="browser" href="/edge/zh-CN/guides/frontend/overview">
+设置聊天界面和运行时。
+ </Card>
+</CardGroup>

@@ -1,0 +1,164 @@
+---
+title: 构建你的第一个 Crew
+description: 通过 JSON 优先的 crew 配置创建协作式 AI 团队的分步教程。
+icon: users-gear
+mode: "wide"
+---
+
+## 构建一个研究 Crew
+
+在本指南中，你将创建一个由两个 agent 组成的研究 crew，它会收集某个主题的信息并撰写一份 markdown 报告。新的 crew 项目采用 JSON 优先：agent 定义在 `agents/*.jsonc` 中，task 和 crew 设置定义在 `crew.jsonc` 中，`crewai run` 会直接加载这些 JSON 定义。
+
+### 前置条件
+
+开始之前，请确保你已经：
+
+1. 按照[安装指南](/zh-CN/installation)安装了 CrewAI
+2. 按照 [LLM 设置指南](/zh-CN/concepts/llms#设置您的-llm)配置了你的 LLM API 密钥
+3. 如果希望研究员使用网页搜索，需要一个 [Serper.dev](https://serper.dev/) API 密钥
+
+## 第 1 步：创建一个新的 Crew
+
+```bash
+crewai create crew research_crew
+cd research_crew
+```
+
+当 `crewai create` 询问 `Run it now?` 时，回答 `n`。本指南会在运行之前先编辑这个 crew。
+
+CLI 会创建一个 JSON 优先的项目：
+
+```text
+research_crew/
+├── .gitignore
+├── .env
+├── agents/
+│   └── researcher.jsonc
+├── crew.jsonc
+├── knowledge/
+├── pyproject.toml
+├── README.md
+├── skills/
+└── tools/
+```
+
+<Tip>
+需要旧版的 `crew.py`、`config/agents.yaml` 和 `config/tasks.yaml` 布局？使用 `crewai create crew research_crew --classic` 创建。
+</Tip>
+
+## 第 2 步：定义你的 Agent
+
+替换生成的 `agents/researcher.jsonc` 文件，并添加 `agents/analyst.jsonc`。文件名就是你在 `crew.jsonc` 中引用的名称。
+
+```jsonc agents/researcher.jsonc
+{
+  "role": "Senior Research Specialist for {topic}",
+  "goal": "Find comprehensive and accurate information about {topic}, with a focus on recent developments and key insights.",
+  "backstory": "You are an experienced research specialist who organizes complex information into clear, useful notes.",
+  // Replace with your model, for example "openai/gpt-4o".
+  "llm": "provider/model-id",
+  "tools": ["SerperDevTool"],
+  "settings": {
+    "verbose": true,
+    "allow_delegation": false
+  }
+}
+```
+
+```jsonc agents/analyst.jsonc
+{
+  "role": "Report Analyst for {topic}",
+  "goal": "Turn research findings into a clear, well-structured report.",
+  "backstory": "You are a careful analyst with strong technical writing skills and a talent for extracting useful insights.",
+  // Replace with your model, for example "openai/gpt-4o".
+  "llm": "provider/model-id",
+  "settings": {
+    "verbose": true,
+    "allow_delegation": false
+  }
+}
+```
+
+将 `provider/model-id` 替换为你使用的模型，例如 `openai/gpt-4o`、`anthropic/claude-sonnet-4-6` 或 `gemini/gemini-3.7-flash`。
+
+## 第 3 步：定义 Task 和 Crew 设置
+
+将 `crew.jsonc` 替换为：
+
+```jsonc crew.jsonc
+{
+  "name": "Research Crew",
+  "agents": ["researcher", "analyst"],
+  "tasks": [
+    {
+      "name": "research_task",
+      "description": "Conduct thorough research on {topic}. Focus on key concepts, recent developments, major challenges, notable applications, and future outlook.",
+      "expected_output": "A comprehensive research document with organized sections, specific facts, and useful examples about {topic}.",
+      "agent": "researcher"
+    },
+    {
+      "name": "analysis_task",
+      "description": "Analyze the research findings and create a polished report on {topic}. Include an executive summary, key insights, trend analysis, and recommendations.",
+      "expected_output": "A professional markdown report with clear headings, a concise summary, main findings, and recommendations.",
+      "agent": "analyst",
+      "context": ["research_task"],
+      "output_file": "output/report.md",
+      "markdown": true
+    }
+  ],
+  "process": "sequential",
+  "verbose": true,
+  "memory": true,
+  "inputs": {
+    "topic": "Artificial Intelligence in Healthcare"
+  }
+}
+```
+
+`context` 指向前序 task 的名称，因此分析师会收到研究 task 的输出。`inputs` 对象为 `{topic}` 提供默认值。如果你删除了某个默认值，`crewai run` 会提示你输入。
+
+## 第 4 步：设置环境变量
+
+打开 `.env` 并添加你的模型和工具所需的密钥：
+
+```sh
+SERPER_API_KEY=your_serper_api_key
+# Add your model provider API key here too.
+```
+
+关于各提供商所需的密钥，请参阅 [LLM 设置指南](/zh-CN/concepts/llms#设置您的-llm)。
+
+## 第 5 步：安装并运行
+
+```bash
+crewai install
+crewai run
+```
+
+`crewai run` 会检测到 `crew.jsonc`，从 `agents/` 加载 agent，提示输入缺失的占位符，然后运行 crew。运行结束后，打开 `output/report.md` 查看结果。
+
+## 工作原理
+
+1. `crew.jsonc` 定义了 crew、task 顺序、流程、记忆和运行时输入。
+2. `agents/researcher.jsonc` 和 `agents/analyst.jsonc` 定义了 agent。
+3. 研究员先运行。
+4. 分析师随后运行，并带有 `context: ["research_task"]`。
+5. 最后一个 task 写出 `output/report.md`。
+
+## 扩展你的 Crew
+
+你可以添加：
+
+- 更多 agent：创建新的 `agents/<name>.jsonc` 文件并在 `crew.jsonc` 中列出
+- 更多 task：向 `tasks` 数组追加对象
+- 内置工具：添加工具类名，例如 `"FileReadTool"` 或 `"SerperDevTool"`
+- 自定义工具：使用 `"custom:<name>"`，它会加载 `tools/<name>.py`
+- 分层执行：使用 `"process": "hierarchical"` 并配置 `manager_llm` 或 `manager_agent`
+
+<Warning>
+只运行来自可信来源的 JSON crew 项目。`custom:<name>` 工具和 `{"python": "module.attribute"}` 引用会在 crew 加载时执行本地 Python 代码。
+</Warning>
+
+<Check>
+你现在拥有了一个可用的 JSON 优先 crew，它可以研究一个主题并撰写报告。
+</Check>

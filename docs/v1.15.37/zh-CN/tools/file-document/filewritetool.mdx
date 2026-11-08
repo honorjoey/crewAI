@@ -1,0 +1,81 @@
+---
+title: "文件写入"
+description: "文件写入 工具文档。"
+icon: file-pen
+mode: "wide"
+---
+
+# `FileWriterTool`
+
+## 描述
+
+`FileWriterTool` 是 crewai_tools 包中的组件，旨在简化文件写入流程，并提供跨平台兼容性（Windows、Linux、macOS）。
+它特别适用于生成报告、保存日志、创建配置文件等场景。
+该工具会处理不同操作系统间的路径差异，默认使用 UTF-8 而非系统本地编码写入，并在目录不存在时自动创建目录，帮助你在不同平台上稳定组织输出文件。
+
+## 安装
+
+在项目中使用 `FileWriterTool`，请先安装 crewai_tools：
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 示例
+
+快速开始 `FileWriterTool`：
+
+```python Code
+from crewai_tools import FileWriterTool
+
+# Initialize the tool
+file_writer_tool = FileWriterTool()
+
+# Write content to a file in a specified directory
+result = file_writer_tool.run(
+    filename='example.txt',
+    content='This is a test content.',
+    directory='test_directory',
+)
+print(result)
+```
+
+## 参数
+
+以下参数由智能体在运行时提供：
+
+- `filename`：要写入的文件名（相对于 `directory`）。可包含子目录；若不存在会自动创建。
+- `content`：写入文件的文本内容。
+- `directory`（可选）：文件创建目录路径。相对路径会解析到工具允许目录内——若设置了 `base_dir` 则以其为根，否则以当前工作目录为根。目录不存在会自动创建。
+- `overwrite`（可选）：文件已存在时是否覆盖。支持 `true`/`false`（也支持 `yes`/`no`、`on`/`off`、`1`/`0`）。默认 `false`，即报错而不是覆盖现有内容。
+
+以下参数在构造工具时设置：
+
+- `base_dir`（可选）：允许写入的根目录边界。默认为当前工作目录。
+- `encoding`（可选）：写入文件使用的文本编码。默认 `utf-8`。
+
+## 允许路径
+
+由于目录与文件名通常由 LLM 在运行时决定，写入会被限制在沙箱范围内：
+
+- 解析后的 `directory` 必须位于 `base_dir` 内（默认是当前工作目录）。
+- 解析后的目标文件必须位于该 `directory` 内。`..` 段、绝对路径和符号链接会在两次检查前被解析，因此无法用于逃逸。
+
+如果希望智能体写到工作目录之外，请将 `base_dir` 指向目标目录树：
+
+```python Code
+# The agent may write anywhere under /var/output, and nowhere outside it
+file_writer_tool = FileWriterTool(base_dir='/var/output')
+```
+
+<Note>
+    早期版本中，绝对 `directory` 可写入进程有权限的任意位置。若你依赖该行为，请将 `base_dir` 显式设置为允许的目录树。设置 `CREWAI_TOOLS_ALLOW_UNSAFE_PATHS=true` 也可恢复旧行为，但它会对所有 crewai-tools 工具全局生效（包括 URL 获取工具的 SSRF 保护），因此更推荐使用 `base_dir`。
+</Note>
+
+## 结论
+
+将 `FileWriterTool` 集成到 crew 后，智能体即可在不同操作系统上稳定地写入文件。
+它对需要保存输出数据、构建结构化目录、处理跨平台文件操作的任务尤为关键。
+对于在标准 Python 文件写入上可能遇到问题的 Windows 用户，尤其推荐使用该工具。
+
+按本文方式配置与使用，可确保你在各平台上获得一致的文件写入行为。

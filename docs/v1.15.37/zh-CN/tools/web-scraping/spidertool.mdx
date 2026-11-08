@@ -1,0 +1,93 @@
+---
+title: "蜘蛛侠"
+description: "蜘蛛侠 工具文档。"
+icon: spider-web
+mode: "wide"
+---
+
+# `SpiderTool`
+
+## 说明
+
+[蜘蛛鱼](https://spider.cloud/?ref=crewai)是[快点](https://github.com/spider-rs/spider/blob/main/benches/BENCHMARKS.md#benchmark-results)
+返回 LLM 已准备好的数据的开源除尘器和爬行器。
+它将任何网站转换为纯HTML,markdown,元数据或文本,同时允许您使用AI爬行自定义动作.
+
+## 安装
+
+用来使用`SpiderTool` 您需要下载“0”
+页:1`crewai[tools]` SDK也一样:
+
+```shell
+pip install spider-client 'crewai[tools]'
+```
+
+## 示例
+
+此示例显示您如何使用`SpiderTool` 使您的代理人能够刷新和爬行网站。
+从Spider API返回的数据已经准备好LLM,所以不需要在那里进行任何清理.
+
+```python Code
+from crewai_tools import SpiderTool
+
+def main():
+    spider_tool = SpiderTool()
+
+    searcher = Agent(
+        role="Web Research Expert",
+        goal="Find related information from specific URL's",
+        backstory="An expert web researcher that uses the web extremely well",
+        tools=[spider_tool],
+        verbose=True,
+    )
+
+    return_metadata = Task(
+        description="Scrape https://spider.cloud with a limit of 1 and enable metadata",
+        expected_output="Metadata and 10 word summary of spider.cloud",
+        agent=searcher
+    )
+
+    crew = Crew(
+        agents=[searcher],
+        tasks=[
+            return_metadata,
+        ],
+        verbose=2
+    )
+
+    crew.kickoff()
+
+if __name__ == "__main__":
+    main()
+```
+
+## 参数
+| 参数| 类型| 说明|
+|:------------------|:---------|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| **键**         | `弦 '| 指定蜘蛛 API 密钥。 如果没有具体说明,则在环境变量中寻找 " 天基信息平台-API KEY " 。|
+| **参数**          | `对象 '| 请求的可选参数 。 默认为QQ" return format":"markdown"QQ以优化LLMs的内容.|
+| **请求**         | `弦 '| 执行请求的类型(`http`、`chrome`、`smart ' )。 “智能”默认为 HTTP, 必要时可切换为 JavaScript 渲染 。|
+| **限制**           | " 准备 "| 每个网站要爬行的最大页面. 设定为`0 ' 或无限省略。|
+| **深度**           | " 准备 "| 马克斯爬行深度。 设定为 " 0 " 无限制。|
+| **缓存**           | `波尔'| 启用 HTTP 缓存以加速重复运行 。 默认是`真'。|
+| **预算**          | `对象 '| 为爬行的页面设置路径限制,例如,QQ*":1}`仅用于根页面.|
+| **语言**          | `弦 '| 请求的所在地,例如`美国 ' 。|
+| **饼干**         | `弦 '| 请求的 HTTP 饼干 。|
+| **隐形**         | `波尔'| 为 Chrome 请求启用隐形模式以避免检测。 默认是`真'。|
+| **页眉**         | `对象 '| HTTP 头作为所有请求的密钥值对的映射.|
+| **元数据**        | `波尔'| 存储网页和内容的元数据,协助AI互操作性. 默认为`虚假'。|
+| **视图**        | `对象 '| 设定 Chrome 视图端口尺寸 。 默认值为`800x600'。|
+| **编码**        | `弦 '| 指定编码类型,例如`UTF-8'、`SHIFT JIS'。|
+| **子域**      | `波尔'| 包括爬行中的子域. 默认为`虚假'。|
+| **用户代理( A)**      | `弦 '| 自定义 HTTP 用户代理 。 默认为随机代理 。|
+| **存储数据( d)**      | `波尔'| 启用请求的数据存储 。 设置时取代 " 无储存 " 。 默认为`虚假'。|
+| **gpt 配置**      | `对象 '| 允许AI生成爬行动作,通过一个阵列可以选择的链路步骤用于‘即时'.|
+| **指纹**     | `波尔'| 启用 Chrome 的高级指纹。|
+| **无存储**     | `波尔'| 防止所有数据存储,包括AI嵌入. 默认为`虚假'。|
+| **可读性**     | `波尔'| 通过"0"进行预处理读取内容. 改进LLM课程的内容。|
+| **返回格式( F)**   | `弦 '| 返回数据的格式:`markdown'、`raw'、`text'、`html2text'。 默认页面格式使用“ raw” 。|
+| **已启用代理**   | `波尔'| 启用高性能代理以避免网络级别阻塞.|
+| **查询( S)**  | `弦 '| CSS 从标记提取内容的查询选择器.|
+| **全部资源( R)**  | `波尔'| 下载链接到网站的所有资源。|
+| **请求超时( T)** | " 准备 "| 请求的超时数( 5- 60) 秒 。 默认为`30'。|
+| **运行于背景( B)** | `波尔'| 在背景中运行请求,用于数据存储和触发仪表板爬行. 如果设置“无储存”则无效果。|

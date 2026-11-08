@@ -1,0 +1,155 @@
+---
+title: 阿里兹·菲尼克斯
+description: Arize Phoenix 将 CrewAI 与 OpenTelemetry 和 OpenInference 集成
+icon: magnifying-glass-chart
+mode: "wide"
+---
+
+# Arize Phoenix 集成
+
+本指南演示了如何使用 OpenTelemetry 通过以下方式将 **Arize Phoenix** 与 **CrewAI** 集成[开放推理](https://github.com/Arize-ai/openinference)SDK。在本指南结束时，您将能够跟踪 CrewAI 代理并调试代理行为。
+
+> **什么是 Arize Phoenix？**[阿里兹·菲尼克斯](https://arize.com/phoenix/)是开源可观察性和评估选项[阿里兹人工智能](https://arize.com/?utm_source=crewai-docs&utm_medium=partner&utm_campaign=partner-docs&utm_content=observability-arize-phoenix)。当您想在本地运行或自托管时，请使用 Phoenix。使用[阿里兹 AX](https://arize.com/products/ax/)用于生产人工智能系统的托管云或企业自托管平台。
+
+[![观看我们与 Phoenix 集成的视频演示](https://storage.googleapis.com/arize-assets/fixtures/setup_crewai.png)](https://www.youtube.com/watch?v=Yc5q3l6F7Ww)
+
+## 开始使用
+
+我们将演练一个使用 CrewAI 的简单示例，并使用 OpenInference 通过 OpenTelemetry 将其与 Arize Phoenix 集成。
+
+您还可以访问本指南[谷歌合作实验室](https://colab.research.google.com/github/Arize-ai/phoenix/blob/main/tutorials/tracing/crewai_tracing_tutorial.ipynb).
+
+### 第 1 步：安装依赖项
+
+```bash
+pip install openinference-instrumentation-crewai crewai crewai-tools arize-phoenix-otel
+```
+
+### 第2步：设置环境变量
+
+配置您的 Phoenix API 密钥和 OpenTelemetry 端点以将跟踪发送到 Phoenix。通过更改收集器 URL，相同的设置适用于本地或自托管 Phoenix 端点。
+
+您可以获得免费的 Serper API 密钥[这里](https://serper.dev/).
+
+```python
+import os
+from getpass import getpass
+
+# Get your Phoenix API key
+PHOENIX_API_KEY = getpass("🔑 Enter your Phoenix API key: ")
+
+# Get API keys for services
+OPENAI_API_KEY = getpass("🔑 Enter your OpenAI API key: ")
+SERPER_API_KEY = getpass("🔑 Enter your Serper API key: ")
+
+# Set environment variables
+os.environ["PHOENIX_CLIENT_HEADERS"] = f"api_key={PHOENIX_API_KEY}"
+os.environ["PHOENIX_COLLECTOR_ENDPOINT"] = "https://app.phoenix.arize.com" # Change this to your own endpoint if you are using a self-hosted instance
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+os.environ["SERPER_API_KEY"] = SERPER_API_KEY
+```
+
+### 第 3 步：使用 Phoenix 初始化 OpenTelemetry
+
+初始化 OpenInference OpenTelemetry 仪器 SDK 以开始捕获跟踪并将其发送到 Phoenix。
+
+```python
+from phoenix.otel import register
+
+tracer_provider = register(
+    project_name="crewai-tracing-demo",
+    auto_instrument=True,
+)
+```
+
+### 第 4 步：创建 CrewAI 应用程序
+
+我们将创建一个 CrewAI 应用程序，其中两个代理协作研究并撰写有关 AI 进步的博客文章。
+
+```python
+from crewai import Agent, Crew, Process, Task
+from crewai_tools import SerperDevTool
+from openinference.instrumentation.crewai import CrewAIInstrumentor
+from phoenix.otel import register
+
+# setup monitoring for your crew
+tracer_provider = register(
+    endpoint="http://localhost:6006/v1/traces")
+CrewAIInstrumentor().instrument(skip_dep_check=True, tracer_provider=tracer_provider)
+search_tool = SerperDevTool()
+
+# Define your agents with roles and goals
+researcher = Agent(
+    role="Senior Research Analyst",
+    goal="Uncover cutting-edge developments in AI and data science",
+    backstory="""You work at a leading tech think tank.
+    Your expertise lies in identifying emerging trends.
+    You have a knack for dissecting complex data and presenting actionable insights.""",
+    verbose=True,
+    allow_delegation=False,
+    # You can pass an optional llm attribute specifying what model you wanna use.
+    # llm=ChatOpenAI(model_name="gpt-3.5", temperature=0.7),
+    tools=[search_tool],
+)
+writer = Agent(
+    role="Tech Content Strategist",
+    goal="Craft compelling content on tech advancements",
+    backstory="""You are a renowned Content Strategist, known for your insightful and engaging articles.
+    You transform complex concepts into compelling narratives.""",
+    verbose=True,
+    allow_delegation=True,
+)
+
+# Create tasks for your agents
+task1 = Task(
+    description="""Conduct a comprehensive analysis of the latest advancements in AI in 2024.
+    Identify key trends, breakthrough technologies, and potential industry impacts.""",
+    expected_output="Full analysis report in bullet points",
+    agent=researcher,
+)
+
+task2 = Task(
+    description="""Using the insights provided, develop an engaging blog
+    post that highlights the most significant AI advancements.
+    Your post should be informative yet accessible, catering to a tech-savvy audience.
+    Make it sound cool, avoid complex words so it doesn't sound like AI.""",
+    expected_output="Full blog post of at least 4 paragraphs",
+    agent=writer,
+)
+
+# Instantiate your crew with a sequential process
+crew = Crew(
+    agents=[researcher, writer], tasks=[task1, task2], verbose=1, process=Process.sequential
+)
+
+# Get your crew to work!
+result = crew.kickoff()
+
+print("######################")
+print(result)
+```
+
+### 第 5 步：查看凤凰城的踪迹
+
+运行代理后，您可以在 Phoenix 中查看 CrewAI 应用程序生成的跟踪。您应该看到代理交互和 LLM 调用的详细步骤，这可以帮助您调试和优化 AI 代理。
+
+打开您的 Phoenix 项目并导航到您在`project_name`范围。您将看到跟踪的时间线视图，其中包含所有代理交互、工具使用和 LLM 调用。
+
+![Phoenix 中显示代理交互的跟踪示例](https://storage.googleapis.com/arize-assets/fixtures/crewai_traces.png)
+
+
+### 版本兼容性信息
+- Python 3.8+
+- 船员人工智能 >= 0.86.0
+- 阿里兹凤凰 >= 7.0.1
+- OpenTelemetry SDK >= 1.31.0
+
+
+### 参考
+- [凤凰文档](https://docs.arize.com/phoenix/)- Phoenix 平台概述。
+- [阿里兹 AX](https://arize.com/products/ax/)- 托管云和企业自托管可观察性和评估。
+- [Arize代理评估指南](https://arize.com/guides/ai-agent-handbook/agent-evaluation/)- 用于根据痕迹评估代理行为的生产工作流程。
+- [Arize LLM评估指南](https://arize.com/resources/llm-evaluation/)- 评估LLM申请的方法和指标。
+- [CrewAI 文档](https://docs.crewai.com/)- CrewAI 框架概述。
+- [打开遥测文档](https://opentelemetry.io/docs/)- 开放遥测指南
+- [开放推理 GitHub](https://github.com/Arize-ai/openinference)- OpenInference SDK 的源代码。

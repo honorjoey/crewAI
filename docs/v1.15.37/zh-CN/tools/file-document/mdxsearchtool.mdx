@@ -1,0 +1,72 @@
+---
+title: "MDX RAG 搜索"
+description: "MDX RAG 搜索 工具文档。"
+icon: markdown
+mode: "wide"
+---
+
+# `MDXSearchTool`
+
+<Note>
+    MDXSearch Tool正在持续开发中. 特性可以增加或删除,随着工具的完善,功能可能无法预测地改变。
+</Note>
+
+## 说明
+
+MDX 搜索工具是其中的一个组件`crewai_tools` 软件包,旨在便利高级减记语言提取。 它使用户能够通过基于查询的搜索,有效地搜索和提取MD文件中的相关信息. 这一工具对数据分析、信息管理和研究任务十分宝贵,简化了在大型文件收集中查找具体信息的程序。
+
+## 安装
+
+在使用 MDX 搜索工具前, 确保`crewai_tools` 软件包已安装。 如果不是,可以安装以下命令: 1.
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 用法示例
+
+要使用 MDX 搜索工具, 您必须首先设置必要的环境变量 。 然后,把这个工具 纳入你的船员AI项目 开始你的市场研究。 以下是如何做到这一点的基本例子:
+
+```python Code
+from crewai_tools import MDXSearchTool
+
+# Initialize the tool to search any MDX content it learns about during execution
+tool = MDXSearchTool()
+
+# OR
+
+# Initialize the tool with a specific MDX file path for an exclusive search within that document
+tool = MDXSearchTool(mdx='path/to/your/document.mdx')
+```
+
+## 参数
+
+- mdx:**可选**. 指定搜索的 MDX 文件路径。 可在初始化期间提供.
+
+## 模型和嵌入的自定义
+
+该工具默认使用OpenAI进行嵌入和归纳. 为定制,使用以下配置词典:
+
+```python Code
+from chromadb.config import Settings
+
+tool = MDXSearchTool(
+    config={
+        "embedding_model": {
+            "provider": "openai",
+            "config": {
+                "model": "text-embedding-3-small",
+                # "api_key": "sk-...",
+            },
+        },
+        "vectordb": {
+            "provider": "chromadb",  # or "qdrant"
+            "config": {
+                # "settings": Settings(persist_directory="/content/chroma", allow_reset=True, is_persistent=True),
+                # from qdrant_client.models import VectorParams, Distance
+                # "vectors_config": VectorParams(size=384, distance=Distance.COSINE),
+            }
+        },
+    }
+)
+```

@@ -1,0 +1,245 @@
+---
+title: 阶段手动工具
+description: 整合 Stagehand 和 CrewAI 的网页自动化工具,用于浏览器交互和自动化
+icon: hand
+mode: "wide"
+---
+
+
+# 概览
+
+那个`StagehandTool` 将“0”框架与CrewAI整合,使代理商能够与网站互动,并利用自然语言指令实现浏览器任务自动化。
+
+## 概览
+
+Stagehand是一个由浏览器库构建的强大的浏览器自动化框架,允许AI代理:
+
+- 浏览网站
+- 单击按钮、链接和其他元素
+- 填写表格
+- 从网页提取数据
+- 观察和识别要素
+- 执行复杂的工作流程
+
+Stagehand Tool将Stagehand Python SDK包起来,通过三个核心原始为CrewAI代理提供浏览器控制能力:
+
+1. "0":执行点击、打字或导航等动作
+2. "0":从网页中提取结构化数据.
+3. **观察**:识别和分析页面上的元素
+
+## 先决条件
+
+在使用此工具之前,请确保您有:
+
+1. API 密钥和项目标识的账户
+2. LLM( OpenAI 或 Anthropic Claude) 的 API 密钥
+3. 已安装的 Stagehand Python SDK
+
+安装所需的依赖 :
+
+```bash
+pip install stagehand-py
+```
+
+## 使用量
+
+### 基本执行
+
+Stagehand Tool可通过以下两种方式实施:
+
+#### 1. 使用上下文管理器(建议)
+<Tip>
+  建议采用上下文管理办法,因为它确保适当清理资源,即使出现例外情况。
+</Tip>
+
+```python
+from crewai import Agent, Task, Crew
+from crewai_tools import StagehandTool
+from stagehand.schemas import AvailableModel
+
+# Initialize the tool with your API keys using a context manager
+with StagehandTool(
+    api_key="your-browserbase-api-key",
+    project_id="your-browserbase-project-id",
+    model_api_key="your-llm-api-key",  # OpenAI or Anthropic API key
+    model_name=AvailableModel.CLAUDE_3_7_SONNET_LATEST,  # Optional: specify which model to use
+) as stagehand_tool:
+    # Create an agent with the tool
+    researcher = Agent(
+        role="Web Researcher",
+        goal="Find and summarize information from websites",
+        backstory="I'm an expert at finding information online.",
+        verbose=True,
+        tools=[stagehand_tool],
+    )
+
+    # Create a task that uses the tool
+    research_task = Task(
+        description="Go to https://www.example.com and tell me what you see on the homepage.",
+        agent=researcher,
+    )
+
+    # Run the crew
+    crew = Crew(
+        agents=[researcher],
+        tasks=[research_task],
+        verbose=True,
+    )
+
+    result = crew.kickoff()
+    print(result)
+```
+
+#### 2. 人工资源管理
+
+```python
+from crewai import Agent, Task, Crew
+from crewai_tools import StagehandTool
+from stagehand.schemas import AvailableModel
+
+# Initialize the tool with your API keys
+stagehand_tool = StagehandTool(
+    api_key="your-browserbase-api-key",
+    project_id="your-browserbase-project-id",
+    model_api_key="your-llm-api-key",
+    model_name=AvailableModel.CLAUDE_3_7_SONNET_LATEST,
+)
+
+try:
+    # Create an agent with the tool
+    researcher = Agent(
+        role="Web Researcher",
+        goal="Find and summarize information from websites",
+        backstory="I'm an expert at finding information online.",
+        verbose=True,
+        tools=[stagehand_tool],
+    )
+
+    # Create a task that uses the tool
+    research_task = Task(
+        description="Go to https://www.example.com and tell me what you see on the homepage.",
+        agent=researcher,
+    )
+
+    # Run the crew
+    crew = Crew(
+        agents=[researcher],
+        tasks=[research_task],
+        verbose=True,
+    )
+
+    result = crew.kickoff()
+    print(result)
+finally:
+    # Explicitly clean up resources
+    stagehand_tool.close()
+```
+
+## 命令类型
+
+Stagehand Tool支持三种不同的命令类型,用于特定的网络自动化任务:
+
+### 1. 行动指挥部
+
+那个`act` 命令类型(默认)允许网页互动,如点击按钮、填充表单和导航。
+
+```python
+# Perform an action (default behavior)
+result = stagehand_tool.run(
+    instruction="Click the login button", 
+    url="https://example.com",
+    command_type="act"  # Default, so can be omitted
+)
+
+# Fill out a form
+result = stagehand_tool.run(
+    instruction="Fill the contact form with name 'John Doe', email 'john@example.com', and message 'Hello world'", 
+    url="https://example.com/contact"
+)
+```
+
+### 2. 提取命令
+
+那个`extract` 命令类型从网页中获取结构化数据。
+
+```python
+# Extract all product information
+result = stagehand_tool.run(
+    instruction="Extract all product names, prices, and descriptions", 
+    url="https://example.com/products",
+    command_type="extract"
+)
+
+# Extract specific information with a selector
+result = stagehand_tool.run(
+    instruction="Extract the main article title and content", 
+    url="https://example.com/blog/article",
+    command_type="extract",
+    selector=".article-container"  # Optional CSS selector
+)
+```
+
+### 3. 观察指挥部
+
+那个`observe` 命令类型识别和分析网页元素。
+
+```python
+# Find interactive elements
+result = stagehand_tool.run(
+    instruction="Find all interactive elements in the navigation menu", 
+    url="https://example.com",
+    command_type="observe"
+)
+
+# Identify form fields
+result = stagehand_tool.run(
+    instruction="Identify all the input fields in the registration form", 
+    url="https://example.com/register",
+    command_type="observe",
+    selector="#registration-form"
+)
+```
+
+## 配置选项
+
+用这些参数自定义 Stagehand Tool 行为 :
+
+```python
+stagehand_tool = StagehandTool(
+    api_key="your-browserbase-api-key",
+    project_id="your-browserbase-project-id",
+    model_api_key="your-llm-api-key",
+    model_name=AvailableModel.CLAUDE_3_7_SONNET_LATEST,
+    dom_settle_timeout_ms=5000,  # Wait longer for DOM to settle
+    headless=True,  # Run browser in headless mode
+    self_heal=True,  # Attempt to recover from errors
+    wait_for_captcha_solves=True,  # Wait for CAPTCHA solving
+    verbose=1,  # Control logging verbosity (0-3)
+)
+```
+
+## 最佳做法
+
+1. ○ 提供详细指示以取得更好的成果
+2. "0":选择您任务的正确命令类型
+3. "0":利用CSS选择器提高精度.
+4. "0":将复杂的工作流程分成多个工具调用
+5. "0":增加潜在问题的处理错误
+
+## 解决问题
+
+
+共同问题和解决办法:
+
+- &\0\:验证浏览器库和 LLM 提供者的 API 密钥
+- **未找到元素**:增加`dom_settle_timeout_ms` 较慢页面
+- **动作失败**:使用`observe` 首先确定正确的要素
+- "0": 完善说明或提供特定的选择者
+
+
+## 额外资源
+
+关于CrewAI一体化的问题:
+- 加入 Stagehand 的“ 0 ”
+- 在“0”中打开一个问题
+- 访问

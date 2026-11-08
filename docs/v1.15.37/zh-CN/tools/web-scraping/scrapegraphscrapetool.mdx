@@ -1,0 +1,197 @@
+---
+title: "拼图拼图工具"
+description: "拼图拼图工具 工具文档。"
+icon: chart-area
+mode: "wide"
+---
+
+# `ScrapegraphScrapeTool`
+
+## 说明
+
+那个`ScrapegraphScrapeTool` 目的是利用Scrapegraph AI的 SmartScraper API 从网站智能提取内容. 这个工具提供了高级的网络刮除能力,具有AI驱动的内容提取功能,使得它成为目标明确的数据收集和内容分析任务的理想. 与传统网络刮刮器不同,它可以理解网页的背景和结构,以根据自然语言的提示提取最相关的信息.
+
+## 安装
+
+要使用此工具, 您需要安装 Scrapegraph Python 客户端 :
+
+```shell
+uv add scrapegraph-py
+```
+
+您还需要设置您的 Scrapegraph API 键作为环境变量 :
+
+```shell
+export SCRAPEGRAPH_API_KEY="your_api_key"
+```
+
+您可以从“ 0” 获取 API 密钥 。
+
+## 开始的步骤
+
+有效利用`ScrapegraphScrapeTool`,遵循这些步骤:
+
+1. "0":使用上面的命令安装所需的软件包 。
+2. \0\: 将您的 Scrapegraph API 密钥设置为环境变量或在初始化时提供它 。
+3. **初始化工具**:创建具有必要参数的工具实例.
+4. "0":创建自然语言提示,指导提取特定内容.
+
+## 示例
+
+以下例子说明如何使用`ScrapegraphScrapeTool` 从网站上提取内容:
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import ScrapegraphScrapeTool
+
+# Initialize the tool
+scrape_tool = ScrapegraphScrapeTool(api_key="your_api_key")
+
+# Define an agent that uses the tool
+web_scraper_agent = Agent(
+    role="Web Scraper",
+    goal="Extract specific information from websites",
+    backstory="An expert in web scraping who can extract targeted content from web pages.",
+    tools=[scrape_tool],
+    verbose=True,
+)
+
+# Example task to extract product information from an e-commerce site
+scrape_task = Task(
+    description="Extract product names, prices, and descriptions from the featured products section of example.com.",
+    expected_output="A structured list of product information including names, prices, and descriptions.",
+    agent=web_scraper_agent,
+)
+
+# Create and run the crew
+crew = Crew(agents=[web_scraper_agent], tasks=[scrape_task])
+result = crew.kickoff()
+```
+
+您也可以以预定义参数初始化工具 :
+
+```python Code
+# Initialize the tool with predefined parameters
+scrape_tool = ScrapegraphScrapeTool(
+    website_url="https://www.example.com",
+    user_prompt="Extract all product prices and descriptions",
+    api_key="your_api_key"
+)
+```
+
+## 参数
+
+那个`ScrapegraphScrapeTool` 初始化时接受以下参数:
+
+- 零:可选。 您的拼图 API 密钥 。 如果不提供,它将寻找`SCRAPEGRAPH_API_KEY` 环境变量。
+- 零:可选。 要刮掉的网站的 URL 。 如果在初始化期间提供,代理在使用工具时不需要指定.
+- 零:可选。 内容提取自定义指令 。 如果在初始化期间提供,代理在使用工具时不需要指定.
+- 零:可选。 是否为 Scrapegraph 客户端启用日志 。 默认为`False`.
+
+## 使用量
+
+使用时`ScrapegraphScrapeTool` 与一种剂一起,该剂将需要提供下列参数(除非在初始化过程中指明):
+
+- 0:网站的URL来刮.
+- 零:可选。 内容提取自定义指令 。 默认是"删除网页的主要内容".
+
+该工具将返回基于所提供快取的内容 。
+
+```python Code
+# Example of using the tool with an agent
+web_scraper_agent = Agent(
+    role="Web Scraper",
+    goal="Extract specific information from websites",
+    backstory="An expert in web scraping who can extract targeted content from web pages.",
+    tools=[scrape_tool],
+    verbose=True,
+)
+
+# Create a task for the agent to extract specific content
+extract_task = Task(
+    description="Extract the main heading and summary from example.com",
+    expected_output="The main heading and summary from the website",
+    agent=web_scraper_agent,
+)
+
+# Run the task
+crew = Crew(agents=[web_scraper_agent], tasks=[extract_task])
+result = crew.kickoff()
+```
+
+## 处理错误
+
+那个`ScrapegraphScrapeTool` 可提出下列例外情况:
+
+- "0":当 API 密钥缺失或 URL 格式无效时 。
+- "0":超过API费率限制时.
+- "0":当刮刮操作失败(网络问题,API错误).
+
+建议指示特工们处理潜在的错误:
+
+```python Code
+# Create a task that includes error handling instructions
+robust_extract_task = Task(
+    description="""
+    Extract the main heading from example.com.
+    Be aware that you might encounter errors such as:
+    - Invalid URL format
+    - Missing API key
+    - Rate limit exceeded
+    - Network or API errors
+    
+    If you encounter any errors, provide a clear explanation of what went wrong
+    and suggest possible solutions.
+    """,
+    expected_output="Either the extracted heading or a clear error explanation",
+    agent=web_scraper_agent,
+)
+```
+
+## 费率限制
+
+Scrapegraph API 根据您的订阅计划, 费率限制会有所不同 。 考虑下列最佳做法:
+
+- 在处理多个 URL 时执行请求之间的适当延迟 。
+- 处理速率会优雅地限制您的应用程序中的错误。
+- 请检查date=中的日期值 (帮助)
+
+## 执行详情
+
+那个`ScrapegraphScrapeTool` 使用 Scrapegraph Python 客户端与 SmartScraper API 交互:
+
+```python Code
+class ScrapegraphScrapeTool(BaseTool):
+    """
+    A tool that uses Scrapegraph AI to intelligently scrape website content.
+    """
+    
+    # Implementation details...
+    
+    def _run(self, **kwargs: Any) -> Any:
+        website_url = kwargs.get("website_url", self.website_url)
+        user_prompt = (
+            kwargs.get("user_prompt", self.user_prompt)
+            or "Extract the main content of the webpage"
+        )
+
+        if not website_url:
+            raise ValueError("website_url is required")
+
+        # Validate URL format
+        self._validate_url(website_url)
+
+        try:
+            # Make the SmartScraper request
+            response = self._client.smartscraper(
+                website_url=website_url,
+                user_prompt=user_prompt,
+            )
+
+            return response
+        # Error handling...
+```
+
+## 结论
+
+那个`ScrapegraphScrapeTool` 提供一种强有力的方法,利用AI对网页结构的强大理解从网站上提取内容. 通过使代理商能够使用自然语言提示来锁定特定信息,它使得网络刮刮任务更有效和更集中. 这一工具对于数据提取、内容监测和研究任务特别有用,因为需要从网页中提取具体信息。

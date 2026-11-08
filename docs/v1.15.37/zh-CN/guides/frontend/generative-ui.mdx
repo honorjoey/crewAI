@@ -1,0 +1,107 @@
+---
+title: 生成式用户界面
+description: 将 CrewAI 代理的工作渲染为实时 React 组件，涵盖从作者控制到代理发明的 UI 的整个范围。
+icon: wand-magic-sparkles
+mode: "wide"
+---
+
+## 超越聊天气泡
+
+生成式 UI 意味着代理的工作显示为真实界面，而不仅仅是文本。当您的 Crew 或 Flow 调用工具、更新其状态或问题原因时，您决定用户看到的内容：进度清单、食谱卡、图表、整个组装面板。
+
+CopilotKit 沿着 **频谱** 渲染生成 UI，从完全由作者控制（您决定每个像素）到代理发明（代理组装表面）：
+
+| 等级 | 谁决定用户界面 | CrewAI机制 |
+| --- | --- | --- |
+|**[受控](#controlled)**| 你——代理从中选择的一组固定组件 | `useRenderTool`、`useAgent`、推理 |
+|**[声明式](#declarative)**| 代理 — 从*您的*组件目录中组装表面 | [A2UI](/edge/zh-CN/guides/frontend/a2ui) |
+|**[开放式](#open-ended)**| 外部工具/服务器创造了表面 | MCP工具 |
+
+层级自由组合；一个应用程序通常会混合它们。
+
+## 受控
+
+您拥有组件。代理选择显示哪些内容以及显示哪些数据。这是最可预测的层，也是大多数应用程序的起点。
+
+### 工具渲染
+
+代理调用后端的工具。您使用 `useRenderTool` 在前端注册一个匹配的组件，CopilotKit 会渲染它，并在参数到达时将其流式传输。
+
+```tsx
+"use client";
+import { useRenderTool } from "@copilotkit/react-core/v2";
+import { z } from "zod";
+
+useRenderTool({
+  name: "generate_recipe",
+  parameters: z.object({
+    title: z.string(),
+    ingredients: z.array(z.string()),
+  }),
+  render: ({ args }) => <RecipeCard title={args.title} ingredients={args.ingredients} />,
+});
+```
+
+<Note>
+`useRenderTool` 呈现工具调用。当工具还需要在浏览器中*运行*代码时，请使用 [`useFrontendTool`](/edge/zh-CN/guides/frontend/frontend-actions)（`handler`，带有可选的 `render`）。
+</Note>
+
+请参阅 [基于工具的生成式 UI](/edge/zh-CN/guides/frontend/tool-based-generative-ui) 了解完整演练，包括作为参数流的渐进式渲染，以及 [后端工具渲染](/edge/zh-CN/guides/frontend/tool-based-generative-ui#backend-tools) 了解 Crew 或 Flow 在服务器端执行的工具。
+
+### 状态渲染
+
+不是对单个工具调用做出反应，而是在代理的 **状态** 发生变化时呈现它。这是多步骤工作的正确模式：使用 `useAgent` 读取代理的工作状态并按照您喜欢的方式绘制它。
+
+```tsx
+"use client";
+import { useAgent } from "@copilotkit/react-core/v2";
+
+function TaskProgress() {
+  const { agent } = useAgent({ agentId: "task_runner" });
+  const steps = agent?.state?.steps ?? [];
+  return <StepList steps={steps} />;
+}
+```
+
+请参阅 [代理生成 UI](/edge/zh-CN/guides/frontend/agentic-generative-ui) 了解来自流的流状态，以及 [共享状态](/edge/zh-CN/guides/frontend/shared-state) 了解从 UI 编辑该状态。
+
+### 推理
+
+当模型在回答之前进行推理时，这种想法会自动呈现在聊天中。没有要写的组件。请参阅[推理](/edge/zh-CN/guides/frontend/reasoning)。
+
+## 声明式
+
+该代理不仅仅是挑选一个组件：它通过组合*您*定义的目录中的构建块来 **组装一个表面**。您仍然拥有这些组件（代理只能使用您目录中的组件），但是布局是代理的。
+
+这是 [A2UI](/edge/zh-CN/guides/frontend/a2ui)。您在提供商上注册目录：
+
+```tsx
+<CopilotKit runtimeUrl="/api/copilotkit" agent="assistant" a2ui={{ catalog }}>
+  {/* ... */}
+</CopilotKit>
+```
+
+然后，代理从该目录构建表面 - 动态地（它根据对话设计布局）或从后端填充数据的固定模式构建表面。有关模式和错误，请参阅 [A2UI](/edge/zh-CN/guides/frontend/a2ui)恢复。
+
+## 开放式
+
+在远端，表面完全是在您的应用程序之外发明的。对于 CrewAI，这是通过 **MCP** 实现的：由 MCP 服务器提供的工具，代理连接以在聊天中调用工具进行渲染，与后端工具的方式相同做。这是受约束最少且最不可预测的层。
+
+MCP 工具将表面调用为标准工具调用 UI — 像任何其他工具一样使用 `useRenderTool` 渲染它们。完全由代理发明的“MCP App”界面是一项新兴功能；请参阅 [CopilotKit 文档](https://docs.copilotkit.ai) 了解当前状态。
+
+## 有关的
+
+<CardGroup cols={2}>
+ <Card title="基于工具的生成式 UI" icon="puzzle-piece" href="/edge/zh-CN/guides/frontend/tool-based-generative-ui">
+将代理工具调用映射到组件（受控）。
+ </Card>
+ <Card title="代理生成 UI" icon="list-check" href="/edge/zh-CN/guides/frontend/agentic-generative-ui">
+渲染实时代理状态（受控）。
+ </Card>
+ <Card title="A2UI" icon="table-cells" href="/edge/zh-CN/guides/frontend/a2ui">
+让代理从您的目录中组装曲面（声明性）。
+ </Card>
+ <Card title="推理" icon="brain" href="/edge/zh-CN/guides/frontend/reasoning">
+渲染代理人的思维。
+ </Card>
+</CardGroup>

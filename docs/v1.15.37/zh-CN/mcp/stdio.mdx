@@ -1,0 +1,135 @@
+---
+title: 工作室传输
+description: 了解如何使用 Stdio（标准输入/输出）传输机制将 CrewAI 连接到本地 MCP 服务器。
+icon: server
+mode: "wide"
+---
+
+## 概述
+
+Stdio（标准输入/输出）传输旨在将 `MCPServerAdapter` 连接到通过其标准输入和输出流进行通信的本地 MCP 服务器。当 MCP 服务器是与 CrewAI 应用程序在同一台计算机上运行的脚本或可执行文件时，通常会使用此方法。
+
+## 关键概念
+
+- **本地执行**：Stdio 传输管理 MCP 服务器的本地运行进程。
+- **`StdioServerParameters`**：`mcp` 库中的此类用于配置用于启动 Stdio 服务器的命令、参数和环境变量。
+
+## 通过 Stdio 连接
+
+您可以使用两种主要方法来连接到基于 Stdio 的 MCP 服务器来管理连接生命周期：
+
+### 1.完全托管的连接（推荐）
+
+推荐使用 Python 上下文管理器（`with` 语句）。它自动处理启动 MCP 服务器进程并在退出上下文时停止它。
+
+```python
+from crewai import Agent, Task, Crew, Process
+from crewai_tools import MCPServerAdapter
+from mcp import StdioServerParameters
+import os
+
+# Create a StdioServerParameters object
+server_params=StdioServerParameters(
+    command="python3", 
+    args=["servers/your_stdio_server.py"],
+    env={"UV_PYTHON": "3.12", **os.environ},
+)
+
+with MCPServerAdapter(server_params) as tools:
+    print(f"Available tools from Stdio MCP server: {[tool.name for tool in tools]}")
+
+    # Example: Using the tools from the Stdio MCP server in a CrewAI Agent
+    research_agent = Agent(
+        role="Local Data Processor",
+        goal="Process data using a local Stdio-based tool.",
+        backstory="An AI that leverages local scripts via MCP for specialized tasks.",
+        tools=tools,
+        reasoning=True,
+        verbose=True,
+    )
+    
+    processing_task = Task(
+        description="Process the input data file 'data.txt' and summarize its contents.",
+        expected_output="A summary of the processed data.",
+        agent=research_agent,
+        markdown=True
+    )
+    
+    data_crew = Crew(
+        agents=[research_agent],
+        tasks=[processing_task],
+        verbose=True,
+        process=Process.sequential 
+    )
+   
+    result = data_crew.kickoff()
+    print("\nCrew Task Result (Stdio - Managed):\n", result)
+
+```
+
+### 2. 手动连接生命周期
+
+如果您需要更细粒度地控制 Stdio MCP 服务器进程的启动和停止时间，您可以手动管理 `MCPServerAdapter` 生命周期。
+
+<Info>
+您**必须**调用`mcp_server_adapter.stop()` 以确保服务器进程终止并释放资源。强烈建议使用 `try...finally` 块。
+</Info>
+
+```python
+from crewai import Agent, Task, Crew, Process
+from crewai_tools import MCPServerAdapter
+from mcp import StdioServerParameters
+import os
+
+# Create a StdioServerParameters object
+stdio_params=StdioServerParameters(
+    command="python3", 
+    args=["servers/your_stdio_server.py"],
+    env={"UV_PYTHON": "3.12", **os.environ},
+)
+
+mcp_server_adapter = MCPServerAdapter(server_params=stdio_params)
+try:
+    mcp_server_adapter.start()  # Manually start the connection and server process
+    tools = mcp_server_adapter.tools
+    print(f"Available tools (manual Stdio): {[tool.name for tool in tools]}")
+
+    # Example: Using the tools with your Agent, Task, Crew setup
+    manual_agent = Agent(
+        role="Local Task Executor",
+        goal="Execute a specific local task using a manually managed Stdio tool.",
+        backstory="An AI proficient in controlling local processes via MCP.",
+        tools=tools,
+        verbose=True
+    )
+    
+    manual_task = Task(
+        description="Execute the 'perform_analysis' command via the Stdio tool.",
+        expected_output="Results of the analysis.",
+        agent=manual_agent
+    )
+    
+    manual_crew = Crew(
+        agents=[manual_agent],
+        tasks=[manual_task],
+        verbose=True,
+        process=Process.sequential
+    )
+        
+       
+    result = manual_crew.kickoff() # Actual inputs depend on your tool
+    print("\nCrew Task Result (Stdio - Manual):\n", result)
+            
+except Exception as e:
+    print(f"An error occurred during manual Stdio MCP integration: {e}")
+finally:
+    if mcp_server_adapter and mcp_server_adapter.is_connected: # Check if connected before stopping
+        print("Stopping Stdio MCP server connection (manual)...")
+        mcp_server_adapter.stop()  # **Crucial: Ensure stop is called**
+    elif mcp_server_adapter: # If adapter exists but not connected (e.g. start failed)
+        print("Stdio MCP server adapter was not connected. No stop needed or start failed.")
+
+```
+
+请记住将占位符路径和命令替换为实际的 Stdio 服务器详细信息。 `StdioServerParameters`中的`env`参数可以
+用于设置服务器进程的环境变量，这对于配置其行为或提供必要的路径（如`PYTHONPATH`）很有用。

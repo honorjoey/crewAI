@@ -1,0 +1,59 @@
+---
+title: Zapier 操作工具
+description: “ZapierActionsAdapter”将 Zapier 操作公开为 CrewAI 自动化工具。
+icon: bolt
+mode: "wide"
+---
+
+# `ZapierActionsAdapter`
+
+## 描述
+
+使用 Zapier 适配器列出并调用 Zapier 操作作为 CrewAI 工具。这使得代理能够跨数千个应用程序触发自动化。
+
+## 安装
+
+该适配器包含在`crewai-tools`。无需额外安装。
+
+## 环境变量
+
+- `ZAPIER_API_KEY` （必需）：Zapier API 密钥。从 Zapier Actions 仪表板获取一个 https://actions.zapier.com/（创建帐户，然后生成 API 密钥）。您还可以通过`zapier_api_key` 直接在构造适配器时。
+
+## 例子
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools.adapters.zapier_adapter import ZapierActionsAdapter
+
+adapter = ZapierActionsAdapter(api_key="your_zapier_api_key")
+tools = adapter.tools()
+
+agent = Agent(
+    role="Automator",
+    goal="Execute Zapier actions",
+    backstory="Automation specialist",
+    tools=tools,
+    verbose=True,
+)
+
+task = Task(
+    description="Create a new Google Sheet and add a row using Zapier actions",
+    expected_output="Confirmation with created resource IDs",
+    agent=agent,
+)
+
+crew = Crew(agents=[agent], tasks=[task])
+result = crew.kickoff()
+```
+
+## 注意事项和限制
+
+- 适配器列出了您的密钥的可用操作并创建`BaseTool` 动态包装。
+- 处理任务说明或工具调用中特定于操作的必填字段。
+- 费率限制取决于您的 Zapier 计划；请参阅 Zapier 操作文档。
+
+## 笔记
+
+- The adapter fetches available actions and generates `BaseTool` 动态包装。
+
+

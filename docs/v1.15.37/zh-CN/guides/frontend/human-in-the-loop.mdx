@@ -1,0 +1,191 @@
+---
+title: 人在环
+description: 在运行过程中暂停 CrewAI 代理以收集用户决策，然后用该决策恢复代理继续执行。
+icon: user-check
+mode: "wide"
+---
+
+## 让用户进入决策环节
+
+有些步骤必须先得到人工确认才能执行。人在环会在代理运行中途暂停，在前端渲染一个交互组件并等待。用户完成选择后，代理会携带该选择恢复并继续执行。
+
+其机制是由前端注册一个工具。当模型调用该工具时，运行会停在这次工具调用处，直到用户响应。不会自动继续：代理会保持暂停，直到 `respond()` 将控制权交回。
+
+在下面的示例中，代理先提出一组任务步骤。用户可以逐项启用或禁用并确认。随后代理会继续执行，并严格遵循用户批准的结果。
+
+<Note>
+该模式适用于 Flows。它依赖 Flow 的聊天循环在 `respond()` 后重新进入：返回值会作为工具结果回传，代理下一轮据此继续处理。
+</Note>
+
+## 构建步骤
+
+<Steps>
+
+<Step title="将前端动作绑定到模型工具列表">
+
+在你的 Flow 中，用 `*self.state.copilotkit.actions` 将前端已注册的动作加入模型工具列表。这些动作就是前端（通过 `useHumanInTheLoop`）注册的工具。完成绑定后，模型就能调用它们；运行会在该工具调用处暂停，直到用户响应。
+
+```python
+# human_in_the_loop_flow.py
+from crewai.flow.flow import Flow, start, router, listen
+from litellm import acompletion
+from ag_ui_crewai.sdk import copilotkit_stream, CopilotKitState
+
+
+class HumanInTheLoopFlow(Flow[CopilotKitState]):
+    @start()
+    @listen("route_follow_up")
+    async def start_flow(self):
+        pass
+
+    @router(start_flow)
+    async def chat(self):
+        system_prompt = (
+            "You perform tasks for the user. When asked to do a task, call the "
+            "tool the frontend provides so the user can approve or adjust the steps "
+            "before you continue."
+        )
+
+        response = await copilotkit_stream(
+            await acompletion(
+                model="openai/gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    *self.state.messages,
+                ],
+                tools=[*self.state.copilotkit.actions],  # tools registered by the frontend
+                parallel_tool_calls=False,
+                stream=True,
+            )
+        )
+
+        message = response.choices[0].message
+        self.state.messages.append(message)
+        return "route_end"
+
+    @listen("route_end")
+    async def end(self):
+        pass
+```
+
+`CopilotKitState` 会在 `self.state.copilotkit.actions` 上携带前端注册的动作。模型一旦调用其中某个动作，运行就会在此暂停。用户响应后，返回值会以工具结果形式写入 `self.state.messages`，然后 Flow 会回到 `chat`，让模型据此执行下一步。
+
+</Step>
+
+<Step title="通过 AG-UI 暴露该 Flow">
+
+在 FastAPI 服务中，用 `add_crewai_flow_fastapi_endpoint` 暴露该 Flow，方式与其他代理一致。完整的服务端、运行时和 Provider 配置可参考[前端总览](/edge/zh-CN/guides/frontend/overview)。
+
+```python
+# server.py
+from fastapi import FastAPI
+from ag_ui_crewai.endpoint import add_crewai_flow_fastapi_endpoint
+from my_agents.human_in_the_loop_flow import HumanInTheLoopFlow
+
+app = FastAPI(title="CrewAI Agent Server")
+
+add_crewai_flow_fastapi_endpoint(
+    app=app,
+    flow=HumanInTheLoopFlow(),
+    path="/human_in_the_loop",
+)
+```
+
+</Step>
+
+<Step title="在前端注册交互工具">
+
+`useHumanInTheLoop` 会注册一个可让代理暂停的工具，并提供 `render` 函数用于渲染交互 UI。代理调用该工具时，组件会出现；用户操作后，调用 `respond()` 即可恢复代理。
+
+```tsx
+"use client";
+import { useHumanInTheLoop } from "@copilotkit/react-core/v2";
+import { z } from "zod";
+
+useHumanInTheLoop({
+  agentId: "human_in_the_loop",
+  name: "generate_task_steps",
+  parameters: z.object({
+    steps: z.array(
+      z.object({
+        description: z.string(),
+        status: z.enum(["enabled", "disabled", "executing"]),
+      })
+    ),
+  }),
+  render: ({ args, respond, status }) => (
+    <StepReview
+      steps={args.steps ?? []}
+      // `status === "executing"` means the agent is waiting for the user
+      waiting={status === "executing"}
+      onConfirm={(chosen) => respond?.(chosen)}
+    />
+  ),
+});
+```
+
+`render` 函数会接收：
+
+- **`args`** —— 模型生成的工具参数（这里是建议的 `steps`）。这些参数会随着模型生成过程逐步流入。
+- **`status`** —— 工具调用的生命周期。当其为 `"executing"` 时，表示代理已暂停并在等待人工输入。
+- **`respond(value)`** —— 用用户决策恢复代理。代理下一轮会读取该返回值并据此执行。
+
+</Step>
+
+<Step title="让用户决策后再响应">
+
+组件读取 `args.steps`，允许用户切换每一项，最后用最终选择调用 `respond()`。这个值就是代理恢复后继续使用的输入。
+
+```tsx
+function StepReview({ steps, waiting, onConfirm }) {
+  const [choices, setChoices] = useState(steps);
+
+  const toggle = (i) =>
+    setChoices((prev) =>
+      prev.map((s, idx) =>
+        idx === i
+          ? { ...s, status: s.status === "enabled" ? "disabled" : "enabled" }
+          : s
+      )
+    );
+
+  return (
+    <div>
+      {choices.map((step, i) => (
+        <label key={i}>
+          <input
+            type="checkbox"
+            checked={step.status === "enabled"}
+            disabled={!waiting}
+            onChange={() => toggle(i)}
+          />
+          {step.description}
+        </label>
+      ))}
+      <button disabled={!waiting} onClick={() => onConfirm(choices)}>
+        Confirm
+      </button>
+    </div>
+  );
+}
+```
+
+用户点击 Confirm 后，`respond()` 触发，运行恢复，Flow 的 `chat` 步骤会携带用户选择再次执行。
+
+</Step>
+
+</Steps>
+
+## 相关内容
+
+<CardGroup cols={2}>
+  <Card title="前端动作" icon="bolt" href="/edge/zh-CN/guides/frontend/frontend-actions">
+    让代理调用在浏览器中执行的函数。
+  </Card>
+  <Card title="共享状态" icon="arrows-rotate" href="/edge/zh-CN/guides/frontend/shared-state">
+    让代理状态与应用 UI 保持双向同步。
+  </Card>
+  <Card title="Agentic 生成式 UI" icon="list-check" href="/edge/zh-CN/guides/frontend/agentic-generative-ui">
+    将代理的实时状态渲染为自定义组件。
+  </Card>
+</CardGroup>

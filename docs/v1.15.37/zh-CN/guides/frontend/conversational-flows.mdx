@@ -1,0 +1,104 @@
+---
+title: 对话式 Flow
+description: 通过 AG-UI 提供原生、会话感知的 CrewAI Flow，并具备托管对话状态与完整前端能力对等。
+icon: comments
+mode: "wide"
+---
+
+## 三种执行形状，一座桥
+
+在 AG-UI 桥后面，CrewAI 后端可以采用三种形状之一。了解您正在服务的对象决定了您如何编写后端，而不是如何构建前端。
+
+| 形状 | 它是什么 | 如何输入 |
+| --- | --- | --- |
+|**常规流量**| 作者控制的 `@start`/`@listen`/`@router` 图表。这些指南中均使用默认值。 | `kickoff` / `astream` |
+|**对话流程**| 本机、会话感知、回合制流程，具有托管对话状态。 | `stream_turn(message, session_id=...)` |
+|**工作人员**| 封闭的自主任务/代理循环。仅基本聊天，单独的兼容性路径。 | 重点不是这里。 |
+
+对话流是一种较新的 CrewAI 功能，需要提前明确的一件重要事情是：**它们是 Flow，而不是 Crew。** 它们现在以完全常规 Flow 功能对等的方式运行。本页介绍并展示了它们它们如何适应其余的前端指南。
+
+<Note>
+当您希望使用 CrewAI 进行本机多回合对话来管理会话状态和历史记录时，请使用对话流程，而不是自己将回合和状态处理连接到常规流程中。如果你是新人在这里，从基本服务器、运行时和提供程序设置的[前端概述](/edge/zh-CN/guides/frontend/overview)开始。
+</Note>
+
+## 注册一个会话流
+
+您可以通过与任何其他流相同的端点帮助程序注册会话流，并使用一个额外参数：`conversational=True`。
+
+```python
+# server.py
+from ag_ui_crewai.endpoint import add_crewai_flow_fastapi_endpoint
+
+add_crewai_flow_fastapi_endpoint(
+    app,
+    flow,
+    "/conversation",
+    conversational=True,
+)
+```
+
+要使其发挥作用，必须满足两个要求：
+
+- Flow 实例声明 `conversational = True`。
+- Flow 公开了 CrewAI 的公共、可调用 `stream_turn(message, session_id=...)`。
+
+检测是基于能力的，而不是版本控制的：桥接器检查流是否确实提供基于回合的对话，而不是关闭版本号。
+
+<Warning>
+如果不满足这些要求，请求将失败，并显示 `RUN_ERROR`（代码 `AGUI_CREWAI_CONVERSATIONAL_FLOW_UNSUPPORTED`）。它永远不会默默地退回到常规的启动语义，因此您始终确切地知道自己处于哪条路径上。
+</Warning>
+
+创作流程本身，包括如何实现 `stream_turn`，属于 CrewAI 的对话流程文档。此页面停留在注册和集成边界。
+
+## 会话和状态
+
+对话流为您管理会话状态和历史记录。您无需手动重新线程历史记录。
+
+- AG-UI `threadId`**是** CrewAI 对话 `session_id`。相同的线程是相同的对话。
+- 在每次转弯之前，桥都会水化 Flow 的状态和对话历史记录，然后调用 `stream_turn`。 CrewAI 恢复存储的会话状态，每个请求覆盖重新应用传入的 AG-UI 状态和历史记录，以便浏览器的最新编辑胜过陈旧的存储。
+
+结果：从后端作者的角度来看，每个回合到达时都已经携带了对话的状态，并且 CrewAI 会保留您为下一个回合编写的内容。
+
+## 前端能力对等
+
+这是要坚持的要点：**会话流与常规流通过相同的事件管道运行，因此前端代码是相同的。** 没有特定于会话流的前端 API。这些指南中的每个功能在对话流中的工作方式与在常规流中的工作方式完全相同，使用相同的挂钩和组件：
+
+<CardGroup cols={2}>
+ <Card title="基于工具的生成式 UI" icon="puzzle-piece" href="/edge/zh-CN/guides/frontend/tool-based-generative-ui">
+将代理工具调用映射到您的 React 组件。
+ </Card>
+ <Card title="代理生成 UI" icon="list-check" href="/edge/zh-CN/guides/frontend/agentic-generative-ui">
+在 Flow 工作时渲染其实时状态。
+ </Card>
+ <Card title="共享状态" icon="arrows-rotate" href="/edge/zh-CN/guides/frontend/shared-state">
+保持代理状态和应用程序 UI 双向同步。
+ </Card>
+ <Card title="人在环（Human-in-the-loop）" icon="user-check" href="/edge/zh-CN/guides/frontend/human-in-the-loop">
+暂停代理以供用户批准或中途输入。
+ </Card>
+ <Card title="预测性状态更新" icon="gauge-high" href="/edge/zh-CN/guides/frontend/predictive-state-updates">
+将正在进行的工具参数流式传输到状态中。
+ </Card>
+ <Card title="推理" icon="brain" href="/edge/zh-CN/guides/frontend/reasoning">
+在聊天中展示模特的想法。
+ </Card>
+ <Card title="A2UI" icon="table-cells" href="/edge/zh-CN/guides/frontend/a2ui">
+从组件目录渲染代理编写的 UI。
+ </Card>
+</CardGroup>
+
+唯一的区别在于后端：如何创作流程（具有托管会话状态的回合制 `stream_turn`）和 `conversational=True` 注册。端点启动后，您已经了解的有关构建端点的所有信息前端应用不变。
+
+## 有关的
+
+<CardGroup cols={2}>
+ <Card title="前端概述" icon="browser" href="/edge/zh-CN/guides/frontend/overview">
+将 Crew 或 Flow 端到端连接到 Next.js 前端。
+ </Card>
+ <Card title="生成式用户界面" icon="wand-magic-sparkles" href="/edge/zh-CN/guides/frontend/generative-ui">
+将工具调用和代理状态呈现为自定义组件。
+ </Card>
+ <Card title="人在环（Human-in-the-loop）" icon="user-check" href="/edge/zh-CN/guides/frontend/human-in-the-loop">
+控制用户批准后的代理操作。
+ </Card>
+</CardGroup>

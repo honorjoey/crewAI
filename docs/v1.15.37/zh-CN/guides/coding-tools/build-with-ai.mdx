@@ -1,0 +1,214 @@
+---
+title: "用 AI 构建"
+description: "AI 编码代理使用 CrewAI 构建、部署与扩展所需的一切：技能、机器可读文档、部署与企业能力。"
+icon: robot
+mode: "wide"
+---
+
+# 用 AI 构建
+
+CrewAI 是 AI 原生框架。此页面汇总了 AI 编码代理使用 CrewAI 构建所需的一切——无论你使用的是 Claude Code、Codex、Cursor、Gemini CLI，还是其他协助开发者交付 Crew 和 Flow 的助手。
+
+### 支持的编码代理
+
+<CardGroup cols={5}>
+  <Card title="Claude Code" icon="message-bot" color="#D97706" />
+  <Card title="Cursor" icon="arrow-pointer" color="#3B82F6" />
+  <Card title="Codex" icon="terminal" color="#10B981" />
+  <Card title="Windsurf" icon="wind" color="#06B6D4" />
+  <Card title="Gemini CLI" icon="sparkles" color="#8B5CF6" />
+</CardGroup>
+
+<Note>
+  此页面同时面向人类与 AI 助手。如果你是编码代理，请先从 **Skills** 开始获取 CrewAI 上下文，再使用 **llms.txt** 访问完整文档。
+</Note>
+
+---
+
+## 1. Skills —— 教会你的代理使用 CrewAI
+
+**Skills** 是一组指令包，可为编码代理提供深入的 CrewAI 知识——如何搭建 Flows、配置 Crews、使用工具并遵循框架约定。
+
+<Tabs>
+  <Tab title="Claude Code (Plugin Marketplace)">
+    <img src="https://cdn.simpleicons.org/anthropic/D97706" alt="Anthropic" width="28" style={{display: "inline", verticalAlign: "middle", marginRight: "8px"}} />
+    CrewAI skills 已在 **Claude Code plugin marketplace** 上线——这也是顶级 AI 原生公司使用的同一分发渠道：
+    ```shell
+    /plugin marketplace add crewAIInc/skills
+    /plugin install crewai-skills@crewai-plugins
+    /reload-plugins
+    ```
+
+    当你提出相关 CrewAI 问题时，以下四个技能会自动激活：
+
+    | Skill | When it runs |
+    |-------|--------------|
+    | `getting-started` | 搭建新项目、在 `LLM.call()` / `Agent` / `Crew` / `Flow` 之间做选择、连接 `crew.jsonc` / `main.py` |
+    | `design-agent` | 配置代理——角色、目标、背景故事、工具、LLM、记忆、护栏 |
+    | `design-task` | 编写任务描述、依赖关系、结构化输出（`output_pydantic`, `output_json`）、人工审核 |
+    | `ask-docs` | 查询实时的 [CrewAI docs MCP server](https://docs.crewai.com/mcp) 以获取最新 API 细节 |
+  </Tab>
+  <Tab title="npx (Any Agent)">
+    适用于 Claude Code、Codex、Cursor、Gemini CLI 或任何编码代理：
+    ```shell
+    npx skills add crewaiinc/skills
+    ```
+    从 [skills.sh registry](https://skills.sh/crewaiinc/skills) 拉取。
+  </Tab>
+</Tabs>
+
+<Steps>
+  <Step title="安装官方技能包">
+    使用上述任一方式——Claude Code plugin marketplace 或 `npx skills add`。两者都会安装官方 [crewAIInc/skills](https://github.com/crewAIInc/skills) 包。
+  </Step>
+  <Step title="你的代理将立即获得 CrewAI 专业能力">
+    技能包会教你的代理：
+    - **Flows** —— 有状态应用、步骤与 crew kickoffs
+    - **Crews & Agents** —— JSON 优先模式（`crew.jsonc`, `agents/*.jsonc`）、角色、任务、委派
+    - **Tools & Integrations** —— 搜索、API、MCP servers 与常见 CrewAI 工具
+    - **Project layout** —— CLI 脚手架与仓库约定
+    - **Up-to-date patterns** —— 跟进最新 CrewAI 文档与最佳实践
+  </Step>
+  <Step title="开始构建">
+    你的代理现在可以直接搭建和构建 CrewAI 项目，无需你在每次会话中重复解释框架。
+  </Step>
+</Steps>
+
+<CardGroup cols={2}>
+  <Card title="Skills concept" icon="bolt" href="/zh-CN/concepts/skills">
+    了解 Skills 在 CrewAI 代理中的工作方式——注入、激活与模式。
+  </Card>
+  <Card title="Skills landing page" icon="wand-magic-sparkles" href="/zh-CN/skills">
+    crewAIInc/skills 包及其内容总览。
+  </Card>
+  <Card title="AGENTS.md & coding tools" icon="terminal" href="/zh-CN/guides/coding-tools/agents-md">
+    为 Claude Code、Codex、Cursor 和 Gemini CLI 配置 AGENTS.md。
+  </Card>
+  <Card title="Skills registry (skills.sh)" icon="globe" href="https://skills.sh/crewaiinc/skills">
+    官方列表——技能、安装统计与审计。
+  </Card>
+</CardGroup>
+
+---
+
+## 2. llms.txt —— 机器可读文档
+
+CrewAI 发布了 `llms.txt` 文件，让 AI 助手能够以机器可读格式直接访问完整文档。
+
+```
+https://docs.crewai.com/llms.txt
+```
+
+<Tabs>
+  <Tab title="What is llms.txt?">
+    [`llms.txt`](https://llmstxt.org/) 是一个新兴标准，用于让大型语言模型更易消费文档。你的代理无需抓取 HTML，而是可以获取一个结构化文本文件，包含所需全部内容。
+
+    CrewAI 的 `llms.txt` **已上线可用**——你的代理现在就能使用。
+  </Tab>
+  <Tab title="How to use it">
+    当你的编码代理需要 CrewAI 参考文档时，将其指向该 URL：
+
+    ```
+    Fetch https://docs.crewai.com/llms.txt for CrewAI documentation.
+    ```
+
+    许多编码代理（Claude Code、Cursor 等）都可以直接抓取 URL。该文件包含结构化文档，覆盖全部 CrewAI 概念、API 与指南。
+  </Tab>
+  <Tab title="Why it matters">
+    - **无需抓取** —— 一次请求即可获得干净、结构化内容
+    - **始终最新** —— 直接由 docs.crewai.com 提供
+    - **为 LLM 优化** —— 面向上下文窗口格式化，而非浏览器
+    - **与 skills 互补** —— skills 教模式，llms.txt 提供参考
+  </Tab>
+</Tabs>
+
+---
+
+## 3. 部署到企业生产环境
+
+仅需几分钟，即可把本地 crew 部署到 **CrewAI AMP**（Agent Management Platform）投入生产。
+
+<Steps>
+  <Step title="本地构建">
+    搭建并测试你的 crew 或 flow：
+    ```bash
+    crewai create crew my_crew
+    cd my_crew
+    crewai run
+    ```
+  </Step>
+  <Step title="部署前准备">
+    确保你的项目结构已就绪：
+    ```bash
+    crewai deploy --prepare
+    ```
+    有关项目结构与要求的详细信息，请参阅[准备指南](https://docs-platform.crewai.com/platform/zh-CN/guides/prepare-for-deployment)。
+  </Step>
+  <Step title="部署到 AMP">
+    推送到 CrewAI AMP 平台：
+    ```bash
+    crewai deploy
+    ```
+    你也可以通过 [GitHub integration](https://docs-platform.crewai.com/platform/zh-CN/guides/deploy-to-amp) 或 [Crew Studio](https://docs-platform.crewai.com/platform/zh-CN/guides/enable-crew-studio) 进行部署。
+  </Step>
+  <Step title="通过 API 访问">
+    部署后的 crew 会获得一个 REST API 端点。可将其集成到任意应用中：
+    ```bash
+    curl -X POST https://app.crewai.com/api/v1/crews/<crew-id>/kickoff \
+      -H "Authorization: ******" \
+      -H "Content-Type: application/json" \
+      -d '{"inputs": {"topic": "AI agents"}}'
+    ```
+  </Step>
+</Steps>
+
+<CardGroup cols={2}>
+  <Card title="Deploy to AMP" icon="rocket" href="https://docs-platform.crewai.com/platform/zh-CN/guides/deploy-to-amp">
+    完整部署指南——CLI、GitHub 与 Crew Studio 多种方式。
+  </Card>
+  <Card title="AMP introduction" icon="globe" href="https://docs-platform.crewai.com/platform/zh-CN/introduction">
+    平台概览——了解 AMP 为生产级 crews 提供的能力。
+  </Card>
+</CardGroup>
+
+---
+
+## 4. 企业级能力
+
+CrewAI AMP 面向生产团队打造。以下是部署之外你可获得的能力。
+
+<CardGroup cols={2}>
+  <Card title="Observability" icon="chart-line">
+    为每次 crew 运行提供详细执行链路、日志与性能指标。实时监控代理决策、工具调用与任务完成情况。
+  </Card>
+  <Card title="Crew Studio" icon="paintbrush">
+    通过无代码/低代码界面可视化创建、定制并部署 crews——随后导出为代码或直接部署。
+  </Card>
+  <Card title="Webhook Streaming" icon="webhook">
+    将 crew 执行过程中的实时事件流式发送到你的系统。可集成 Slack、Zapier 或任意 webhook 消费端。
+  </Card>
+  <Card title="Team Management" icon="users">
+    提供 SSO、RBAC 与组织级控制。管理团队中谁可以创建、部署和访问 crews。
+  </Card>
+  <Card title="Tool Repository" icon="toolbox">
+    在组织内发布并共享自定义工具，也可从注册中心安装社区工具。
+  </Card>
+  <Card title="Factory (Self-Hosted)" icon="server">
+    在你自己的基础设施上运行 CrewAI AMP。在满足数据驻留与合规要求的同时获得完整平台能力。
+  </Card>
+</CardGroup>
+
+<AccordionGroup>
+  <Accordion title="Who is AMP for?">
+    AMP 适用于希望将 AI 代理工作流从原型推进到生产的团队——并需要可观测性、访问控制和可扩展基础设施。无论你是初创公司还是大型企业，AMP 都能承担运行复杂性，让你专注于构建代理。
+  </Accordion>
+  <Accordion title="What deployment options are available?">
+    - **Cloud (app.crewai.com)** —— 由 CrewAI 托管，通往生产的最快路径
+    - **Factory (self-hosted)** —— 在自有基础设施运行，实现完整数据控制
+    - **Hybrid** —— 根据敏感性要求混合使用云端与自托管
+  </Accordion>
+</AccordionGroup>
+
+<Card title="Explore CrewAI AMP →" icon="arrow-right" href="https://app.crewai.com">
+  注册并将你的第一个 crew 部署到生产环境。
+</Card>

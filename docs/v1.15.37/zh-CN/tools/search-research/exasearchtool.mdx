@@ -1,0 +1,152 @@
+---
+title: "Exa 搜索工具"
+description: "用Exa搜索网页,是最快和最准确的网络搜索API. 获取节能标志性亮点和完整页面内容 。"
+icon: "magnifying-glass"
+mode: "wide"
+---
+
+那个`ExaSearchTool` 让 CrewAI 代理使用“ 0 ” 搜索网络, 这是最快和最准确的网络搜索 API 。 它返回任何查询中最相关的结果,并带有标语效率突出和完整页面内容的选项.
+
+## 安装
+
+安装 CrewAI 工具包 :
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 环境变量
+
+将您的 Exa API 密钥设定为环境变量 :
+
+```bash
+export EXA_API_KEY='your_exa_api_key'
+```
+
+从“ 0” 中获取 API 密钥 。
+
+## 示例使用
+
+这是如何使用`ExaSearchTool` 在CrewAI特工内部:
+
+```python
+import os
+from crewai import Agent, Task, Crew
+from crewai_tools import ExaSearchTool
+
+# Initialize the tool
+exa_tool = ExaSearchTool()
+
+# Create an agent that uses the tool
+researcher = Agent(
+    role='Research Analyst',
+    goal='Find the latest information on any topic',
+    backstory='An expert researcher who finds the most relevant and up-to-date information.',
+    tools=[exa_tool],
+    verbose=True
+)
+
+# Create a task for the agent
+research_task = Task(
+    description='Find the top 3 recent breakthroughs in quantum computing.',
+    expected_output='A summary of the top 3 breakthroughs with source URLs.',
+    agent=researcher
+)
+
+# Form the crew and kick it off
+crew = Crew(
+    agents=[researcher],
+    tasks=[research_task],
+    verbose=True
+)
+
+result = crew.kickoff()
+print(result)
+```
+
+## 配置选项
+
+那个`ExaSearchTool` 初始化时接受以下参数:
+
+- `type` (str,可选): 要使用的搜索类型 。 默认为`"auto"`选项:`"auto"`, `"instant"`, `"fast"`, `"deep"`.
+- `highlights` (bol或dict,可选): 返回符号高效节选与查询最相关的节选,而不是完整页面. 默认为`True`通过一个像`{"max_characters": 4000}` 用于配置,或`False` 用于禁用。
+- `content` (醇,可选): 是否在结果中包含完整页面内容 。 默认为`False`.
+- `api_key` 您的 Exa API 密钥 。 掉头`EXA_API_KEY` 如果没有提供,则环境变量。
+- `base_url` (str,可选):自定义 API 服务器 URL. 掉头`EXA_BASE_URL` 如果没有提供,则环境变量。
+
+调用工具(或当代理引用工具时)时,可用下列搜索参数:
+
+- `search_query` (r): **要求数**. 搜索查询字符串 。
+- `start_published_date` (str,可选): 过滤结果在此日期后公布(ISO 8601格式,例如.`"2024-01-01"`).
+- `end_published_date` (str,可选): 过滤结果在此日期之前公布(ISO 8601格式).
+- `include_domains` (列表[str],可选): 限制搜索的域列表 。
+
+## 高级使用
+
+对于大多数代理工作流程,我们建议`highlights` ——它返回每个结果中最相关的节选,使用比完整页面内容少得多的符号:
+
+```python
+# Get token-efficient excerpts most relevant to the query
+exa_tool = ExaSearchTool(
+    highlights=True,
+    type="auto",
+)
+
+# Use it in an agent
+agent = Agent(
+    role="Researcher",
+    goal="Answer questions with current web data",
+    tools=[exa_tool]
+)
+```
+
+为了彻底的,多步骤的搜索,使用`type="deep"`:
+
+```python
+exa_tool = ExaSearchTool(
+    highlights=True,
+    type="deep",
+)
+```
+
+关于在要闻和全部内容之间作出选择的更多信息,请参见“0”栏。
+
+## 通过 MCP 使用 Exa
+
+您也可以将您的代理连接到 Exa 的主机 MCP 服务器 。 通过您的 API 密钥`x-api-key` 页眉 :
+
+```python
+from crewai import Agent
+from crewai.mcp import MCPServerHTTP
+
+agent = Agent(
+    role="Research Analyst",
+    goal="Find and analyze information on the web",
+    backstory="Expert researcher with access to Exa's tools",
+    mcps=[
+        MCPServerHTTP(
+            url="https://mcp.exa.ai/mcp",
+            headers={"x-api-key": "YOUR_EXA_API_KEY"},
+        ),
+    ],
+)
+```
+
+从 '0' 得到您的 API 密钥。 有关CrewAI的MCP的更多信息,请参见"1¤".
+
+## 特征
+
+- \0:从每个结果中获取最相关的节选,~10x比全文少符号
+- \0\:根据意义查找结果,而不仅仅是关键词
+- "0":在搜索结果的同时获取网页全文.
+- "0":将结果限制在公布日期过滤器的特定时间段
+- \ 0 : 搜索仅限于特定域
+
+<Note>
+`EXASearchTool` 是一个已贬值的别名,用于`ExaSearchTool`现有进口继续发挥作用,但将发出贬值警告;请移往`ExaSearchTool`.
+</Note>
+
+## 资源
+
+- [Exa 文档](https://exa.ai/docs)
+- [Exa仪表板——管理API密钥和使用](https://dashboard.exa.ai)

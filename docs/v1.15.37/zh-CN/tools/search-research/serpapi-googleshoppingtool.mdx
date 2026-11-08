@@ -1,0 +1,62 @@
+---
+title: SerpApi 谷歌购物工具
+description: “SerpApi Google购物工具”使用SerpApi搜索谷歌购物结果。
+icon: cart-shopping
+mode: "wide"
+---
+
+# `SerpApiGoogleShoppingTool`
+
+## 说明
+
+杠杆`SerpApiGoogleShoppingTool` 通过 SerpApi 查询 Google 购物并检索面向产品的成果。
+
+## 安装
+
+```shell
+uv add crewai-tools[serpapi]
+```
+
+## 环境变量
+
+- `SERPAPI_API_KEY` (需要):用于SerpApi的API密钥. 在https://serpapi.com/上创建一个(可自由分级)。
+
+## 示例
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import SerpApiGoogleShoppingTool
+
+tool = SerpApiGoogleShoppingTool()
+
+agent = Agent(
+    role="Shopping Researcher",
+    goal="Find relevant products",
+    backstory="Expert in product search",
+    tools=[tool],
+    verbose=True,
+)
+
+task = Task(
+    description="Search Google Shopping for 'wireless noise-canceling headphones'",
+    expected_output="Top relevant products with titles and links",
+    agent=agent,
+)
+
+crew = Crew(agents=[agent], tasks=[task])
+result = crew.kickoff()
+```
+
+## 页:1
+
+- 设定`SERPAPI_API_KEY` 在环境中。 在 https://serpapi.com/ 创建密钥
+- 也可通过 SerpApi 查看 Google 网页搜索 :`/zh-CN/tools/search-research/serpapi-googlesearchtool`
+
+## 参数
+
+### 运行参数
+
+- `search_query` 产品搜索查询。
+- `location` (str,可选):地理位置参数.
+
+

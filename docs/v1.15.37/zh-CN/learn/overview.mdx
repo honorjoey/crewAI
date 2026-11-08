@@ -1,0 +1,159 @@
+---
+title: "概述"
+description: "通过全面的指南和教程了解如何构建、定制和优化您的 CrewAI 应用程序"
+icon: "face-smile"
+mode: "wide"
+---
+
+## 学习 CrewAI
+
+本部分提供全面的指南和教程，帮助您掌握 CrewAI，从基本概念到高级技术。无论您是刚刚入门还是希望优化现有实施，这些资源都将指导您完成构建强大的 AI 代理工作流程的各个方面。
+
+## 入门指南
+
+### 核心概念
+<CardGroup cols={2}>
+  <Card title="Sequential Process" icon="list-ol" href="/zh-CN/learn/sequential-process">
+了解如何按结构化工作流程的顺序执行任务。
+  </Card>
+
+  <Card title="Hierarchical Process" icon="sitemap" href="/zh-CN/learn/hierarchical-process">
+通过管理代理监督工作流程来实施分层任务执行。
+  </Card>
+
+  <Card title="Conditional Tasks" icon="code-branch" href="/zh-CN/learn/conditional-tasks">
+创建动态工作流程，并根据结果执行条件任务。
+  </Card>
+
+  <Card title="Async Kickoff" icon="bolt" href="/zh-CN/learn/kickoff-async">
+异步执行工作人员以提高性能和并发性。
+  </Card>
+</CardGroup>
+
+### 代理开发
+<CardGroup cols={2}>
+  <Card title="Customizing Agents" icon="user-gear" href="/zh-CN/learn/customizing-agents">
+了解如何自定义代理行为、角色和功能。
+  </Card>
+
+  <Card title="Coding Agents" icon="code" href="/zh-CN/learn/coding-agents">
+构建可以自动编写、执行和调试代码的代理。
+  </Card>
+
+  <Card title="Multimodal Agents" icon="images" href="/zh-CN/learn/multimodal-agents">
+创建可以处理文本、图像和其他媒体类型的代理。
+  </Card>
+
+  <Card title="Custom Manager Agent" icon="user-tie" href="/zh-CN/learn/custom-manager-agent">
+为复杂的分层工作流程实施自定义管理器代理。
+  </Card>
+</CardGroup>
+
+## 高级功能
+
+### 工作流程控制
+<CardGroup cols={2}>
+  <Card title="人在环（Human in the Loop）" icon="user-check" href="/zh-CN/learn/human-in-the-loop">
+将人工监督和干预集成到代理工作流程中。
+  </Card>
+
+  <Card title="Human Input on Execution" icon="hand-paper" href="/zh-CN/learn/human-input-on-execution">
+在任务执行期间允许人工输入以进行动态决策。
+  </Card>
+
+  <Card title="Replay Tasks" icon="rotate-left" href="/zh-CN/learn/replay-tasks-from-latest-crew-kickoff">
+重播并恢复之前执行的船员任务。
+  </Card>
+
+  <Card title="Kickoff for Each" icon="repeat" href="/zh-CN/learn/kickoff-for-each">
+使用不同的输入有效地多次执行任务。
+  </Card>
+</CardGroup>
+
+### 定制与集成
+<CardGroup cols={2}>
+  <Card title="Custom LLM" icon="brain" href="/zh-CN/learn/custom-llm">
+将自定义语言模型和提供程序与 CrewAI 集成。
+  </Card>
+
+  <Card title="LLM Connections" icon="link" href="/zh-CN/learn/llm-connections">
+配置和管理与各种 LLM 提供商的连接。
+  </Card>
+
+  <Card title="Create Custom Tools" icon="wrench" href="/zh-CN/learn/create-custom-tools">
+构建自定义工具来扩展代理功能。
+  </Card>
+
+  <Card title="Using Annotations" icon="at" href="/zh-CN/learn/using-annotations">
+使用 Python 注释来获得更清晰、更易于维护的代码。
+  </Card>
+</CardGroup>
+
+## 专业应用
+
+### 内容与媒体
+<CardGroup cols={2}>
+  <Card title="DALL-E Image Generation" icon="image" href="/zh-CN/learn/dalle-image-generation">
+使用 DALL-E 与代理集成生成图像。
+  </Card>
+
+  <Card title="Bring Your Own Agent" icon="user-plus" href="/zh-CN/learn/bring-your-own-agent">
+将现有代理和模型集成到 CrewAI 工作流程中。
+  </Card>
+</CardGroup>
+
+### 工具管理
+<CardGroup cols={2}>
+  <Card title="Force Tool Output as Result" icon="hammer" href="/zh-CN/learn/force-tool-output-as-result">
+配置工具以将其输出直接作为任务结果返回。
+  </Card>
+</CardGroup>
+
+## 学习路径建议
+
+### 对于初学者
+1. 从**顺序流程**开始了解基本工作流程执行
+2. 了解**自定义代理**以创建有效的代理配置
+3. 探索**创建自定义工具**以扩展功能
+4. 尝试 **人在环（Human in the Loop）** 进行交互式工作流程
+
+### 对于中级用户
+1. 掌握复杂多代理系统的**分层流程**
+2. 为动态工作流程实施**条件任务**
+3. 使用**异步启动**进行性能优化
+4. 集成针对专业模型的**定制 LLM**
+
+### 对于高级用户
+1. 构建用于复杂媒体处理的**多模式代理**
+2. 创建**自定义管理器代理**以进行复杂的编排
+3. 为混合系统实施**自带代理**
+4. 使用**重播任务**进行稳健的错误恢复
+
+## 最佳实践
+
+### 发展
+- **从简单开始**：在增加复杂性之前从基本的顺序工作流程开始
+- **增量测试**：在集成到更大的系统之前测试每个组件
+- **使用注释**：利用 Python 注释来获得更清晰、更易于维护的代码
+- **自定义工具**：构建可在不同代理之间共享的可重用工具
+
+### 生产
+- **错误处理**：实施强大的错误处理和恢复机制
+- **性能**：使用异步执行并优化 LLM 调用以获得更好的性能
+- **监控**：集成可观察性工具来跟踪代理绩效
+- **人工监督**：包括关键决策的人工检查点
+
+### 优化
+- **资源管理**：监控和优化令牌使用和 API 成本
+- **工作流程设计**：设计工作流程，最大限度地减少不必要的 LLM 调用
+- **工具效率**：创建高效的工具，以最小的开销提供最大的价值
+- **迭代改进**：使用反馈和指标不断提高代理绩效
+
+## 寻求帮助
+
+- **文档**：每个指南都包含详细的示例和解释
+- **社区**：加入 [CrewAI 论坛](https://community.crewai.com) 进行讨论和支持
+- **示例**：检查示例部分以获取完整的工作实现
+- **支持**：联系 [support@crewai.com](mailto:support@crewai.com) 获取技术援助
+
+从符合您当前需求的指南开始，当您熟悉基础知识后，逐渐探索更高级的主题。

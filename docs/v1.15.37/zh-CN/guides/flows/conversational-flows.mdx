@@ -1,0 +1,609 @@
+---
+title: 对话式 Flow
+description: 构建多轮聊天应用：每轮调用 handle_turn、消息历史、意图路由、追踪以及结构化流式输出。
+icon: comments
+mode: "wide"
+---
+
+## 概述
+
+对话式应用将用户的每一行输入视为使用 **相同 session id** 的一次**新的 flow 运行**。CrewAI 提供了用于消息历史、可选意图路由、自动按轮次追踪、结构化轮次流式输出以及本地 `flow.chat()` REPL 的辅助工具。
+
+下面的示例选择启用 `ConversationConfig(trace_scope="turn")`。省略 `trace_scope` 的现有调用方会保留其当前的追踪生命周期和 `finalize_session_traces()` 行为。
+
+| 概念 | 实现 |
+|---------|----------------|
+| Session id | `handle_turn(..., session_id=...)` → `kickoff(inputs={"id": ...})` → `state.id` |
+| 用户输入行 | `handle_turn(message)` 在图运行之前将消息追加到 `state.messages` |
+| 轮次完成 | 使用 `trace_scope="turn"` 时：每个成功轮次发出 `conversation_turn_completed` 和 `FlowFinished`；失败时发出 `FlowFailed` |
+| 全会话追踪 | `ConversationConfig(defer_trace_finalization=True)` + `finalize_session_traces()` |
+
+## 轮次 API
+
+对于来自 REST、WebSocket、测试和自定义 UI 的每条用户消息，使用 **`flow.handle_turn(message, session_id=...)`**。当你想为对话式 `Flow` 提供本地终端聊天循环时，使用 **`flow.chat()`**。
+
+`Flow.kickoff()`**不** 接受 `user_message=` 或 `session_id=` 关键字参数。对于对话式 flow，`handle_turn()` 会存储待处理消息，并在重置每轮执行状态后在内部调用 `kickoff(inputs={"id": session_id})`。
+
+| API | 用途 |
+|-----|---------|
+| `handle_turn(message, session_id=...)` | 对话式 `Flow` 的符合人体工学的单轮封装 |
+| `stream_turn(message, session_id=...)` | 将一个对话轮次以有序的运行时帧形式流式输出 |
+| `chat()` | 对话式 `Flow` 的本地终端 REPL |
+| `kickoff(inputs={...})` | 不含对话轮次处理的高级 flow 执行 |
+| `ask()` |**在** 单个步骤内部的阻塞式提问（向导、澄清） |
+| `@human_feedback` | 批准/拒绝 **某个步骤的输出**——而不是下一条聊天消息 |
+
+除非启用了对话模式，否则 `handle_turn()`、`stream_turn()` 和 `chat()` 会抛出 `ValueError`。应用 `@ConversationConfig(...)` 会自动启用对话模式；否则请设置 `conversational = True`。
+
+## 快速开始
+
+```python
+from uuid import uuid4
+
+from crewai import Flow
+from crewai.flow import listen
+from crewai.flow import (
+    ConversationConfig,
+    ConversationState,
+)
+
+
+@ConversationConfig(trace_scope="turn")
+class SupportFlow(Flow[ConversationState]):
+    def route_turn(self, context):
+        message = (self.state.current_user_message or "").lower()
+        if "order" in message:
+            return "order"
+        if "bye" in message or "goodbye" in message:
+            return "goodbye"
+        return "help"
+
+    @listen("order")
+    def handle_order(self):
+        reply = "Your order is on the way."
+        self.append_assistant_message(reply)
+        return reply
+
+    @listen("help")
+    def handle_help(self):
+        reply = "How can I help?"
+        self.append_assistant_message(reply)
+        return reply
+
+    @listen("goodbye")
+    def handle_goodbye(self):
+        reply = "Goodbye!"
+        self.append_assistant_message(reply)
+        return reply
+
+
+session_id = str(uuid4())
+flow = SupportFlow()
+
+flow.handle_turn("Where is my order?", session_id=session_id)
+flow.handle_turn("What about returns?", session_id=session_id)
+```
+
+## 流式输出一个轮次
+
+当 UI 或运行时需要针对单个聊天轮次的结构化事件时，使用 `stream_turn()`。它返回一个流会话，其中包含 Flow 路由、LLM 分块、工具活动和对话消息的有序帧。
+
+```python
+stream = flow.stream_turn("Where is my order?", session_id=session_id)
+
+with stream:
+    for frame in stream.events:
+        if frame.channel == "llm" and frame.type == "llm_stream_chunk":
+            print(frame.content, end="", flush=True)
+
+result = stream.result
+```
+
+完整的帧契约和通道列表请参阅 [Streaming Runtime Contract](/edge/zh-CN/learn/streaming-runtime-contract)。
+
+## 轮次生命周期
+
+每次 `handle_turn` 都会运行以下流水线：
+
+1. **轮次准备**— 存储待处理的用户消息，解析 session id，重置每轮执行跟踪，并调用 `kickoff(inputs={"id": session_id})`。
+2. **状态恢复**— 如果 `inputs["id"]` 存在且配置了 `@persist`，则加载最新快照。
+3. **`FlowStarted`**— 仅在延迟会话的首个轮次发出。
+4. **待处理轮次水合**— 将用户消息追加到 `state.messages`，设置 `current_user_message` / `last_user_message`，并在设置了 `intents` / `default_intents` + `intent_llm` 时可选地进行分类。
+5. **图执行**— 用户定义的 `@start` 方法（如果有）→ `route_conversation`（内置的起点/路由器）→ 被选中的 `@listen` 处理器。`route_conversation` 还会调用可重写的 `conversation_start()` 辅助方法。
+6. **运行结束**— 启用延迟时，每轮的 `flow_finished` 和追踪终结会被**跳过**；嵌套的 `Agent.kickoff()` / crew 也不会关闭父级批次。
+
+当可见回复不是返回值，或者你对历史进行了裁剪时，处理器应调用 **`append_assistant_message(reply)`**。公开的字符串返回值也会被记录为 assistant 消息并包含在 `@persist` 快照中，因此新的 Flow 实例可以恢复它。用户输入行已由 `handle_turn` 存储——不要在处理器中再次追加。
+
+## 配置概览
+
+用 `ConversationConfig` 装饰 `Flow` 子类会同时附加聊天默认值并启用对话模式。参见下方的[完整字段参考](#conversationconfig)。可通过 `handle_turn(..., intents=..., intent_llm=...)` 按轮次覆盖预分类。
+
+## 更底层的 `ChatState` 辅助工具
+
+`ChatState`、旧版 `ConversationalConfig` 以及 `crewai.flow.conversation` 辅助函数仍可导入，用于高级编排、测试或自定义封装。它们与 `ConversationState` / `ConversationConfig` API 相互独立，并且不会给 `Flow.kickoff()` 添加 `user_message=` 或 `session_id=` 关键字参数。
+
+```python
+from crewai.flow import ChatState
+
+
+class MyChatState(ChatState):
+    # Inherited: id, messages, last_user_message, last_intent, session_ready
+    research_turn_count: int = 0
+    custom_flag: bool = False
+```
+
+| 字段 | 作用 |
+|-------|------|
+| `id` | 会话 UUID（与 `inputs["id"]` 相同） |
+| `messages` | 供 LLM 历史使用的 `{role, content}` `list` |
+| `last_user_message` | 本轮最新的用户输入行 |
+| `last_intent` | 分类后的路由标签（如使用） |
+| `session_ready` | 一次性引导标志（权限、缓存等） |
+
+`ConversationalInputs` 是一个 `TypedDict`，对应常规 `kickoff(inputs={...})` 的键：`id`、`user_message`、`last_intent`。
+
+`ConversationState` 将 `messages` 存储为 `ConversationMessage` 对象，并额外提供 `current_user_message`、`ended`、`events` 和 `agent_threads`。将其规范历史传递给 LLM 时请使用 `conversation_messages`。
+
+## `Flow` 对话式 API
+
+### `handle_turn` 参数
+
+| 参数 | 用途 |
+|-----------|---------|
+| `message` | 本轮的文本 |
+| `session_id` | 对话 UUID → `inputs["id"]` / `state.id` |
+| `intents` | 供 kickoff 前 `classify_intent` 使用的结果标签 |
+| `intent_llm` | 用于分类的 LLM（与 `intents` 一起使用时必需） |
+| `**kickoff_kwargs` | 转发给 `kickoff()`，用于 `input_files`、`from_checkpoint`、`restore_from_state_id` 等选项 |
+
+### `kickoff` 参数
+
+`Flow.kickoff()` 接受 `inputs`、`input_files`、`from_checkpoint` 和 `restore_from_state_id`。当你需要原始的 flow 执行时传入 `inputs={"id": session_id}`，但当该调用代表一条聊天消息时请使用 `handle_turn()`。
+
+### 实例属性
+
+| 属性 | 用途 |
+|-----------|---------|
+| `conversational` | 设为 `True` 以启用对话图和 `handle_turn()` |
+| `defer_trace_finalization` | 可选的实例级覆盖。否则 `_should_defer_trace_finalization()` 会读取 `ConversationConfig.defer_trace_finalization` |
+| `suppress_flow_events` | 隐藏控制台 flow 面板并抑制方法执行事件；flow 开始/结束事件仍会发出 |
+| `stream` | 通用的 Flow 流式标志。对于对话轮次，请使用 `stream_turn()`，而不是将此标志与 `handle_turn()` 组合使用。 |
+
+### 方法与属性
+
+| 名称 | 说明 |
+|------|-------------|
+| `append_assistant_message(content)` | 向 `state.messages` 追加一条用户可见的 assistant 回复 |
+| `append_message(role, content,**extra)` | 更底层地向 `state.messages` 追加消息 |
+| `conversation_messages` | 供 LLM 调用使用的只读历史 |
+| `classify_intent(text, outcomes, *, llm, context=None)` | 将文本映射到一个结果（与 `@human_feedback` 相同的收敛逻辑） |
+| `receive_user_message(text, *, outcomes=None, llm=None)` | 追加用户消息；可选地设置 `last_intent` |
+| `finalize_session_traces()` | 发出延迟的 `flow_finished` 并终结会话追踪批次 |
+| `_should_defer_trace_finalization()` | 高级/内部钩子，用于解析是否延迟按轮次的追踪终结 |
+| `input_history` | `ask()` 提示及其响应的审计记录 |
+
+### 模块级辅助函数（`crewai.flow.conversation`）
+
+可从 `crewai.flow.conversation` 导入，用于测试或自定义编排。这些辅助函数使用旧版的 `ConversationalConfig` 形态；`prepare_conversational_turn()` 还会清除 `last_intent`，而 `handle_turn()` 会将其保留作为路由器上下文。
+
+| 函数 | 说明 |
+|----------|-------------|
+| `normalize_kickoff_inputs(inputs, user_message=..., session_id=...)` | 将对话式关键字参数合并到 `inputs` 中 |
+| `get_conversation_messages(flow)` | 从状态或内部缓冲区读取消息 |
+| `append_message(flow, role, content,**extra)` | 与实例方法相同 |
+| `prepare_conversational_turn(flow, user_message=..., intents=..., intent_llm=..., config=...)` | 供自定义封装使用的更底层轮次水合 |
+| `receive_user_message(flow, text, ...)` | 与实例方法相同 |
+| `set_state_field(flow, name, value)` | 在 dict 或 Pydantic 状态上设置字段 |
+| `get_conversational_config(flow)` | 读取类上的 `conversational_config` |
+| `input_history_to_messages(entries)` | 将 `input_history` 转换为 LLM 消息格式 |
+
+## 意图路由模式
+
+### A. 通过 `ConversationConfig` 预分类（最简单）
+
+设置 `default_intents` 和 `intent_llm`。每次 `handle_turn()` 都会对当前消息进行预分类。自定义 `route_turn()` 返回的非空结果优先；否则 `route_conversation` 使用当前轮次分类出的意图。
+
+### B. 在 `route_turn` 内分类（更丰富的提示词）
+
+设置 `default_intents=None`，使 `handle_turn()` 只追加用户消息。在 `route_turn()` 中，使用自定义提示词或描述调用 `classify_intent`：
+
+```python
+def route_turn(self, context):
+    intent = self.classify_intent(
+        self._routing_prompt(self.state.current_user_message),
+        ("GREETING", "ORDER", "RESEARCH", "GOODBYE"),
+        llm="gpt-4o-mini",
+    )
+    self.state.last_intent = intent
+    return intent
+```
+
+当你需要网页调研或多步骤工具使用时，对于运行带工具的 `Agent.kickoff()`（而不是纯 `LLM.call()`）的步骤，使用 **`@listen("RESEARCH")`**（或类似标签）。
+
+## 当 flow 结束但用户仍在继续聊天时
+
+使用 `trace_scope="turn"` 时，每次 `handle_turn()` 都会完成一次图运行并结束其追踪。使用相同的 `session_id` 继续对话；`@persist` 会恢复消息、标志和上下文。追踪结束并不意味着对话结束。**持久化模式：** 建议在 **单个终结步骤**（例如 `finalize`）上使用 `@persist`，而不是在整个 `Flow` 类上。类级别的持久化会在每个方法之后保存；`load_state` 使用最新一行，而这可能是运行中途的快照（例如紧跟 `bootstrap` 之后），从而丢失同一轮次中处理器的更新。**不要**将 `@human_feedback` 用于后续聊天消息，除非必须由人工在某个步骤的输出展示之前对其进行批准。
+
+## 对话式 `Flow`
+
+通过在 `Flow` 子类上设置 `conversational = True` 或应用 `@ConversationConfig(...)` 来启用对话式聊天图。基类 `Flow` 随后会提供作为内置起点/路由器的 `route_conversation`，以及 `converse_turn` 和 `end_conversation` 监听器。已弃用的 `answer_from_history_turn` 监听器出于兼容性仍然可用。框架管理 `state.messages`，可以驱动路由器 LLM，并且在 `trace_scope="turn"` 下可以自动结束每个轮次的追踪。你编写 **自定义路由**；其余部分由框架负责。
+
+当你想要一个带路由器和各路由处理器的多轮聊天、而无需自己接线生命周期时，使用这种方式。当你需要完全控制时，使用 `Flow[ChatState]`（上面介绍的更底层模式）。
+
+### 快速示例
+
+```python
+from crewai import Flow
+from crewai.flow import listen
+from crewai.flow import (
+    ConversationConfig,
+    ConversationState,
+)
+
+
+@ConversationConfig(trace_scope="turn")
+class SupportFlow(Flow[ConversationState]):
+    def route_turn(self, context: dict) -> str | None:
+        message = (self.state.current_user_message or "").lower()
+        if "search" in message or "news" in message:
+            return "INTERNET_SEARCH"
+        if "docs" in message or "crewai" in message:
+            return "CREWAI_DOCS"
+        return "converse"
+
+    @listen("INTERNET_SEARCH")
+    def handle_internet_search(self) -> str:
+        """Fresh web research, current news, real-time lookups."""
+        reply = "I would run the web research route here."
+        self.append_assistant_message(reply)
+        return reply
+
+    @listen("CREWAI_DOCS")
+    def handle_crewai_docs(self) -> str:
+        """Look up the CrewAI documentation for framework/API questions."""
+        reply = "I would look up the CrewAI docs here."
+        self.append_assistant_message(reply)
+        return reply
+
+
+flow = SupportFlow()
+flow.handle_turn("What can you do?")              # routes to converse
+flow.handle_turn("Search the web for AI news.")   # routes to INTERNET_SEARCH
+flow.handle_turn("Check the CrewAI docs.")         # routes to CREWAI_DOCS
+```
+
+要进行本地终端聊天，使用 `chat()`：
+
+```python
+def kickoff() -> None:
+    SupportFlow().chat()
+    # Or open the full terminal UI:
+    SupportFlow().chat(tui=True)
+```
+
+`chat()` 将 `stream_turn()` 封装在一个 REPL 中，遇到 `exit` / `quit` 时退出，默认跳过空行。使用 `trace_scope="turn"` 时，每个轮次会自动结束其追踪。未指定 scope 时，现有的会话级生命周期以及 REPL 退出时的自动清理保持不变。
+
+`chat(tui=True)` 会打开与 `crewai run` 相同的终端 UI，并且需要交互式终端。它保留 `session_id`、`exit_commands`、追踪延迟以及转发给 `handle_turn()` 的选项。自定义提示符、输入/输出可调用对象和 `skip_empty` 是 REPL 专属选项，在 TUI 模式下会被拒绝。对话式 Agent 暴露同样的 `agent.chat()` 和 `agent.chat(tui=True)` 方法。
+
+当 LLM 没有显式禁用时，token 流式输出在普通 REPL 和 TUI 中都默认开启。使用 `flow.chat(stream=False)`（在 `tui=True` 时也受支持）或 `LLM(stream=False)` 可以退出；显式的聊天 `stream=True` 优先。两种模式都消费 `stream_turn()` 帧并保留完成的轮次结果。流式覆盖的作用域仅限于当前轮次，不会改变共享的 LLM 设置。对于自定义传输，`stream_turn(message, stream=None)` 应用同样的自动默认值；其现有的 `stream=True` 默认值仍然显式请求 token 流式输出。`stream=False` 保留生命周期/消息帧，同时禁用 LLM token 分块。普通 REPL 在文本分块到达时即时打印，但不包括思考和工具调用参数分块。自定义 `output_fn` 仍然每轮接收一个完成的响应。实时文本由 `converse_turn` 和 `answer_from_history_turn` 响应方法渲染；其他处理器则回退为其完成后的公开结果。
+
+### `ConversationConfig`
+
+附加按类聊天默认值的类装饰器。
+
+| 字段 | 默认值 | 用途 |
+|-------|---------|---------|
+| `system_prompt` | 来自 i18n 的 `slices.conversational_system_prompt` | 内置 `converse_turn` 使用的系统消息。传入 `""` 可完全退出。 |
+| `llm` | `None` | 对话 LLM（由 `converse_turn` 使用，并作为路由器回退）。 |
+| `respect_context_window` | `True` | 在接近模型上下文上限时自动压缩内置聊天和路由器请求，并在上下文超限错误后重试一次。设为 `False` 可禁用。 |
+| `router` | `None` | 可选的 `RouterConfig` 覆盖。存在自定义监听器且 LLM 可解析时，即使省略此项路由也会自动启用。 |
+| `answer_from_history_prompt` | 框架默认值 |**已弃用。** 请使用 `converse` 的系统提示词或重写 `converse_turn()`。 |
+| `answer_from_history_llm` | `None` |**已弃用。** 请使用 `llm`；`converse` 已经接收规范历史。 |
+| `intent_llm` | `None` | 用于旧版 `intents=`/`default_intents` 预分类的 LLM。 |
+| `default_intents` | `None` | 旧版预分类的结果标签。 |
+| `visible_agent_outputs` | `None` | `"all"`，或一组 agent 名称，其 `append_agent_result()` 调用应被提升为公开的 assistant 消息。 |
+| `defer_trace_finalization` | `True` | 现有的会话级生命周期，在省略 `trace_scope` 时保持不变。 |
+| `trace_scope` | `None` | 选择 `"turn"` 启用自动按轮次追踪，或选择 `"session"`；显式 scope 覆盖旧版标志。 |
+
+<Warning>
+ `answer_from_history_prompt`、`answer_from_history_llm` 以及
+ `answer_from_history` 路由已弃用，将在未来版本中移除。它们与 `converse`
+ 重复，增加了一次资格判定 LLM 调用，并且在常规自动路由器返回路由时会被绕过。
+ 现有配置仍可继续工作，并会发出 `DeprecationWarning`。
+</Warning>
+
+没有自定义路由时，轮次会落到 `converse`。有自定义路由且存在对话/路由器 LLM 时，框架会合成一个默认的 `RouterConfig`；只有在需要自定义其提示词、路由列表、描述或回退行为时才需要显式提供。设置 `default_intents` 则会改用旧版预分类路径。
+
+如果没有配置对话 LLM，内置的 `converse_turn` 会返回一个配置占位符，而不是生成答案。
+
+对于 `BaseLLM` 模型，内置的 `converse`、`answer_from_history` 和路由器调用复用共享的上下文摘要器。压缩会保留系统消息，在摘要之后逐字重复最新的用户消息，并保持 `state.messages` 不变以供显示和持久化；每个轮次构建自己的模型请求，并且可能再次进行摘要。内部摘要不会作为回复文本流式输出，现有的上下文摘要事件会报告进度。仅实现 `call()` 的自定义对象保持其现有行为。旧版 `intents=` / `default_intents` 预分类以及自定义路由处理器保留各自的上下文处理。
+
+### `RouterConfig` 与自动构建的路由目录
+
+```python
+from typing import Literal
+
+from pydantic import BaseModel
+
+from crewai import LLM
+from crewai.flow import RouterConfig
+
+
+class MyRoute(BaseModel):
+    intent: Literal["INTERNET_SEARCH", "CREWAI_DOCS", "converse"]
+
+
+ROUTER_LLM = LLM(model="gpt-4o-mini")
+
+router_config = RouterConfig(
+    prompt="Optional domain framing (policy, voice, persona).",
+    response_format=MyRoute,        # optional; auto-generated otherwise
+    llm=ROUTER_LLM,                  # falls back to ConversationConfig.llm
+    routes=["INTERNET_SEARCH", "CREWAI_DOCS"],   # optional; inferred from listeners
+    route_descriptions={
+        "INTERNET_SEARCH": "Override the docstring for this one route.",
+    },
+    default_intent="converse",       # used when LLM call fails or no LLM available
+    fallback_intent="converse",      # used when LLM returns an invalid route
+    intent_field="intent",
+)
+```
+
+发送给 LLM 的路由器提示词是自动构建的。对于每条路由，框架按以下优先级选取描述：
+
+1. `RouterConfig.route_descriptions[label]` — 显式覆盖。
+2. `Flow.builtin_route_descriptions[label]` — 框架为 `converse`、`end` 和已弃用的 `answer_from_history` 兼容路由预置的文案（措辞面向路由器 LLM）。
+3. 方法声明的 `description`（供声明式 flow 和 DSL 投影使用）。
+4. `@listen(label)` 处理器 docstring 的第一个非空行。
+5. 空（该路由被列出但没有描述）。
+
+因此在实践中，**添加一条新路由就是 `@listen("X")` + 一行 docstring**：
+
+```python
+from crewai.flow import listen
+
+
+@listen("INTERNET_SEARCH")
+def handle_internet_search(self) -> str:
+    """Fresh web research, current news, real-time lookups."""
+    ...
+```
+
+### 处理器命名
+
+`@listen("…")` 中的字符串是 **路由器的路由标签**（一个事件名），而不是 Python 方法名。路由标签与方法完成事件共享同一个触发器命名空间，因此如果处理器与它的路由同名，该处理器会循环触发自身。
+
+请使用不同的方法名——文档示例使用 `handle_*` 前缀：
+
+```python
+@listen("create_video")
+def handle_create_video(self) -> str:
+    """User wants a new video."""
+    ...
+```**不要** 让方法名与路由标签相同：
+
+```python
+@listen("create_video")
+def create_video(self) -> str:  # rejected at flow instantiation
+    ...
+```
+
+……路由器 LLM 看到的是：
+
+```
+Routes:
+- CREWAI_DOCS: Look up the CrewAI documentation for framework/API questions.
+- INTERNET_SEARCH: Fresh web research, current news, real-time lookups.
+- converse: Ordinary chat, follow-ups, summaries, clarifications…
+- end: User signals the conversation is finished (goodbye, exit, done).
+```
+
+`RouterConfig.prompt` 用于 **领域定调**（助手人设、业务规则、语气）。路由目录是自动构建的——不要在 `prompt` 中列出路由；一旦你新增处理器，它们就会产生偏差。
+
+### 内置路由
+
+| 路由 | 处理器 | 用途 |
+|-------|---------|---------|
+| `converse` | `converse_turn` | 默认聊天处理器。使用系统提示词 + 规范消息历史调用 `ConversationConfig.llm`。 |
+| `end` | `end_conversation` | 设置 `state.ended = True` 并发出终止回复。 |
+| `answer_from_history` | `answer_from_history_turn` |**已弃用的兼容路由。** 请使用 `converse`，它已经接收规范历史。 |
+
+你可以在子类中定义同名处理器来覆盖其中任意一个。
+
+### `handle_turn()` 语义
+
+`flow.handle_turn(message)` 运行一个轮次：
+
+1. 重置每次执行的跟踪（`_completed_methods`、`_method_outputs`），使图重新运行——没有这一步，在同一个 flow 实例上重复调用 `kickoff` 会在第 2 轮及以后短路，因为 `Flow.kickoff_async` 会将 `inputs={"id": ...}` 视为检查点恢复。
+2. 将用户消息追加到 `state.messages`，设置 `current_user_message` / `last_user_message`。`last_intent`**保留自上一轮**，以便路由器 LLM 将其作为信号使用。
+3. 运行用户定义的 `@start` 方法（如果有），然后是作为内置起点/路由器的 `route_conversation`，再然后是被选中的 `@listen` 处理器。`route_conversation` 会调用可重写的 `conversation_start()` 辅助方法。
+4. 路由器将其决策存入 `state.last_intent`（下一轮的路由器上下文可见）。
+5. 如果你的处理器返回了字符串且尚未调用 `append_assistant_message`，`handle_turn` 会替你追加，并持久化更新后的 `state.messages`，使 `@persist` 恢复时包含该 assistant 轮次。
+
+聊天消息请调用 `handle_turn()`。直接调用 `kickoff(inputs={"id": ...})` 会运行 flow 图，但不会应用对话轮次封装。
+
+### 用于本地 REPL 的 `chat()`
+
+`flow.chat()` 是 `handle_turn()` 的开箱即用终端封装：
+
+```python
+flow = SupportFlow()
+flow.chat()
+```
+
+它处理常见的本地循环：
+
+1. 提示输入用户消息。
+2. 遇到 `exit` / `quit`、`EOFError` 或 `KeyboardInterrupt` 时停止。
+3. 调用 `handle_turn(message, session_id=...)`。
+4. 打印 assistant 结果。
+5. 在 `finally` 块中终结延迟的会话追踪。
+
+`chat(defer_trace_finalization=True)` 会为 REPL 临时启用实例级延迟标志，并在退出时恢复其先前的值。
+
+通过可注入的 I/O 自定义终端行为：
+
+```python
+flow.chat(
+    session_id="demo-session",
+    prompt="You: ",
+    assistant_prefix="Assistant: ",
+    exit_commands=("exit", "quit", "bye"),
+)
+```
+
+对于 Web 应用、后台 worker、测试和自定义传输，请继续直接使用 `handle_turn()`。
+
+### 自定义路由器行为
+
+要在每次路由决策时运行副作用（事件总线设置、遥测），重写 `route_turn`：
+
+```python
+from typing import Any
+
+from crewai import Flow
+from crewai.flow import ConversationState
+
+
+class SupportFlow(Flow[ConversationState]):
+    conversational = True
+
+    def route_turn(self, context: dict[str, Any]) -> str | None:
+        self.event_bus = MyBus(self)
+        return super().route_turn(context)
+```
+
+要完全绕过 LLM 路由器并以编程方式选择路由，从 `route_turn` 返回非空字符串。你的重写返回假值时 **不会** 调用 `_route_with_config()`；路由会依次回退到本轮预分类的意图，然后是（若已配置）已弃用的 `answer_from_history` 兼容路径，最后是 `converse`。上一轮的 `last_intent` 在路由器上下文中可用，但绝不会被重放作为回退。
+
+### `append_assistant_message` 与 `append_agent_result`
+
+在 `@listen(label)` 处理器内部，可以选择：
+
+- `self.append_assistant_message(text)` — 向 `state.messages` 添加一条用户可见的 assistant 轮次。下一轮的 `converse_turn` 能看到它。
+- `self.append_agent_result(agent_name, result, visibility="private")` — 在 `state.events` 中记录一个结构化事件，并在 `state.agent_threads[agent_name]` 中记录一个线程。公开可见性还会替你调用 `append_assistant_message`。将私有结果用于不应污染规范历史的草稿工作。
+
+`ConversationConfig.visible_agent_outputs` 可以全局地将特定 agent 的私有结果提升为公开（`"all"`，或一组 agent 名称）。
+
+## 在 JSON/YAML 中声明对话式 flow
+
+[声明式 Flow](/edge/zh-CN/concepts/cli) 也可以是对话式的。添加顶层 `conversational` 块，并将你自己的路由声明为 `listen` 某个路由标签的方法：
+
+```yaml
+schema: crewai.flow/v1
+name: SupportFlow
+
+conversational:
+  trace_scope: turn
+  system_prompt: You are a terse support assistant.
+  llm: gpt-4o-mini
+  router:
+    llm: gpt-4o-mini
+
+methods:
+  handle_order:
+    description: Order status, shipping and delivery questions.
+    listen: order
+    do:
+      call: agent
+      with:
+        role: Support specialist
+        goal: Answer order questions accurately
+        backstory: Knows the fulfilment pipeline.
+        input: "${state.current_user_message}"
+```
+
+声明该块即表示启用——`enabled` 默认为 `true`。设置 `enabled: false` 可以在保留配置的同时关闭聊天。这同时会禁用内置方法合成，因此该声明必须提供一个常规的非对话式图。
+
+框架会为你提供三样东西：
+
+| 提供项 | 详情 |
+|----------|--------|
+| 内置图 | `route_conversation`、`converse_turn` 和 `end_conversation` 会自动添加。已弃用的 `answer_from_history_turn` 出于兼容性保留。在其中某个名称下声明方法即可覆盖它。 |
+| 对话状态 | 没有 `state` 块时使用 `ConversationState`。Pydantic `ref` 或 `json_schema` 状态会自动与对话字段组合；它无需继承 `ConversationState`。 |
+| 路由目录 | 从带有 `listen` 标签的非路由器方法推断，排除内部路由。描述遵循上述优先级，显式的 `router.routes` 可以限制可选项。 |
+
+声明式的 `llm`、`router.llm` 和 `intent_llm` 字段接受模型 id 或配置映射，例如 `{model: openai/gpt-4o-mini, max_tokens: 512}`。`conversational` 块还支持 `default_intents`、`visible_agent_outputs`、`trace_scope`、`defer_trace_finalization` 以及上面展示的 `RouterConfig` 字段。已弃用的 `answer_from_history_prompt` / `answer_from_history_llm` 声明出于兼容性仍被接受。
+
+在 Python 中用与基于类的对话式 Flow 相同的轮次 API 运行它：
+
+```python
+from crewai.flow import Flow
+
+flow = Flow.from_declaration(path="flow.yaml")
+
+flow.handle_turn("Where is my order?", session_id="session-1")
+```
+
+### 路由命名
+
+路由标签与方法名共享同一个触发器命名空间，因此处理器不能以其监听的路由命名——监听 `create_video` 的 `create_video` 方法在构建 flow 时会被拒绝。请使用 `handle_*` 前缀。
+
+### 声明无法表达的内容
+
+| 无法表达 | 替代方案 |
+|-----------------|-------------|
+| 实时的 `LLM` 实例或自定义 `BaseLLM` | 模型 id 字符串或静态配置映射 |
+| 作为实时模型类的 `router.response_format` | 用 python 引用指定类名：`response_format: {python: my_project.schemas.ConversationRoute}`。省略它，框架会自动合成一个 |
+| `route_turn()` 重写 | 用 Python 编写 Flow，或用 `call: code` / 表达式动作替换声明式的 `route_conversation` 方法 |
+| `can_answer_from_history()` 重写 | 已弃用。请使用 `converse` 或在 Python 中重写 `converse_turn()`。 |
+
+对于声明式对话 flow，`crewai run` 会打开聊天 TUI——与 Python 对话式 Flow 获得的相同。聊天循环需要终端，因此无头运行会以非零退出码结束并给出指引，而不是运行单个轮次；在这种情况下请在 Python 中用 `handle_turn()` 或 `stream_turn()` 驱动它。带 `human_feedback:` 块（Python 中为 `@human_feedback`）的声明式方法在终端 REPL 上运行，因为运行时通过 TUI 无法服务的阻塞式提示收集反馈。对话式 flow 不接受 `--inputs`——每轮的输入就是你键入的消息——并且按 id 恢复会话尚未接入 CLI；如需此功能，请在 Python 中使用 `flow.handle_turn(message, session_id=...)`。
+
+## 跨轮次的追踪
+
+选择启用 `ConversationConfig(trace_scope="turn")`，为每次 `handle_turn()` 或 `stream_turn()` 提供一条完整的追踪。成功的轮次发出 `flow_finished`；失败的轮次发出 `flow_failed`。在此模式下，无需任何终结调用即可继续聊天。
+
+```python
+flow.handle_turn("Remember blue", session_id=session_id)
+flow.handle_turn("What color?", session_id=session_id)
+```
+
+两个轮次携带相同的 `gen_ai.conversation.id`，但执行 UUID 和 OpenTelemetry trace ID 各不相同。配置持久化后，新的 Flow 实例可以恢复同一对话并添加新轮次。对话状态的持久化独立于追踪的生命周期。追踪查看器需要支持对话分组才能将这些执行一起展示。
+
+Enterprise 等宿主可以通过 `telemetry_session(..., attributes={"gen_ai.conversation.id": conversation_id})` 提供一个持久的公开对话 id。该 id 的优先级高于运行时的 Flow id 以及 LLM task/agent 回退值。
+
+### 轮次何时结束以及追踪何时导出
+
+一个 **轮次** 是一条提交的消息及处理它的那次 Flow 图运行。它的边界是图完成其等待中的工作或抛出异常。一个**对话** 可以包含多个轮次，并在没有工作运行时保持可恢复状态。SDK 不会根据沉默、空闲间隔或缺少下一条消息来推断对话已结束。
+
+| 入口 | 使用 `trace_scope="turn"` 时 | 使用现有会话级生命周期时 |
+|-------------|---------------------------|------------------------------------------|
+| TUI（`crewai run`） | worker 为每条提交的消息运行 `handle_turn()`。该轮次在其图完成时终结；随后 TUI 接受下一条消息。你可以在轮次之间让 TUI 保持打开。 | 空闲时正常退出会替你调用 `finalize_session_traces()`。 |
+| 直接调用 `handle_turn()` | 每次底层 kickoff 完成或失败时，会关闭其追踪并在返回或抛出之前完成清理。调用方无需任何会话终结调用。 | 你的应用决定会话何时结束，并在 `finally` 中调用 `finalize_session_traces()`。 |
+| 直接调用 `stream_turn()` | 返回流对象并不意味着轮次已结束。请在其上下文管理器中消费流；底层 worker 独立于下一条用户消息完成并终结该轮次。完成后读取 `stream.result`。 | 消费每个轮次的流，然后在应用结束整个会话时显式终结。 |
+| 终端 `flow.chat()` REPL | 显式 scope 优先于 REPL 的旧版延迟标志，因此每个轮次都会自动终结。 | REPL 在循环退出时（包括 EOF 或异常）调用 `finalize_session_traces()`。 |
+
+人工反馈暂停是“返回即完成”的例外：`handle_turn()` 或 `stream_turn()` 可以在轮次仍在等待审核时返回 `HumanFeedbackPending`。它发出 `flow_paused`，而不发出 `flow_finished` 或 `conversation_turn_completed`。当反馈到达时，用 `Flow.from_pending(...)` 恢复 Flow 并调用 `resume()` 或 `resume_async()`。现有的 HITL 生命周期会关闭暂停的追踪片段，并用 `follows_from` 链接恢复后的片段，同时保留执行 UUID 和对话 id。因此一个逻辑轮次可以跨越多条相互链接的 OpenTelemetry 追踪；暂停并不意味着用户消息已处理完毕。
+
+在 turn scope 下，运行时发出 `flow_started` 并执行图。成功发出 `flow_finished`；失败发出 `flow_failed`。清理会排空被跟踪的内存写入和排队的事件处理器。对于 SDK 拥有的执行，追踪清理会在控制权返回调用方之前刷写已完成的 span。下一个轮次以相同的 `gen_ai.conversation.id` 开始新的执行和追踪；它不会重新打开上一个根 span。
+
+事件和已完成的子 span 可以在执行期间发出。经过身份验证的批量导出器可能在轮次结束前上传这些 span；终结操作会关闭根 span 并刷写其余部分。导出仍然遵循追踪配置和用户同意，成功返回并不证明收集器已持久化。如果宿主提供了外层的 `telemetry_session`，则由该宿主负责刷写和关闭其追踪上下文。
+
+对于匿名追踪，TUI 在导出边界应用其现有的上传同意流程。显式启用追踪即视为同意；否则可能出现同意提示。turn scope 改变的是导出边界，而不是同意策略。
+
+在轮次或同意提示进行中退出 TUI 会使用其中止/丢弃路径，而不是声称成功完成。它可以丢弃本地缓冲的待上传追踪；但无法撤回已上传的 span。慢速工具在完成、失败或被应用取消之前仍属于当前轮次——不存在将其标记为完成的不活动计时器。
+
+### 兼容性：会话级追踪
+
+早期示例使用 `defer_trace_finalization=True`，并需要 `finalize_session_traces()` 来结束会话级追踪。该 API 仍受支持；它没有被移除或弃用。选择启用 `trace_scope="turn"` 后，手动终结不再必要，因为每个轮次负责自己的清理。现有调用可以安全地保留。未启用时，请保持现有的终结生命周期。
+
+现有调用方无需改动：省略 `trace_scope` 会保留当前的 `defer_trace_finalization=True` 默认值和一条存活的会话级追踪。像之前一样继续调用 `finalize_session_traces()`。该追踪上下文保存在内存中；持久化 Flow 状态并不能在进程重启后恢复它。
+
+```python
+@ConversationConfig()
+class SessionTraceFlow(SupportFlow):
+    pass
+
+flow = SessionTraceFlow()
+try:
+    flow.handle_turn("First message", session_id=session_id)
+    flow.handle_turn("Another message", session_id=session_id)
+finally:
+    flow.finalize_session_traces()
+```
+
+这是一个增量选项，不是默认切换或弃用。`ConversationConfig`、声明式对话和 `chat()` 保留其现有默认值。未提供 scope 时，显式的 `defer_trace_finalization=True` 和 `False` 仍受支持。无 scope 时，现有的 LLM task/agent 关联值保持不变。
+
+显式的 `trace_scope` 优先于旧标志：`"turn"` 关闭每个轮次；`"session"` 延迟到终结时。选择启用 turn scope 之后，你可以保留现有的 `finalize_session_traces()` 清理调用；它是安全的空操作，不会再发出一次完成事件。`chat()` 继续自动管理清理。
+
+`suppress_flow_events=True` 抑制控制台面板和方法事件；它不会禁用对外层 Flow 生命周期的追踪。

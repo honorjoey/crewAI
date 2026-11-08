@@ -1,0 +1,85 @@
+---
+title: "Tavily 获取研究工具"
+description: "获取Tavily现有研究任务的现状和结果"
+icon: "clipboard-list"
+mode: "wide"
+---
+
+那个`TavilyGetResearchTool` 让 CrewAI 代理检查 Tavily 现有的研究任务 。`request_id`。当研究任务提前启动时使用它,您需要检索它的现状或最终结果。
+
+如果你需要开始新的研究工作,请使用"0"。 此工具专门用于在您已经收到 Tavily 的研究请求后, 查找该请求 。`request_id`.
+
+## 安装
+
+用来使用`TavilyGetResearchTool`,安装`tavily-python` 对话框并列`crewai-tools`:
+
+```shell
+uv add 'crewai[tools]' tavily-python
+```
+
+## 环境变量
+
+设置您的 Tavily API 密钥 :
+
+```bash
+export TAVILY_API_KEY='your_tavily_api_key'
+```
+
+获取“ 0” 的 API 密钥( 签名后创建密钥) 。
+
+## 示例使用
+
+```python
+from crewai_tools import TavilyGetResearchTool
+
+tavily_get_research_tool = TavilyGetResearchTool()
+
+status_result = tavily_get_research_tool.run(
+    request_id="your-research-request-id"
+)
+
+print(status_result)
+```
+
+## 共同工作流程
+
+使用`TavilyGetResearchTool` 当您的应用程序或其他服务已经创建 Tavily 研究任务并保存其`request_id`.
+
+典型案例包括:
+
+- 在做背景研究后投票完成
+- 寻找一项长期研究任务的最新状况.
+- 从先前创建的 Tavily 请求获取最终研究输出 。
+
+## 配置选项
+
+那个`TavilyGetResearchTool` 调用`run` 方法 :
+
+- `request_id` (三): **要求。** 现有的 Tavily 研究请求 ID 检索 。
+
+## 同步使用
+
+使用`_arun` 当您的应用程序已经在同步事件循环中运行时 :
+
+```python
+from crewai_tools import TavilyGetResearchTool
+
+tavily_get_research_tool = TavilyGetResearchTool()
+
+status_result = await tavily_get_research_tool._arun(
+    request_id="your-research-request-id"
+)
+```
+
+## 特征
+
+- “0”:获取当前Tavily研究任务的现状。
+- **结果检索**:一旦Tavily完成任务,就归还现有的研究成果。
+- "0":使用其中之一`_run`/`run` 或`_arun` 取决于您的申请运行时间。
+- "0":以格式化的JSON字符串返回快速回复。
+
+## 响应格式
+
+该工具返回一个 JSON 字符串,包含当前研究任务状态和Tavily 的任何可用结果. 确切的响应形状取决于塔维利返回的任务状态,因此不完全的任务在获得最终的研究产出之前可能会返回状态信息.
+
+有关研究API的全部详情,请参见"0¤".

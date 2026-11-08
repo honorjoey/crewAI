@@ -1,0 +1,50 @@
+---
+title: 技能
+description: 从 skills.sh 官方注册表安装 crewaiinc/skills——为 Claude Code、Cursor、Codex 等提供 Flows、Crews 和文档感知能力。
+icon: wand-magic-sparkles
+mode: "wide"
+---
+
+# 技能
+
+**用一条命令为你的 AI 编码 agent 注入 CrewAI 上下文。**
+
+CrewAI **Skills** 发布在 **[skills.sh/crewaiinc/skills](https://skills.sh/crewaiinc/skills)**，这是 `crewaiinc/skills` 的官方注册表，包含单项技能（例如 **design-agent**、**getting-started**、**design-task**、**ask-docs**）、安装统计和审计信息。它们会教会编码 agents（如 Claude Code、Cursor、Codex）如何脚手架 Flows、配置 Crews、使用工具并遵循 CrewAI 模式。运行下面的安装命令（或直接粘贴给你的 agent）。
+
+```shell Terminal
+npx skills add crewaiinc/skills
+```
+
+这会把官方技能包接入你的 agent 工作流，让它在每次会话中无需你重复解释框架也能遵循 CrewAI 约定。源码和 issue 位于 [GitHub](https://github.com/crewAIInc/skills)。
+
+## 你的 agent 将获得
+
+- **Flows** — 以 CrewAI 方式组织有状态应用、步骤与 crew kickoff
+- **Crews & agents** — JSON-first 模式（`crew.jsonc`、`agents/*.jsonc`）、角色、任务与委派
+- **Tools & integrations** — 将 agents 接入搜索、API 与常用 CrewAI 工具
+- **Project layout** — 对齐 CLI 脚手架与仓库约定
+- **Up-to-date patterns** — 紧跟最新 CrewAI 文档与推荐实践
+
+## 在本站继续了解
+
+<CardGroup cols={2}>
+  <Card title="Coding tools & AGENTS.md" icon="terminal" href="/zh-CN/guides/coding-tools/agents-md">
+    了解如何在 CrewAI 中使用 `AGENTS.md` 与 coding-agent 工作流。
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/zh-CN/quickstart">
+    端到端构建你的第一个 Flow 与 crew。
+  </Card>
+  <Card title="Installation" icon="download" href="/zh-CN/installation">
+    安装 CrewAI CLI 与 Python 包。
+  </Card>
+  <Card title="Skills registry (skills.sh)" icon="globe" href="https://skills.sh/crewaiinc/skills">
+    `crewaiinc/skills` 的官方条目：技能、安装统计与审计。
+  </Card>
+  <Card title="GitHub source" icon="code-branch" href="https://github.com/crewAIInc/skills">
+    技能包的源码、更新与问题追踪。
+  </Card>
+</CardGroup>
+
+### 视频：使用 coding agent skills 的 CrewAI
+
+<iframe src="https://www.loom.com/embed/befb9f68b81f42ad8112bfdd95a780af" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style={{ width: "100%", height: "400px" }} />

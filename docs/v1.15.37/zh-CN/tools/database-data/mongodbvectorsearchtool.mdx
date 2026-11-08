@@ -1,0 +1,178 @@
+---
+title: "MongoDB 矢量搜索工具"
+description: "MongoDB 矢量搜索工具 工具文档。"
+icon: leaf
+mode: "wide"
+---
+
+# `MongoDBVectorSearchTool`
+
+## 描述
+
+这`MongoDBVectorSearchTool` 启用 MongoDB Atlas 集合上的矢量相似性查询。 MongoDB 阿特拉斯
+支持原生向量搜索。该工具还支持索引创建助手和批量插入嵌入文本。
+
+MongoDB 矢量搜索对于想要使用矢量搜索数据库查询数据的应用程序非常有用
+通过语义搜索，过滤集合中其他字段的查询，或者为您的
+通过实施检索增强生成 (RAG) 来实现人工智能应用程序和代理系统。
+
+了解更多：https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-overview/
+
+## 安装
+
+使用 MongoDB 额外安装：
+
+```shell
+pip install crewai-tools[mongodb]
+```
+
+或者
+
+```shell
+uv add crewai-tools --extra mongodb
+```
+
+## 初始化参数
+
+- `connection_string` (str)：必填。用于连接到集群的 MongoDB Atlas 连接字符串凭据。
+- `database_name` (str)：必填。要使用的 MongoDB 数据库的名称。
+- `collection_name` (str)：必填。数据库中存储文档和嵌入的集合。
+- `vector_index_name` （str，默认值：`vector_index`）： 选修的。要查询的 MongoDB Vector Search 索引的名称（必须与索引匹配）
+  在 Atlas 中创建）。
+- `text_key` （str，默认值：`text`）： 选修的。存储原始文本的文档字段名称。
+- `embedding_key` （str，默认值：`embedding`）： 选修的。存储向量嵌入的文档字段名称。
+- `dimensions` （整数，默认值：`1536`）： 选修的。嵌入模型的维度数（必须与您的模型匹配）。
+- `query_config` (MongoDBVectorSearchConfig)：可选。一个`MongoDBVectorSearchConfig` 高级查询设置的对象，例如`limit` 和`oversampling_factor`.
+
+## MongoDBVectorSearchTool 方法
+
+- `run(query=...)`：嵌入查询并执行向量相似性搜索，返回匹配的文档。
+  采用自然语言`query` (`str`) 要嵌入和搜索的参数。
+- `add_texts(list of strings)`：获取要嵌入的字符串列表并将其作为文档插入到 MongoDB Atlas 数据库中。
+- `create_vector_search_index(dimensions=...)`：提供具有正确维度的 MongoDB 矢量搜索索引
+  和相似性。需要一个`dimensions` （整数）参数。
+
+## 快速启动
+
+以下示例演示了如何初始化该工具并针对
+指定的MongoDB Atlas集合：
+
+```python Code
+from crewai_tools import MongoDBVectorSearchTool
+
+tool = MongoDBVectorSearchTool(
+  connection_string="mongodb+srv://...",
+  database_name="mydb",
+  collection_name="docs",
+)
+
+print(tool.run(query="how to create vector index"))
+```
+
+## 常见问题
+
+- 身份验证失败：确保您的 Atlas IP 访问列表允许您的运行者并且连接字符串包含凭据。
+- 未找到索引：先创建向量索引；名称必须匹配`vector_index_name`.
+- 尺寸不匹配：将嵌入模型尺寸与`dimensions`.
+
+## 示例
+
+### 预加载数据库并创建索引
+
+以下示例演示了如何使用文档预加载 MongoDB Atlas 数据库
+并创建 MongoDB Vector Search 索引来查询您的集合：
+
+```python Code
+import os
+from crewai_tools import MongoDBVectorSearchTool
+
+tool = MongoDBVectorSearchTool(
+    database_name="example_database",
+    collection_name="example_collection",
+    connection_string="<your_mongodb_connection_string>",
+    dimensions=3072,
+)
+
+# Load text content from a local folder and add to your MongoDB collection
+texts = []
+for fname in os.listdir("knowledge"):
+    path = os.path.join("knowledge", fname)
+    if os.path.isfile(path):
+        with open(path, "r", encoding="utf-8") as f:
+            texts.append(f.read())
+
+tool.add_texts(texts)
+
+# Create the MongoDB Vector Search index (e.g., 3072 dims for text-embedding-3-large)
+tool.create_vector_search_index(dimensions=3072)
+```
+
+### 自定义查询配置和代理配置
+
+以下示例演示了如何向`MongoDBVectorSearchTool` 
+并与 CrewAI 代理集成：
+
+```python Code
+from crewai_tools import MongoDBVectorSearchConfig, MongoDBVectorSearchTool
+
+query_config = MongoDBVectorSearchConfig(limit=10, oversampling_factor=2)
+tool = MongoDBVectorSearchTool(
+    database_name="example_database",
+    collection_name="example_collection",
+    connection_string="<your_mongodb_connection_string>",
+    query_config=query_config,
+    vector_index_name="my_vector_index",
+)
+
+rag_agent = Agent(
+    name="rag_agent",
+    role="You are a helpful assistant that can answer questions with the help of the MongoDBVectorSearchTool.",
+    goal="...",
+    backstory="...",
+    tools=[tool],
+)
+```
+
+### 运行 CrewAI 工作流程
+
+以下示例演示了如何集成您的`MongoDBVectorSearchTool` 与代理、任务和
+Crew 创建并运行 CrewAI 代理 RAG 工作流程：
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import MongoDBVectorSearchTool
+
+tool = MongoDBVectorSearchTool(
+    connection_string="mongodb+srv://...",
+    database_name="mydb",
+    collection_name="docs",
+)
+
+agent = Agent(
+    role="RAG Agent",
+    goal="Answer using MongoDB vector search",
+    backstory="Knowledge retrieval specialist",
+    tools=[tool],
+    verbose=True,
+)
+
+task = Task(
+    description="Find relevant content for 'indexing guidance'",
+    expected_output="A concise answer citing the most relevant matches",
+    agent=agent,
+)
+
+crew = Crew(
+    agents=[agent], 
+    tasks=[task],
+    verbose=True,
+)
+
+result = crew.kickoff()
+```
+
+## 了解更多
+
+要了解有关 CrewAI 与 MongoDB 集成的更多信息，请参阅以下 MongoDB 指南：
+- [将 MongoDB 与 CrewAI 集成](https://www.mongodb.com/docs/atlas/ai-integrations/crewai/)
+- [使用 CrewAI 和 MongoDB 构建代理 RAG 应用程序](https://www.mongodb.com/docs/atlas/ai-integrations/crewai/build-agents/)

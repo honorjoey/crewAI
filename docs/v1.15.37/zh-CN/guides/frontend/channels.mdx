@@ -1,0 +1,156 @@
+---
+title: 频道
+description: 使用 CopilotKit Channels SDK 与托管智能平台，将同一套 CrewAI 代理运行在 Slack 或 Teams 机器人中。
+icon: messages
+mode: "wide"
+---
+
+## 与您的用户见面
+
+您在[概述](/edge/zh-CN/guides/frontend/overview) 中构建的 CrewAI 代理不必位于 Web 应用程序后面。相同的 Crew 或 Flow 可以在消息传递平台内作为机器人运行。无需重建，无需代理逻辑的第二个副本：代理通过 [AG-UI 协议](https://docs.ag-ui.com) 保持公开，并且 **通道** 从 Slack 或 Microsoft Teams 驱动它。
+
+CopilotKit 的 [Channels SDK](https://docs.copilotkit.ai/slack) 提供该通道。您在小型运行时中声明 `createChannel`，将其指向您的 CrewAI 代理，CopilotKit 的托管 **Intelligence** 平台会代理与消息传递提供商。
+
+<Note>
+与本节其余功能不同，频道 **不是自托管的**。它通过**CopilotKit Intelligence**运行——按设计，这是频道能力所需的托管层（提供免费层级）。Intelligence 负责平台连接与凭证、接收各平台事件，并将轮次交给你的频道进程；你的进程运行代理并把回复流式返回。你只需在 Intelligence 仪表板配置一次 Slack，平台凭证不会进入你的进程。代理、工具和状态仍完全归你掌控。
+</Note>
+
+## 它如何组合在一起
+
+您的 CrewAI 代理服务器没有任何变化。它通过 AG-UI 继续为您的 Crew 或 Flow 提供服务，就像概述中一样。您添加的是一个使用 `@copilotkit/channels` 构建的单独的长期运行的 Node 进程：它注册一个通道在 `CopilotRuntime` 上，连接到 Intelligence，并在消息到达时运行您的代理。
+
+```
+Slack / Teams  ──►  CopilotKit Intelligence  ──►  channel process (Node)  ──►  CrewAI server (AG-UI)  ──►  Crew / Flow
+```
+
+通道进程保持与智能网关的持久连接，因此它需要一个长期运行的主机——无服务器请求处理程序无法拥有该连接。您的 CrewAI 服务器可以继续为网络提供服务同时从概述中看到前端：Web 应用程序和通道只是一个 AG-UI 端点的两个客户端。
+
+## 集成指南
+
+<Steps>
+
+<Step title="安装频道包">
+
+Channels SDK 包含电池——每个平台都在一个软件包中提供，无需安装每个平台的适配器。将其与托管通道和 CrewAI AG-UI 客户端的运行时一起添加：
+
+```bash
+npm install @copilotkit/channels @copilotkit/runtime @ag-ui/crewai
+```
+
+</Step>
+
+<Step title="在 Intelligence 中创建频道">
+
+在 [CopilotKit 仪表板](https://docs.copilotkit.ai/slack) 中，创建一个通道并连接 Slack — Intelligence 将引导您创建 Slack 应用程序并保存其凭据。这为您的进程留下了两个环境变量，两者从仪表板：
+
+```bash
+export INTELLIGENCE_API_KEY=...      # authenticates the runtime with Intelligence (free tier available)
+export INTELLIGENCE_CHANNEL_ID=...   # the Channel ID, matched by createChannel({ name })
+```
+
+</Step>
+
+<Step title="定义通道">
+
+`createChannel` 声明频道并附加您的代理。将代理构建为每线程工厂，以便每个对话都有自己的会话，使用概述在 Web 运行时中使用的相同 `CrewAIAgent` ，指向您的AG-UI 端点。 `identifyUser: "platform"` 让 Intelligence 将每个平台用户映射到一个稳定的身份。
+
+```ts
+// channel.ts
+import { createChannel } from "@copilotkit/channels";
+import { CrewAIAgent } from "@ag-ui/crewai";
+
+const channel = createChannel({
+  name: process.env.INTELLIGENCE_CHANNEL_ID!, // must match the Channel ID in Intelligence
+  identifyUser: "platform",
+  // A fresh agent per conversation, pointed at your CrewAI AG-UI endpoint.
+  agent: (threadId) => {
+    const agent = new CrewAIAgent({ url: "http://localhost:8000/recipe" });
+    agent.threadId = threadId;
+    return agent;
+  },
+});
+
+// A mention subscribes the thread and runs the agent; afterwards every message
+// in a subscribed thread runs it without needing another mention.
+channel.onMention(async ({ thread }) => {
+  await thread.subscribe();
+  await thread.runAgent();
+});
+
+channel.onMessage(async ({ thread }) => {
+  if (await thread.isSubscribed()) await thread.runAgent();
+});
+
+export { channel };
+```
+
+</Step>
+
+<Step title="在运行时注册通道">
+
+使用智能网关和您的频道创建 `CopilotRuntime`，然后使用 `createCopilotNodeListener` 为其提供服务。 `agents` 地图保持空状态——通道提供自己的代理。等待通道准备好，这样损坏的配置就会失败启动声音很大。
+
+```ts
+// server.ts
+import { createServer } from "node:http";
+import { CopilotRuntime, CopilotKitIntelligence } from "@copilotkit/runtime/v2";
+import { createCopilotNodeListener } from "@copilotkit/runtime/v2/node";
+import { channel } from "./channel";
+
+const runtime = new CopilotRuntime({
+  agents: {}, // the channel supplies its own agent; no web-facing agents needed
+  intelligence: new CopilotKitIntelligence({
+    apiKey: process.env.INTELLIGENCE_API_KEY!, // free tier available
+  }),
+  channels: [channel],
+});
+
+const listener = createCopilotNodeListener({ runtime });
+await listener.channels?.ready({ timeoutMs: 15_000 });
+
+createServer(listener).listen(3123, () => {
+  console.log("Channels runtime listening on port 3123");
+});
+```
+
+</Step>
+
+<Step title="运行通道运行时">
+
+将其与 CrewAI 代理服务器一起启动：
+
+```bash
+uvicorn server:app --port 8000   # terminal 1 — CrewAI agent server
+npx tsx server.ts                 # terminal 2 — Channels runtime
+```
+
+在 Slack 或 Teams 中提及机器人，它就会运行您的 Crew 或 Flow，将回复流式传输回线程中。该线程保持订阅状态，因此后续消息将运行而无需再次提及。
+
+</Step>
+
+</Steps>
+
+## 事件模型
+
+通道通过处理程序对平台事件做出反应，每个处理程序都会收到您通过几种方法驱动的 `thread` ：
+
+-**`channel.onMention`** 当用户@-提及机器人时触发。调用 `thread.subscribe()` 加入线程，然后调用 `thread.runAgent()` 在提及上运行您的 CrewAI 代理。
+-**`channel.onMessage`** 在机器人可以看到的线程中的每条消息上触发。使用 `thread.isSubscribed()` 对其进行门控，以便代理仅响应其加入的位置，然后是 `thread.runAgent()`。
+-**`thread.runAgent()`** 在当前回合运行附加的 CrewAI 代理，并将其输出流回通道。传递 `{ prompt }` 以覆盖代理运行的文本。
+
+您的代理收到普通 AG-UI `RunAgentInput` 并发出普通 AG-UI 事件；平台机制留在频道后面，因此相同的人员或流程在每个平台上运行不变。该频道还曝光欢迎、中断、命令、反应和模式的处理程序 — 请参阅 [`Channel` 参考](https://docs.copilotkit.ai/reference/channels/classes/Channel) 了解完整内容。
+
+## 平台支持
+
+如今，托管智能路径涵盖 **Slack** 和**Microsoft Teams**- 相同的通道代码在两者上运行，并且 `message.platform` / `thread.platform` 报告本机来源。其他平台（Discord、Telegram、WhatsApp）是通过开发人员操作的**直接适配器**而不是托管路径到达 - 您自己的进程保存平台凭证和传输。检查 [CopilotKit 通道文档](https://docs.copilotkit.ai/slack) 了解当前的平台列表和每个平台的设置。
+
+## 有关的
+
+<CardGroup cols={2}>
+ <Card title="前端概述" icon="browser" href="/edge/zh-CN/guides/frontend/overview">
+通过 AG-UI 为您的 Crew 或 Flow 提供服务——这是每个频道构建的基础。
+ </Card>
+ <Card title="人在环（Human-in-the-loop）" icon="user-check" href="/edge/zh-CN/guides/frontend/human-in-the-loop">
+在运行中暂停代理以收集用户批准或输入。
+ </Card>
+</CardGroup>

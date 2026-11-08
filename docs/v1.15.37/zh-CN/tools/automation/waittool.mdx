@@ -1,0 +1,124 @@
+---
+title: 等待工具
+description: “WaitTool”允许代理在再次检查长时间运行的作业之前暂停。
+icon: hourglass-half
+mode: "wide"
+---
+
+## 概述
+
+这`WaitTool` 暂停执行指定的秒数。它的存在是因为代理
+开始长时间运行的工作——沙箱构建、部署、批量导入、异步 API 作业——
+否则没办法让时间流逝。如果没有它，代理要么在紧密循环中进行轮询，要么
+在工作完成之前放弃。
+
+该工具不需要 API 密钥，并且除了标准库之外没有任何依赖项。
+
+## 何时使用它
+
+该工具的描述告诉模型在带外工作需要实时时使用它
+进步：
+
+- 仍在执行的沙箱构建、测试运行或脚本
+- 仍在推出的部署或配置步骤
+- 批量导入、导出或训练作业
+- 返回作业 ID 以便稍后轮询的异步 API
+- 在重试之前必须冷却的速率限制或退避
+
+该模型的模式是：启动作业，等待，检查状态，如果满足则再次等待
+仍在运行。描述还告诉它“不要”等待对话节奏或当
+它需要的信息已经可用——等待只会让时钟时间过去，而不会过去
+提前或检查工作。
+
+## 安装
+
+该工具附带`crewai-tools`:
+
+```shell
+uv add crewai-tools
+```
+
+## 例子
+
+```python Code
+from crewai import Agent, Crew, Task
+from crewai.tools import tool
+from crewai_tools import WaitTool
+
+wait_tool = WaitTool()
+
+
+@tool("Check build status")
+def check_build_status_tool(build_id: str) -> str:
+    """Return the current status of a build: queued, running, passed, or failed."""
+    # Replace this with a call to your own build system.
+    return my_ci_client.get_build(build_id).status
+
+
+build_agent = Agent(
+    role="Build Monitor",
+    goal="Start the build and report its final status",
+    backstory="An engineer who knows that builds take time.",
+    tools=[wait_tool, check_build_status_tool],
+    verbose=True,
+)
+
+monitor_task = Task(
+    description=(
+        "Start the build, then wait and re-check its status until it finishes."
+    ),
+    expected_output="The final build status.",
+    agent=build_agent,
+)
+
+crew = Crew(agents=[build_agent], tasks=[monitor_task])
+result = crew.kickoff()
+```
+
+## 论点
+
+| 争论| 类型| 必需的| 描述|
+| :-------- | :------ | :------- | :----------------------------------------------------------------------------- |
+| `秒`| `浮动`| ✅        | 还要等多少秒。必须为零或更大。|
+| ‘原因’| `str`| ❌        | 关于正在等待什么的可选注释。与工具的结果相呼应。|
+
+## 初始化参数
+
+| 范围| 类型| 默认| 描述|
+| :------------ | :------ | :------ | :----------------------------------------------------------------------------------- |
+| `最大秒数`| `浮动`| `300`   | 单个等待的上限。较长的请求会限制于此值，不会被拒绝。|
+
+## 缩短漫长的等待时间
+
+最多等待一个呼叫`max_seconds`。如果客服人员要求更多，该工具会等待
+max 并在其结果中如此说明，因此代理可以再次调用它而不是失败：
+
+```python Code
+wait_tool = WaitTool()
+wait_tool.run(seconds=3600)
+# 'Waited 300 seconds. Requested 3600 seconds, capped at 300 seconds per call -
+#  call this tool again if more waiting is needed.'
+```
+
+当工作流程确实需要更长的单次暂停时提高上限：
+
+```python Code
+wait_tool = WaitTool(max_seconds=1800)
+```
+
+## 异步支持
+
+该工具实现了同步和异步执行，因此当
+等待：
+
+```python Code
+import asyncio
+
+
+async def main():
+    result = await wait_tool.arun(seconds=30, reason="waiting for the sandbox build")
+    print(result)
+
+
+asyncio.run(main())
+```

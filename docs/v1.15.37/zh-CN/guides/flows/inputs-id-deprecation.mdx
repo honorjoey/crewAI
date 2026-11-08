@@ -1,0 +1,128 @@
+---
+title: "从 inputs.id 迁移到 restore_from_state_id"
+description: "将 @persist Flow 从已弃用的 inputs.id 恢复方式迁移到受支持的 restore_from_state_id 字段"
+icon: "arrow-right-arrow-left"
+---
+
+<Warning>
+ 在 `inputs` 内传入 `id` 来恢复 `@persist` Flow 已被 **弃用**，
+ 并计划在未来版本中移除。替代方案 `restore_from_state_id`
+ 已在 CrewAI **v1.14.5 及以上版本** 提供——升级后即可按下文迁移。
+</Warning>
+
+## 概述
+
+文档中原先推荐的做法，是把历史执行的 UUID 作为 `inputs.id` 传入，
+用于从之前执行恢复 `@persist` Flow。现在 CrewAI 提供了专用字段
+`restore_from_state_id`，可实现相同的恢复能力，而无需复用 `inputs`
+载荷——也不会把“恢复来源键”与“新执行身份”绑定在一起。
+
+## 迁移方式
+
+如果你当前通过 `inputs={"id": ...}` 启动 `@persist` Flow：
+
+```python
+# Deprecated
+flow = CounterFlow()
+flow.kickoff(inputs={"id": "abcd1234-5678-90ef-ghij-klmnopqrstuv"})
+```
+
+请改为 `restore_from_state_id`：
+
+```python
+# Supported
+flow = CounterFlow()
+flow.kickoff(restore_from_state_id="abcd1234-5678-90ef-ghij-klmnopqrstuv")
+```
+
+两种模式在“执行谱系（lineage）”语义上不同：
+
+- `inputs={"id": <uuid>}`（已弃用）——**resume**：写入落在传入的
+ id 下，延续同一条 `flow_uuid` 历史。
+- `restore_from_state_id=<uuid>`——**fork**：先从该快照恢复状态，随后
+ 在新的 `state.id` 下写入。源 Flow 的历史会被保留。
+
+在大多数生产场景中——基于历史状态重新运行 Flow——通常应选择 fork。
+完整心智模型见 [掌握 Flow 状态](/zh-CN/guides/flows/mastering-flow-state)。
+
+如果你通过 CrewAI AMP REST API 启动 Flow，请查看下方 [AMP](#amp)
+中的等效载荷迁移方式。
+
+## 为什么要弃用 `inputs.id`（用于 `@persist`）
+
+当前文档中，`inputs.id` 是恢复 `@persist` Flow 的方式。但问题在于：
+同一个 UUID 同时承担了两个职责：
+
+1. **选择 `@persist` 从哪个快照恢复**——加载该 UUID 下保存的状态。
+2. **成为新执行的 Flow Execution ID**（SDK 中为 `state.id`；
+ 在某些上下文中显示为 `flow_id`）——本次 kickoff 产生的每次
+ `@persist` 写入也会落到同一个 UUID 下。
+
+这种“双重角色”正是本指南所述问题的根源。因为传入 UUID 同时也是
+新执行 id，所以两次传入同一个 `inputs.id` 的 kickoff 并不是两次独立执行：
+它们共享 id、共享持久化记录，并且（在 AMP 上）共享执行列表中的同一行。
+在不拆分这两个职责前，你无法表达“从这个快照恢复，但把这次运行单独记录”。
+
+`restore_from_state_id` 就是这个拆分。它只负责告诉 `@persist`
+从哪个快照恢复，同时让新执行获得新的 `state.id`。恢复来源与记录执行
+不再使用同一个 UUID——这才是大多数生产场景真正需要的行为。
+
+## 移除时间线
+
+用于 `@persist` 恢复的 `inputs.id` 计划在 CrewAI 的未来版本中移除。
+目前没有立即的硬性截止——现有 Flow 仍可运行——但当你升级到 v1.14.5+
+后，新代码应使用 `restore_from_state_id`，已有 Flow 也建议在合适时机迁移。
+
+## AMP
+
+如果你把 Flow 部署到 CrewAI AMP，迁移不仅涉及发给部署实例的 kickoff 载荷，
+复用 `inputs.id` 的可见症状也会出现在部署仪表板。下面两个小节分别说明。
+
+### 迁移 kickoff 载荷
+
+如果你当前通过在 `inputs` 中内嵌 `id` 来启动已部署 Flow：
+
+```bash
+# Deprecated
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "Authorization: ******" \
+  -d '{"inputs": {"id": "abcd1234-5678-90ef-ghij-klmnopqrstuv", "topic": "AI Agent Frameworks"}}' \
+  https://your-crew-url.crewai.com/kickoff
+```
+
+请把 UUID 移到顶层 `restoreFromStateId` 字段：
+
+```bash
+# Supported
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "Authorization: ******" \
+  -d '{
+        "inputs": {"topic": "AI Agent Frameworks"},
+        "restoreFromStateId": "abcd1234-5678-90ef-ghij-klmnopqrstuv"
+      }' \
+  https://your-crew-url.crewai.com/kickoff
+```
+
+`restoreFromStateId` 与 `inputs` 同级，不在 `inputs` 内部。
+`inputs` 现在应只承载 Flow 实际消费的输入值。
+
+### 复用 `inputs.id` 会发生什么
+
+当 AMP 收到某个 Flow 的 kickoff，且 `inputs.id` 命中已有执行时，
+它会解析到已有记录，而不是创建新记录。你会在部署仪表板看到：
+
+-**执行状态**——新运行会覆盖旧运行状态。一个已结束的执行可能重新变为
+ `running`；若新 kickoff 失败，原本 `completed` 的运行也可能变成 `error`。
+ 结果是仪表板不再反映原始那次运行。
+-**Traces**——由于共享同一执行 id，OTel traces 会跨多次 kickoff 叠加；
+ 旧运行 traces 可能被替换，或与新运行混杂。逐步回放不再对应单次执行。
+-**执行列表**——本应分行展示的多次 kickoff 会折叠为单条记录，历史被隐藏。
+
+迁移到 `restoreFromStateId` 后，每次 kickoff 都会保留为独立执行——
+拥有自己的状态、traces 和列表行——同时仍可从历史运行恢复状态。
+
+<Card title="需要帮助？" icon="headset" href="mailto:support@crewai.com">
+ 如果你不确定 Flow 该使用哪种模式，或迁移过程中遇到问题，请联系支持团队。
+</Card>

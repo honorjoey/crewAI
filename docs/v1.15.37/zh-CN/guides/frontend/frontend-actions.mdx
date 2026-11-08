@@ -1,0 +1,121 @@
+---
+title: 前端操作
+description: 让您的 CrewAI 代理调用在用户浏览器中运行的功能，从切换主题到导航应用程序。
+icon: bolt
+mode: "wide"
+---
+
+## 让代理对应用程序进行操作
+
+前端操作是代理调用的工具，它在浏览器而不是服务器上运行代码。模型决定调用它；您的处理程序切换主题、导航、突出显示元素或更新您的应用程序数据;结果流回给代理。
+
+它使用与基于工具的生成式 UI 相同的钩子 `useFrontendTool`。区别在于你给它的是什么：运行代码的 `handler` ，而不是（或旁边）绘制 UI 的 `render` 。
+
+<Note>
+前端操作可与 ​​Crews 和 Flows 配合使用。任何将 `copilotkit.actions` 绑定到其 LLM 调用的代理都可以调用它们。
+</Note>
+
+## 构建前端操作
+
+下面的示例让代理根据请求将应用程序切换到暗模式。
+
+<Steps>
+
+<Step title="在前端注册操作">
+
+使用 `handler` 调用 `useFrontendTool`。当代理调用该工具时，处理程序在浏览器中运行，并将其返回的字符串反馈给代理。
+
+```tsx
+"use client";
+import { useFrontendTool } from "@copilotkit/react-core/v2";
+import { z } from "zod";
+
+useFrontendTool({
+  agentId: "assistant",
+  name: "set_theme",
+  description: "Switch the app between light and dark mode.",
+  parameters: z.object({
+    theme: z.enum(["light", "dark"]),
+  }),
+  followUp: false,
+  handler: async ({ theme }) => {
+    document.documentElement.dataset.theme = theme; // runs in the browser
+    return `Theme set to ${theme}.`;
+  },
+});
+```
+
+论据：
+
+-**`name`**— 模型调用的工具名称 (`set_theme`)。
+-**`description`**— 该工具功能的简短说明。模型读取它来决定“何时”调用该工具，因此请使其具体化。省略它会让模型仅根据名称进行猜测。
+-**`parameters`**— 一个 [zod](https://zod.dev) 模式，描述模型必须提供的参数。 CopilotKit 将其转换为工具的 JSON 架构并验证传入呼叫。
+-**`handler(args)`**— 使用解析后的参数在浏览器中运行。在这里做你的副作用（设置主题、导航、更新状态）。您返回的字符串将作为工具结果返回给代理。
+-**`followUp: false`**— 在操作运行后阻止代理进行另一轮。当您希望代理在执行操作后做出响应时，请将其保留（或设置 `true`）。
+
+</Step>
+
+<Step title="在后端绑定前端工具">
+
+代理只能调用为其提供的工具。在您的流程中，将前端注册的工具通过 `*self.state.copilotkit.actions` 传递到 LLM `tools` 列表中。
+
+```python
+from crewai.flow.flow import Flow, start
+from litellm import acompletion
+from ag_ui_crewai.sdk import copilotkit_stream, CopilotKitState
+
+class AssistantFlow(Flow[CopilotKitState]):
+    @start()
+    async def chat(self):
+        response = await copilotkit_stream(
+            await acompletion(
+                model="openai/gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Help the user. Use the tools available to control the app."},
+                    *self.state.messages,
+                ],
+                tools=[*self.state.copilotkit.actions],  # tools the frontend registered
+                parallel_tool_calls=False,
+                stream=True,
+            )
+        )
+        message = response.choices[0].message
+        self.state.messages.append(message)
+```
+
+`self.state.copilotkit.actions` 保存用 `useFrontendTool` 注册的每个前端操作的工具定义。将它们传播到 LLM `tools` 列表中使代理能够调用浏览器端操作。 `copilotkit_stream` 流式传输响应（包括工具调用）返回到前端，CopilotKit 在此运行匹配的处理程序。
+
+</Step>
+
+<Step title="服务流量">
+
+使用 `add_crewai_flow_fastapi_endpoint(...)` 通过 AG-UI 公开流程并将其注册到 CopilotKit 运行时中，与[前端概述](/edge/zh-CN/guides/frontend/overview) 中完全相同。一旦两者都运行，要求助手“切换到深色模式”会触发 `set_theme`，然后页面翻转。
+
+</Step>
+
+</Steps>
+
+## 操作与生成 UI
+
+`useFrontendTool` 涵盖了范围的两端，您可以选择每个工具：
+
+| 您提供 | 它的作用 |
+| --- | --- |
+|**`handler`**| 在浏览器中运行代码（前端操作） |
+|**`render`**| 为工具调用绘制 UI（生成 UI） |
+
+您可以提供其中之一，或两者都提供。旁边有 `render` 的 `handler` 执行操作并在运行时绘制 UI。对于仅显示代理操作结果的仅渲染工具，请参阅[基于工具生成式 UI](/edge/zh-CN/guides/frontend/tool-based-generative-ui)。
+
+## 有关的
+
+<CardGroup cols={2}>
+ <Card title="基于工具的生成式 UI" icon="puzzle-piece" href="/edge/zh-CN/guides/frontend/tool-based-generative-ui">
+将代理工具调用映射到 React 组件。
+ </Card>
+ <Card title="人在环（Human-in-the-loop）" icon="user-check" href="/edge/zh-CN/guides/frontend/human-in-the-loop">
+控制用户批准后的代理操作。
+ </Card>
+ <Card title="共享状态" icon="arrows-rotate" href="/edge/zh-CN/guides/frontend/shared-state">
+保持代理状态和您的应用程序 UI 双向同步。
+ </Card>
+</CardGroup>

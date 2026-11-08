@@ -1,0 +1,232 @@
+---
+title: "Maxim Integration"
+description: "启动代理监控、评估和可观察性"
+icon: "infinity"
+mode: "wide"
+---
+
+# Maxim 概述
+
+Maxim AI 为您的 CrewAI 应用程序提供全面的代理监控、评估和可观察性。借助 Maxim 的单线集成，您可以轻松跟踪和分析座席交互、绩效指标等。
+
+## 功能
+
+### 提示管理
+
+Maxim 的提示管理功能使您能够为 CrewAI 座席创建、组织和优化提示。无需硬编码指令，而是利用 Maxim 的 SDK 动态检索和应用版本控制的提示。
+
+<Tabs>
+  <Tab title="Prompt Playground">
+ 通过 Playground 创建、完善、试验和部署提示。使用文件夹和版本组织提示，通过链接工具和上下文来试验现实世界的案例，并根据自定义逻辑进行部署。
+
+ 通过 [**配置模型**](https://www.getmaxim.ai/docs/introduction/quickstart/setting-up-workspace#add-model-api-keys) 轻松进行跨模型实验，并从提示游乐场顶部的下拉列表中选择相关模型。
+
+    <img src='https://raw.githubusercontent.com/akmadan/crewAI/docs_maxim_observability/docs/images/maxim_playground.png'> </img>
+  </Tab>
+  <Tab title="Prompt Versions">
+ 当团队构建 AI 应用程序时，实验的很大一部分是迭代提示结构。为了有效地协作并清晰地组织您的更改，Maxim 允许跨版本进行即时版本控制和比较。
+
+    <img src='https://raw.githubusercontent.com/akmadan/crewAI/docs_maxim_observability/docs/images/maxim_versions.png'> </img>
+  </Tab>
+  <Tab title="Prompt Comparisons">
+ 在发展 AI 应用程序时迭代提示需要跨模型、提示结构等进行实验。为了比较版本并就更改做出明智的决策，比较平台允许并排查看结果。
+
+    ## **为什么使用提示比较？**
+
+ 即时比较将多个单个提示合并为一个提示视图，为各种工作流程提供简化的方法：
+
+    1. **模型比较**：评估同一提示上不同模型的性能。
+    2. **提示优化**：比较提示的不同版本，以确定最有效的配方。
+    3. **跨模型一致性**：确保同一提示不同模型的输出一致。
+    4. **性能基准测试**：分析指标例如不同模型和提示之间的延迟、成本和令牌计数。
+  </Tab>
+</Tabs>
+
+### 可观察性和评估
+
+Maxim AI 为您的 CrewAI 代理提供全面的可观察性和评估，帮助您准确了解每次执行期间发生的情况。
+
+<Tabs>
+  <Tab title="Agent Tracing">
+ 轻松跟踪代理的完整生命周期，包括工具调用、代理轨迹和决策流程。
+
+    <img src='https://raw.githubusercontent.com/akmadan/crewAI/docs_maxim_observability/docs/images/maxim_agent_tracking.png'> </img>
+  </Tab>
+  <Tab title="Analytics + Evals">
+ 对完整跟踪运行详细评估或单个节点，支持：
+
+    - 多步交互和精细跟踪分析
+    - 会话级别评估
+    - 真实测试模拟
+
+    <img src='https://raw.githubusercontent.com/akmadan/crewAI/docs_maxim_observability/docs/images/maxim_trace_eval.png'> </img>
+
+    <CardGroup cols={3}>
+      <Card title="Auto Evals on Logs" icon="e" href="https://www.getmaxim.ai/docs/observe/how-to/evaluate-logs/auto-evaluation">
+        <p>
+根据过滤器和采样自动评估从UI捕获的日志
+
+        </p>
+      </Card>
+      <Card title="Human Evals on Logs" icon="hand" href="https://www.getmaxim.ai/docs/observe/how-to/evaluate-logs/human-evaluation">
+        <p>
+使用人工评估或评级来评估日志的质量并对其进行评估。
+
+        </p>
+      </Card>
+      <Card title="Node Level Evals" icon="road" href="https://www.getmaxim.ai/docs/observe/how-to/evaluate-logs/node-level-evaluation">
+        <p>
+评估跟踪或日志的任何组件以获得深入了解代理的行为。
+
+        </p>
+      </Card>
+    </CardGroup>
+    ---
+  </Tab>
+  <Tab title="Alerting">
+ 设置 **错误**、**成本、令牌使用、用户反馈、延迟** 的阈值，并通过 Slack 或 PagerDuty 获取实时警报。
+
+    <img src='https://raw.githubusercontent.com/akmadan/crewAI/docs_maxim_observability/docs/images/maxim_alerts_1.png'> </img>
+  </Tab>
+  <Tab title="Dashboards">
+ 轻松可视化随时间变化的跟踪、使用指标、延迟和错误率。
+
+    <img src='https://raw.githubusercontent.com/akmadan/crewAI/docs_maxim_observability/docs/images/maxim_dashboard_1.png'> </img>
+  </Tab>
+</Tabs>
+
+## 入门
+
+### 先决条件
+
+
+- Python 版本 \>=3.10
+- A Maxim 帐户([在这里注册](https://getmaxim.ai/))
+- 生成 Maxim API 密钥
+- CrewAI 项目
+
+### 安装
+
+通过 pip 安装 Maxim SDK：
+
+```python
+pip install maxim-py
+```
+
+或将其添加到您的`requirements.txt`：
+
+```
+maxim-py
+```
+### 基本设置
+
+### 1. 设置环境变量
+
+```python
+### Environment Variables Setup
+
+# Create a `.env` file in your project root:
+
+# Maxim API Configuration
+MAXIM_API_KEY=your_api_key_here
+MAXIM_LOG_REPO_ID=your_repo_id_here
+```
+
+### 2。导入所需的包
+
+```python
+from crewai import Agent, Task, Crew, Process
+from maxim import Maxim
+from maxim.logger.crewai import instrument_crewai
+```
+
+### 3。使用您的 API 密钥
+
+
+```python {8}
+# Instrument CrewAI with just one line
+instrument_crewai(Maxim().logger())
+```
+
+### 4 初始化 Maxim。像往常一样创建并运行您的 CrewAI 应用程序
+
+```python
+# Create your agent
+researcher = Agent(
+    role='Senior Research Analyst',
+    goal='Uncover cutting-edge developments in AI',
+    backstory="You are an expert researcher at a tech think tank...",
+    verbose=True,
+    llm=llm
+)
+
+# Define the task
+research_task = Task(
+    description="Research the latest AI advancements...",
+    expected_output="",
+    agent=researcher
+)
+
+# Configure and run the crew
+crew = Crew(
+    agents=[researcher],
+    tasks=[research_task],
+    verbose=True
+)
+
+try:
+    result = crew.kickoff()
+finally:
+    maxim.cleanup()  # Ensure cleanup happens even if errors occur
+```
+
+
+就这样\！现在，您所有的 CrewAI 代理交互都将被记录并显示在您的 Maxim 仪表板中。
+
+查看此 Google Colab Notebook 以获取快速参考 - [笔记本](https://colab.research.google.com/drive/1ZKIZWsmgQQ46n8TH9zLsT1negKkJA6K8?usp=sharing)
+
+## 查看您的踪迹
+
+运行您的 CrewAI 应用程序后：
+
+1. 登录到您的 [马克西姆仪表板](https://app.getmaxim.ai/login)
+2. 导航到您的存储库
+3. 查看详细信息代理跟踪，包括：
+   - 代理对话
+   - 工具使用模式
+   - 性能指标
+   - 成本分析
+
+    <img src='https://raw.githubusercontent.com/akmadan/crewAI/docs_maxim_observability/docs/images/crewai_traces.gif'> </img>
+
+## 故障排除
+
+### 常见问题
+
+- **未出现任何痕迹**：确保您的 API 密钥和存储库 ID 正确
+- 确保您已**`called instrument_crewai()`** **_在_**运行你的团队之前。这将正确初始化日志记录挂钩。
+- 在`instrument_crewai()`调用中设置`debug=True`以显示任何内部错误：
+
+  ```python
+  instrument_crewai(logger, debug=True)
+  ```
+- 使用`verbose=True`配置您的代理以捕获详细日志：
+
+  ```python
+  agent = CrewAgent(..., verbose=True)
+  ```
+- 在创建或执行代理之前**仔细检查`instrument_crewai()`是否被调用。这可能是显而易见的，但这是一个常见的疏忽。
+
+## 资源
+
+<CardGroup cols="3">
+  <Card title="CrewAI Docs" icon="book" href="https://docs.crewai.com/">
+CrewAI 官方文档
+  </Card>
+  <Card title="Maxim Docs" icon="book" href="https://getmaxim.ai/docs">
+Maxim 官方文档
+  </Card>
+  <Card title="Maxim Github" icon="github" href="https://github.com/maximhq">
+Maxim Github
+  </Card>
+</CardGroup>

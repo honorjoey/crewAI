@@ -1,0 +1,142 @@
+---
+title: 阶梯挂钩
+description: 使用 CrewAI 中的 PRE_STEP 和 POST_STEP 挂钩拦截任务和流程方法步骤
+mode: "wide"
+---
+
+步骤钩子拦截执行中的每个工作单元：每个工作人员**任务**
+以及每一个**流程方法**。使用它们来检查或重写内容
+步骤，改变结果，或追踪一步一步的进展 - 没有
+触及个人LLM或工具调用的水平。
+
+## 概述
+
+两个拦截点覆盖步骤：
+
+| 观点 | 什么时候 | `ctx.payload` |
+|-------|------|---------------|
+| `PRE_STEP` | 在任务或流程方法运行之前 | 步进输入（见下文） |
+| `POST_STEP` | 任务或流程方法运行后 | 步进输出（见下文） |
+
+有效负载包含什么取决于`ctx.kind`：
+
+| `ctx.kind` | `PRE_STEP`有效负载 | `POST_STEP`有效负载 |
+|------------|--------------------|---------------------|
+| `"task"` | 传递给代理的上下文字符串 | `TaskOutput` 对象 |
+| `"flow_method"` | 该方法的参数为 `dict` | 方法的返回值 |
+
+对于流方法，位置参数出现在 `_0` 下的 params dict 中，
+`_1`, ... 各自名称下的键和关键字参数；编辑和
+替换被映射回实际调用。
+
+## 挂钩签名
+
+```python
+from crewai.hooks import on, HookAborted, InterceptionPoint
+
+@on(InterceptionPoint.PRE_STEP)
+def step_hook(ctx) -> Any | None:
+    # Mutate ctx.payload in place, or
+    # return a non-None value to replace it, or
+    # raise HookAborted(reason, source) to stop the step
+    return None
+```
+
+## 上下文模式
+
+两个点都会收到 `StepContext`：
+
+```python
+class StepContext(InterceptionContext):
+    payload: Any            # Step input (pre) or step output (post)
+    kind: str | None        # "task" or "flow_method"
+    step_name: str | None   # Task name/description, or flow method name
+    output: Any             # POST_STEP only: same object as payload
+    agent: Any              # Task steps: the executing agent (else None)
+    agent_role: str | None  # Task steps: the agent's role (else None)
+    task: Any               # Task steps: the Task instance (else None)
+    crew: Any               # None for step points
+    flow: Any               # Flow-method steps: the Flow instance (else None)
+```
+
+对于任务步骤，`step_name` 是任务的`name`（回退到其
+描述）。对于流程方法步骤，它是方法名称。
+
+## 常见用例
+
+### 步数追踪
+
+```python
+@on(InterceptionPoint.POST_STEP)
+def trace_steps(ctx):
+    print(f"{ctx.kind} '{ctx.step_name}' finished")
+```
+
+### 重写任务上下文
+
+```python
+@on(InterceptionPoint.PRE_STEP)
+def inject_disclaimer(ctx):
+    if ctx.kind != "task":
+        return None
+    return f"{ctx.payload}\n\nNote: treat all figures as estimates."
+```
+
+### 转换任务输出
+
+```python
+@on(InterceptionPoint.POST_STEP)
+def normalize_output(ctx):
+    if ctx.kind != "task":
+        return None
+    ctx.payload.raw = ctx.payload.raw.strip()
+```
+
+<Note>
+`POST_STEP` 在存储任务输出之前运行，因此重写会传播
+使用输出的任何地方：下游任务上下文、回调、最终的
+工作人员输出，以及任务在磁盘上的`output_file`。
+</Note>
+
+### 护流方法
+
+```python
+@on(InterceptionPoint.PRE_STEP)
+def guard_publish(ctx):
+    if ctx.kind == "flow_method" and ctx.step_name == "publish":
+        if not ctx.flow.state.get("reviewed"):
+            raise HookAborted(reason="publish requires review", source="review-gate")
+```
+
+### 按代理过滤
+
+步骤挂钩支持与其他点相同的 `agents=` 过滤器（匹配
+针对任务步骤中执行代理的角色）：
+
+```python
+@on(InterceptionPoint.POST_STEP, agents=["Researcher"])
+def log_research_steps(ctx):
+    print(f"research step done: {ctx.step_name}")
+```
+
+## 中止步骤
+
+在 `PRE_STEP` 中引发 `HookAborted` 将停止任何代理或方法之前的步骤
+工作发生，中止及其原因从执行中传播出来 -
+它没有被吞掉。由步骤钩子引发的任何其他异常都会被吞掉
+（故障打开），就像在其他所有点一样。
+
+## 管理测试中的 Hook
+
+```python
+from crewai.hooks import clear_all_hooks
+
+clear_all_hooks()  # Clears every point, including steps
+```
+
+## 相关文档
+
+- [执行挂钩概述 →](/edge/zh-CN/learn/execution-hooks)
+- [执行边界挂钩→](/edge/zh-CN/learn/execution-boundary-hooks)
+- [LLM呼叫挂钩 →](/edge/zh-CN/learn/llm-hooks)
+- [工具调用挂钩 →](/edge/zh-CN/learn/tool-hooks)

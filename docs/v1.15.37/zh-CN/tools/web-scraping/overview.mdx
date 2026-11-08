@@ -1,0 +1,112 @@
+---
+title: "概览"
+description: "从网站提取数据,并将浏览器与强大的刮切工具进行自动交互"
+icon: "face-smile"
+mode: "wide"
+---
+
+这些工具使您的代理能够与网络交互,从网站提取数据,以及自动化基于浏览器的任务. 从简单的网页刮刮到复杂的浏览器自动化,这些工具涵盖了你所有的网页交互需求.
+
+## **可用工具**
+
+<CardGroup cols={2}>
+  <Card title="Scrape 网站工具" icon="globe" href="/zh-CN/tools/web-scraping/scrapewebsitetool">
+    用于从任何网站提取内容的通用网络刮刮工具。
+  </Card>
+
+  <Card title="拼贴元素工具" icon="crosshairs" href="/zh-CN/tools/web-scraping/scrapeelementfromwebsitetool">
+    以网页上具有精确刮除能力的具体内容为目标。
+  </Card>
+
+  <Card title="Firecrawl 爬行工具" icon="spider" href="/zh-CN/tools/web-scraping/firecrawlcrawlwebsitetool">
+    用Firecrawl强大的引擎系统爬行整个网站.
+  </Card>
+
+  <Card title="Firecrawl 拼贴工具" icon="fire" href="/zh-CN/tools/web-scraping/firecrawlscrapewebsitetool">
+    以Firecrawl的先进能力进行高性能网络刮刮.
+  </Card>
+
+  <Card title="Firecrawl 搜索工具" icon="magnifying-glass" href="/zh-CN/tools/web-scraping/firecrawlsearchtool">
+    利用Firecrawl的搜索功能搜索并提取具体内容.
+  </Card>
+
+  <Card title="硒碎屑工具" icon="robot" href="/zh-CN/tools/web-scraping/seleniumscrapingtool">
+    浏览器自动化和刮刮,具有硒WebDriver能力.
+  </Card>
+
+  <Card title="垃圾飞行工具" icon="plane" href="/zh-CN/tools/web-scraping/scrapflyscrapetool">
+    专业网络的刮刮 与ScrapFly的溢价刮刮服务。
+  </Card>
+
+  <Card title="碎纸工具" icon="network-wired" href="/zh-CN/tools/web-scraping/scrapegraphscrapetool">
+    基于图表的网络擦拭,用于复杂的数据关系.
+  </Card>
+
+  <Card title="蜘蛛工具" icon="spider" href="/zh-CN/tools/web-scraping/spidertool">
+    综合网络爬行和数据提取能力.
+  </Card>
+
+  <Card title="浏览器工具" icon="browser" href="/zh-CN/tools/web-scraping/browserbaseloadtool">
+    基于云的浏览器自动化与浏览器Base基础设施.
+  </Card>
+
+  <Card title="超浏览器工具" icon="window-maximize" href="/zh-CN/tools/web-scraping/hyperbrowserloadtool">
+    快浏览器与HyperBrowser优化引擎的交互.
+  </Card>
+
+  <Card title="阶段手动工具" icon="hand" href="/zh-CN/tools/web-scraping/stagehandtool">
+    具有自然语言指令的智能浏览器自动化.
+  </Card>
+
+  <Card title="氧气碎屑工具" icon="globe" href="/zh-CN/tools/web-scraping/oxylabsscraperstool">
+    与Oxylabs大规模访问网络数据.
+  </Card>
+
+  <Card title="亮度数据工具" icon="spider" href="/zh-CN/tools/web-scraping/brightdata-tools">
+    SERP搜索,Web Unlocker,和Dataset API集成.
+  </Card>
+</CardGroup>
+
+## **常见使用案例**
+
+- ○ 拼凑产品信息、价格和审查
+- 0:网站和新闻来源的跟踪变化
+- "0":提取联系信息和商业数据.
+- ○ 收集竞争性情报和市场数据
+- "0":自动浏览器测试和验证工作流程
+- 0:摘录文章、评论和社交媒体分析
+
+## **快速启动示例**
+
+```python
+from crewai_tools import ScrapeWebsiteTool, FirecrawlScrapeWebsiteTool, SeleniumScrapingTool
+
+# Create scraping tools
+simple_scraper = ScrapeWebsiteTool()
+advanced_scraper = FirecrawlScrapeWebsiteTool()
+browser_automation = SeleniumScrapingTool()
+
+# Add to your agent
+agent = Agent(
+    role="Web Research Specialist",
+    tools=[simple_scraper, advanced_scraper, browser_automation],
+    goal="Extract and analyze web data efficiently"
+)
+```
+
+## **寻找最佳做法**
+
+- ^ 0: 总是检查和跟踪网站的删除政策
+- ^0: 执行请求之间的延迟以避免服务器过多
+- "0":使用适当的用户代理字符串来识别您的机器人
+- ○ 保证您的刮刮活动符合服务条件
+- **处理错误**:对网络问题和被封请求实施有力的错误处理
+- **数据质量**:处理前验证和清理提取的数据
+
+## **工具选择指南**
+
+- **简单任务**:使用`ScrapeWebsiteTool` 用于基本内容提取
+- **JavaScript- 沉重的站点**:使用`SeleniumScrapingTool` 用于动态内容
+- **缩放性能( P)**:使用`FirecrawlScrapeWebsiteTool` 用于大容量刮刮
+- **云基础设施**:使用`BrowserBaseLoadTool` 可缩放浏览器自动化
+- **复杂工作流程**:使用`StagehandTool` 用于智能浏览器交互

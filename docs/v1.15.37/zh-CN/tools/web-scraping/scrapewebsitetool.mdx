@@ -1,0 +1,50 @@
+---
+title: "Scrape 网站"
+description: "Scrape 网站 工具文档。"
+icon: magnifying-glass-location
+mode: "wide"
+---
+
+# `ScrapeWebsiteTool`
+
+<Note>
+    我们仍然在努力改进工具,所以将来可能会有出乎意料的行为或变化.
+</Note>
+
+## 说明
+
+一个用于提取和阅读指定网站内容的工具. 它能够通过制作HTTP请求和解析收到的HTML内容来处理各种类型的网页.
+这一工具对于网络刮刮任务、数据收集或从网站提取具体信息特别有用。
+
+获取通过 CrewAI 的 SSRF 安全 HTTP 帮助器: 所请求的 URL 和每一次重定向的 hop 会被对照私有和保留范围( 包括云元数据 和共享地址空间, 如 Tailscale ) 检查`100.64.0.0/10`)),TCP连接被固定在通过该检查的IP上.
+
+## 安装
+
+安装船员工具包
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 示例
+
+```python
+from crewai_tools import ScrapeWebsiteTool
+
+# To enable scrapping any website it finds during it's execution
+tool = ScrapeWebsiteTool()
+
+# Initialize the tool with the website URL, 
+# so the agent can only scrap the content of the specified website
+tool = ScrapeWebsiteTool(website_url='https://www.example.com')
+
+# Extract the text from the site
+text = tool.run()
+print(text)
+```
+
+## 参数
+
+| 参数| 类型| 说明|
+|:---------------|:---------|:-------------------------------------------------------------------------------------------------------------------------------------|
+| **网站url**  | `弦 '| 浏览文件的网站 URL 。 这是该工具的主要投入,具体说明哪些网站的内容应当删除和阅读。|

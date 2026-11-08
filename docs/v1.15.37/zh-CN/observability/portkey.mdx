@@ -1,0 +1,823 @@
+---
+title: Portkey 整合
+description: 如何使用带有 CrewAI 的 Portkey
+icon: key
+mode: "wide"
+---
+
+<img src="https://raw.githubusercontent.com/siddharthsambharia-portkey/Portkey-Product-Images/main/Portkey-CrewAI.png" alt="Portkey CrewAI Header Image" width="70%" />
+
+
+
+## 导言
+
+Portkey通过提供:
+
+- ** 完成每个代理步骤、工具使用和相互作用的可观察性**
+- ** 装设可靠性**,并装设折返、折返和负载平衡
+- ** 成本跟踪和优化** 管理你的人工智能支出
+- ** 通过单一整合方式获得200+LLM学位**
+- * 守护者** 保持特工行为安全和合规
+- ** 持续剂性能的蒸汽控制提示**
+
+
+### 安装和设置
+
+<Steps>
+<Step title="Install the required packages">
+```bash
+pip install -U crewai portkey-ai
+```
+</Step>
+
+<Step title="Generate API Key" icon="lock">
+从 [Portkey 仪表板] 创建可选预算/速率限制的 Portkey API 键(https://app.portkey.ai/) (中文(简体) ). 您也可以将配置附加到此密钥上, 用于可靠性、 缓存和更多的配置 。 以后再谈这个
+</Step>
+
+<Step title="Configure CrewAI with Portkey">
+集成很简单 - 您只需要更新您的 CrewAI 设置中的 LLM 配置 :
+
+```python
+from crewai import LLM
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+# Create an LLM instance with Portkey integration
+gpt_llm = LLM(
+    model="gpt-4o",
+    base_url=PORTKEY_GATEWAY_URL,
+    api_key="dummy",  # We are using a Virtual key, so this is a placeholder
+    extra_headers=createHeaders(
+        api_key="YOUR_PORTKEY_API_KEY",
+        virtual_key="YOUR_LLM_VIRTUAL_KEY",
+        trace_id="unique-trace-id",               # Optional, for request tracing
+    )
+)
+
+#Use them in your Crew Agents like this:
+
+	@agent
+	def lead_market_analyst(self) -> Agent:
+		return Agent(
+			config=self.agents_config['lead_market_analyst'],
+			verbose=True,
+			memory=False,
+			llm=gpt_llm
+		)
+
+```
+
+<Info>
+** 什么是虚拟密钥? ** Portkey中的虚拟密钥安全地将您的 LLM 提供者 API 密钥( OpenAI, Anthropic等) 存储在一个加密的金库中. 它们便于关键轮换和预算管理。 [更多关于虚拟密钥在这里](https://portkey.ai/docs/product/ai-gateway/virtual-keys).
+</Info>
+</Step>
+</Steps>
+
+## 生产特点
+
+### 1. 加强可观察性
+
+Portkey为你们CrewAI的特工提供了全面的可观察性,帮助你们了解每次处决期间发生的确切情况.
+
+<Tabs>
+  <Tab title="Traces">
+<Frame>
+    <img src="https://raw.githubusercontent.com/siddharthsambharia-portkey/Portkey-Product-Images/refs/heads/main/CrewAI%20Product%2011.1.webp"/>
+</Frame>
+
+Tracks提供你们船员执行的分级视图,显示LLM调用,工具引用和状态过渡的顺序.
+
+```python
+# Add trace_id to enable hierarchical tracing in Portkey
+portkey_llm = LLM(
+    model="gpt-4o",
+    base_url=PORTKEY_GATEWAY_URL,
+    api_key="dummy",
+    extra_headers=createHeaders(
+        api_key="YOUR_PORTKEY_API_KEY",
+        virtual_key="YOUR_OPENAI_VIRTUAL_KEY",
+        trace_id="unique-session-id"  # Add unique trace ID
+    )
+)
+```
+  </Tab>
+
+  <Tab title="Logs">
+<Frame>
+    <img src="https://raw.githubusercontent.com/siddharthsambharia-portkey/Portkey-Product-Images/refs/heads/main/CrewAI%20Portkey%20Docs%20Metadata.png"/>
+</Frame>
+
+Portkey 记录与 LLMs 的每次交互,包括:
+
+- 完整的请求和反应有效载荷
+- 延迟和象征性使用指标
+- 费用计算
+- 工具呼叫和功能处决
+
+所有日志都可以通过元数据,痕量ID,模型等进行过滤,从而容易调试特定的机组运行.
+  </Tab>
+
+  <Tab title="Metrics & Dashboards">
+<Frame>
+    <img src="https://raw.githubusercontent.com/siddharthsambharia-portkey/Portkey-Product-Images/refs/heads/main/CrewAI%20Dashboard.png"/>
+</Frame>
+
+Portkey提供内置的仪表板,帮助您:
+
+- 所有机组人员的跟踪成本和信使使用情况
+- 分析性能指标,如耐久性和成功率
+- 识别代理工作流程中的瓶颈
+- 比较不同的机组配置和 LLMS
+
+您可以通过自定义元数据过滤和分割所有度量,以分析特定的机组类型,用户组,或者使用大小写.
+  </Tab>
+
+  <Tab title="Metadata Filtering">
+<Frame>
+  <img src="https://raw.githubusercontent.com/siddharthsambharia-portkey/Portkey-Product-Images/refs/heads/main/Metadata%20Filters%20from%20CrewAI.png" alt="Analytics with metadata filters" />
+</Frame>
+
+在您的 CrewAI LLM 配置中添加自定义元数据, 以允许强大的过滤和分区 :
+
+```python
+portkey_llm = LLM(
+    model="gpt-4o",
+    base_url=PORTKEY_GATEWAY_URL,
+    api_key="dummy",
+    extra_headers=createHeaders(
+        api_key="YOUR_PORTKEY_API_KEY",
+        virtual_key="YOUR_OPENAI_VIRTUAL_KEY",
+        metadata={
+            "crew_type": "research_crew",
+            "environment": "production",
+            "_user": "user_123",   # Special _user field for user analytics
+            "request_source": "mobile_app"
+        }
+    )
+)
+```
+
+这个元数据可以用来过滤Portkey仪表板上的日志,痕迹,和度量衡,使您能够分析特定的机组运行,用户,或环境.
+  </Tab>
+</Tabs>
+
+### 2. 可靠性 - 保持船员顺利运行
+
+在生产中运行船员时,事情可能会出错——API的费率限制,网络问题,或供应商停产. Portkey的可靠性特性确保了你的特工即使在出现问题时也能顺利运行.
+
+在您的 CrewAI 设置中, 使用 Portkey 配置可以简单实现倒置 :
+
+```python
+from crewai import LLM
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+# Create LLM with fallback configuration
+portkey_llm = LLM(
+    model="gpt-4o",
+    max_tokens=1000,
+    base_url=PORTKEY_GATEWAY_URL,
+    api_key="dummy",
+    extra_headers=createHeaders(
+        api_key="YOUR_PORTKEY_API_KEY",
+        config={
+            "strategy": {
+                "mode": "fallback"
+            },
+            "targets": [
+                {
+                    "provider": "openai",
+                    "api_key": "YOUR_OPENAI_API_KEY",
+                    "override_params": {"model": "gpt-4o"}
+                },
+                {
+                    "provider": "anthropic",
+                    "api_key": "YOUR_ANTHROPIC_API_KEY",
+                    "override_params": {"model": "claude-3-opus-20240229"}
+                }
+            ]
+        }
+    )
+)
+
+# Use this LLM configuration with your agents
+```
+
+如果 GPT-4o 请求失败, 此配置会自动尝试 Claude, 确保您的机组能够继续运行 。
+
+<CardGroup cols="2">
+  <Card title="Automatic Retries" icon="rotate" href="https://portkey.ai/docs/product/ai-gateway/automatic-retries">
+自动处理临时故障 。 如果 LLM 调用失败, Portkey 将重试同样的要求, 用于指定的次数 - 完全适合速率限制或网络 blips 。
+  </Card>
+  <Card title="Request Timeouts" icon="clock" href="https://portkey.ai/docs/product/ai-gateway/request-timeouts">
+防止你的探员被吊死 设定超时, 以确保您在您所需的时间范围内得到回复( 或能够顺利失败 ) 。
+  </Card>
+  <Card title="Conditional Routing" icon="route" href="https://portkey.ai/docs/product/ai-gateway/conditional-routing">
+向不同的提供者发送不同的请求 。 路线复杂推理到GPT-4,创意任务到克劳德,并根据你的需要迅速回应双子座.
+  </Card>
+  <Card title="Fallbacks" icon="shield" href="https://portkey.ai/docs/product/ai-gateway/fallbacks">
+继续运行, 即使您的主要提供者失败 。 自动切换到备份提供者以保持可用性.
+  </Card>
+  <Card title="Load Balancing" icon="scale-balanced" href="https://portkey.ai/docs/product/ai-gateway/load-balancing">
+将请求分散到多个API密钥或提供者之间. 对高容量的机组操作和保持在速率限度内都有好处.
+  </Card>
+</CardGroup>
+
+### 3. 推动CrewAI
+
+Portkey的快速工程工作室帮助您创建,管理和优化您的CrewAI代理中所使用的提示. 而不是硬编码提示或指令,而是使用Portkey的即时渲染API来动态获取并应用你的版本提示.
+
+<Frame caption="Manage prompts in Portkey's Prompt Library">
+! [快速播放场界面](https://raw.githubusercontent.com/siddharthsambharia-portkey/Portkey-Product-Images/refs/heads/main/CrewAI%20Portkey%20Docs.webp)
+</Frame>
+
+<Tabs>
+  <Tab title="Prompt Playground">
+Plain Playground 是用来比较、测试和部署完美的 AI 应用提示的地方。 在那里,你用不同的模型,测试变量,比较输出,在部署到生产之前,完善你的快速工程策略. 它允许你:
+
+1. 在您的代理中使用前主动开发提示
+2. 具有不同变量和模型的测试提示
+3. 比较不同即时版本之间的输出
+4. 就迅速发展与小组成员合作
+
+这种视觉环境使得你更容易为CrewAI代理的工作流程中的每一步设计有效的提示.
+  </Tab>
+
+  <Tab title="Using Prompt Templates">
+快速 Render API 以所有配置参数检索您的快速模板 :
+
+```python
+from crewai import Agent, LLM
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL, Portkey
+
+# Initialize Portkey admin client
+portkey_admin = Portkey(api_key="YOUR_PORTKEY_API_KEY")
+
+# Retrieve prompt using the render API
+prompt_data = portkey_client.prompts.render(
+    prompt_id="YOUR_PROMPT_ID",
+    variables={
+        "agent_role": "Senior Research Scientist",
+    }
+)
+
+backstory_agent_prompt=prompt_data.data.messages[0]["content"]
+
+
+# Set up LLM with Portkey integration
+portkey_llm = LLM(
+    model="gpt-4o",
+    base_url=PORTKEY_GATEWAY_URL,
+    api_key="dummy",
+    extra_headers=createHeaders(
+        api_key="YOUR_PORTKEY_API_KEY",
+        virtual_key="YOUR_OPENAI_VIRTUAL_KEY"
+    )
+)
+
+# Create agent using the rendered prompt
+researcher = Agent(
+    role="Senior Research Scientist",
+    goal="Discover groundbreaking insights about the assigned topic",
+    backstory=backstory_agent,  # Use the rendered prompt
+    verbose=True,
+    llm=portkey_llm
+)
+```
+  </Tab>
+
+  <Tab title="Prompt Versioning">
+你们可以:
+- 创建同一提示的多个版本
+- 比较版本之间的性能
+- 如果需要, 回滚到以前的版本
+- 指定代码中要使用的版本 :
+
+```python
+# Use a specific prompt version
+prompt_data = portkey_admin.prompts.render(
+    prompt_id="YOUR_PROMPT_ID@version_number",
+    variables={
+        "agent_role": "Senior Research Scientist",
+        "agent_goal": "Discover groundbreaking insights"
+    }
+)
+```
+  </Tab>
+
+  <Tab title="Mustache Templating for variables">
+Portkey 提示使用 Mustache 风格的诱导来方便可变替换 :
+
+```
+You are a {{agent_role}} with expertise in {{domain}}.
+
+Your mission is to {{agent_goal}} by leveraging your knowledge
+and experience in the field.
+
+Always maintain a {{tone}} tone and focus on providing {{focus_area}}.
+```
+
+在渲染时,只需通过变量:
+
+```python
+prompt_data = portkey_admin.prompts.render(
+    prompt_id="YOUR_PROMPT_ID",
+    variables={
+        "agent_role": "Senior Research Scientist",
+        "domain": "artificial intelligence",
+        "agent_goal": "discover groundbreaking insights",
+        "tone": "professional",
+        "focus_area": "practical applications"
+    }
+)
+```
+  </Tab>
+</Tabs>
+
+<Card title="Prompt Engineering Studio" icon="wand-magic-sparkles" href="https://portkey.ai/docs/product/prompt-library">
+更多了解 Portkey 的即时管理特性
+</Card>
+
+### 4. 安全乘务员的护卫
+
+护卫人员确保你们CrewAI的特工安全行动,并在所有情况下作出适当的反应.
+
+为什么用护栏?
+
+CrewAI代理可以经历各种故障模式:
+- 产生有害或不适当的内容
+- 泄露像PII这样的敏感信息
+- 迷惑错误的信息
+- 以不正确格式生成输出
+
+Portkey的护栏增加了对投入和产出的保护.
+
+** 执行护卫设施**
+
+```python
+from crewai import Agent, LLM
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+# Create LLM with guardrails
+portkey_llm = LLM(
+    model="gpt-4o",
+    base_url=PORTKEY_GATEWAY_URL,
+    api_key="dummy",
+    extra_headers=createHeaders(
+        api_key="YOUR_PORTKEY_API_KEY",
+        virtual_key="YOUR_OPENAI_VIRTUAL_KEY",
+        config={
+            "input_guardrails": ["guardrails-id-xxx", "guardrails-id-yyy"],
+            "output_guardrails": ["guardrails-id-zzz"]
+        }
+    )
+)
+
+# Create agent with guardrailed LLM
+researcher = Agent(
+    role="Senior Research Scientist",
+    goal="Discover groundbreaking insights about the assigned topic",
+    backstory="You are an expert researcher with deep domain knowledge.",
+    verbose=True,
+    llm=portkey_llm
+)
+```
+
+Portkey的护栏可以:
+- 在投入和产出中检测和编辑PII
+- 过滤有害或不适当的内容
+- 对照计划验证响应格式
+- 检查幻觉与地面真相
+- 应用自定义的商业逻辑和规则
+
+<Card title="Learn More About Guardrails" icon="shield-check" href="https://portkey.ai/docs/product/guardrails">
+探索Portkey的护卫功能,以加强代理安全
+</Card>
+
+### 5. 用户跟踪元数据
+
+使用 Portkey 的元数据系统通过您的 CrewAI 代理跟踪个人用户 。
+
+** Portkey 中的元数据是什么? **
+
+元数据允许您将自定义数据与每个请求关联,允许过滤、分割和分析。 特别`_user`字段是专门为用户跟踪设计的。
+
+```python
+from crewai import Agent, LLM
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+# Configure LLM with user tracking
+portkey_llm = LLM(
+    model="gpt-4o",
+    base_url=PORTKEY_GATEWAY_URL,
+    api_key="dummy",
+    extra_headers=createHeaders(
+        api_key="YOUR_PORTKEY_API_KEY",
+        virtual_key="YOUR_OPENAI_VIRTUAL_KEY",
+        metadata={
+            "_user": "user_123",  # Special _user field for user analytics
+            "user_tier": "premium",
+            "user_company": "Acme Corp",
+            "session_id": "abc-123"
+        }
+    )
+)
+
+# Create agent with tracked LLM
+researcher = Agent(
+    role="Senior Research Scientist",
+    goal="Discover groundbreaking insights about the assigned topic",
+    backstory="You are an expert researcher with deep domain knowledge.",
+    verbose=True,
+    llm=portkey_llm
+)
+```
+
+** 用户的Filter分析**
+
+有了元数据,您就可以通过用户过滤分析并按每个用户分析性能度量:
+
+<Frame caption="Filter analytics by user">
+  <img src="https://raw.githubusercontent.com/siddharthsambharia-portkey/Portkey-Product-Images/refs/heads/main/Metadata%20Filters%20from%20CrewAI.png"/>
+</Frame>
+
+这样可以:
+- 用户成本跟踪和预算编制
+- 个性化用户分析
+- 团队或组织一级的衡量标准
+- 环境监测(Stage vs.生产)
+
+<Card title="Learn More About Metadata" icon="tags" href="https://portkey.ai/docs/product/observability/metadata">
+探索如何使用自定义元数据来加强分析
+</Card>
+
+### 6. 为高效机组人员而搭载
+
+执行缓存措施,使联合国CrewAI代理商更有效率和成本效益:
+
+<Tabs>
+  <Tab title="Simple Caching">
+```python
+from crewai import Agent, LLM
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+# Configure LLM with simple caching
+portkey_llm = LLM(
+    model="gpt-4o",
+    base_url=PORTKEY_GATEWAY_URL,
+    api_key="dummy",
+    extra_headers=createHeaders(
+        api_key="YOUR_PORTKEY_API_KEY",
+        virtual_key="YOUR_OPENAI_VIRTUAL_KEY",
+        config={
+            "cache": {
+                "mode": "simple"
+            }
+        }
+    )
+)
+
+# Create agent with cached LLM
+researcher = Agent(
+    role="Senior Research Scientist",
+    goal="Discover groundbreaking insights about the assigned topic",
+    backstory="You are an expert researcher with deep domain knowledge.",
+    verbose=True,
+    llm=portkey_llm
+)
+```
+
+简单的缓存执行精确匹配的输入提示,缓存相同的请求以避免冗余模式处决.
+  </Tab>
+
+  <Tab title="Semantic Caching">
+```python
+from crewai import Agent, LLM
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+# Configure LLM with semantic caching
+portkey_llm = LLM(
+    model="gpt-4o",
+    base_url=PORTKEY_GATEWAY_URL,
+    api_key="dummy",
+    extra_headers=createHeaders(
+        api_key="YOUR_PORTKEY_API_KEY",
+        virtual_key="YOUR_OPENAI_VIRTUAL_KEY",
+        config={
+            "cache": {
+                "mode": "semantic"
+            }
+        }
+    )
+)
+
+# Create agent with semantically cached LLM
+researcher = Agent(
+    role="Senior Research Scientist",
+    goal="Discover groundbreaking insights about the assigned topic",
+    backstory="You are an expert researcher with deep domain knowledge.",
+    verbose=True,
+    llm=portkey_llm
+)
+```
+
+语义性缓存考虑输入请求之间的上下文相似性,缓存响应,以表达类似输入.
+  </Tab>
+</Tabs>
+
+### 7. 模式互操作性
+
+CrewAI支持多个LLM供应商,Portkey通过一个统一的接口为超过200个LLMs提供访问,从而扩展了这一能力. 在不改变核心代理逻辑的情况下,您可以轻松地在不同的模型之间切换:
+
+```python
+from crewai import Agent, LLM
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+# Set up LLMs with different providers
+openai_llm = LLM(
+    model="gpt-4o",
+    base_url=PORTKEY_GATEWAY_URL,
+    api_key="dummy",
+    extra_headers=createHeaders(
+        api_key="YOUR_PORTKEY_API_KEY",
+        virtual_key="YOUR_OPENAI_VIRTUAL_KEY"
+    )
+)
+
+anthropic_llm = LLM(
+    model="claude-3-5-sonnet-latest",
+    max_tokens=1000,
+    base_url=PORTKEY_GATEWAY_URL,
+    api_key="dummy",
+    extra_headers=createHeaders(
+        api_key="YOUR_PORTKEY_API_KEY",
+        virtual_key="YOUR_ANTHROPIC_VIRTUAL_KEY"
+    )
+)
+
+# Choose which LLM to use for each agent based on your needs
+researcher = Agent(
+    role="Senior Research Scientist",
+    goal="Discover groundbreaking insights about the assigned topic",
+    backstory="You are an expert researcher with deep domain knowledge.",
+    verbose=True,
+    llm=openai_llm  # Use anthropic_llm for Anthropic
+)
+```
+
+Portkey提供供应商对LLMs的访问,包括:
+
+- OpenAI(GPT-4o,GPT-4 Turbo等) (中文(简体) ).
+- Anthropic)(克劳德·3.5·索内特,克劳德3·奥普斯等.
+- Mistral AI (Mistral Large, Mistral Medium等) 维基语录链接:名人名言 - 文学作品 - 谚语 - 谚语 - 谚语 - 谚语 - 谚语 - 谚语 - 谚语 - 谚语
+- Google Vertex AI (Gemini 1.5 Pro等) (英语).
+- 协同(指挥、指挥-R等)
+- AWS 贝德罗克( 克劳德, 泰坦等)
+- 当地/私营模式
+
+<Card title="Supported Providers" icon="server" href="https://portkey.ai/docs/integrations/llms">
+参见 Portkey 支持的 LLM 提供者完整列表
+</Card>
+
+## 为CrewAI建立企业管理
+
+** 为什么是企业治理? **
+如果你在组织内使用CrewAI,你需要考虑几个治理方面:
+- ** 费用管理**: 控制和跟踪跨团队的AI支出
+- ** 准入管制**: 管理哪些团队可以使用特定模式
+- ** 用户分析**: 了解整个组织如何使用AI
+- ** 安全和合规**:维持企业安全标准
+- ** 可靠性**: 确保所有用户提供一致的服务
+
+Portkey增加了一个全面的治理层以满足这些企业需求. 让我们一步一步地实施这些控制.
+
+<Steps>
+<Step title="Create Virtual Key">
+虚拟密钥是Portkey管理您的LLM提供者API密钥的安全方式. 它们提供基本的控制,例如:
+- API使用的预算限额
+- 限制费率的能力
+- 安全 API 密钥存储
+
+要创建虚拟密钥 :
+转到 [虚拟密钥](https://app.portkey.ai/virtual-keys)在Portkey App中,保存并复制虚拟密钥ID
+
+<Frame>
+<img src="https://raw.githubusercontent.com/siddharthsambharia-portkey/Portkey-Product-Images/refs/heads/main/Virtual%20Key%20from%20Portkey%20Docs.png" width="500"/>
+</Frame>
+
+<Note>
+保存您的虚拟密钥ID - 你需要它下一步。
+</Note>
+</Step>
+
+<Step title="Create Default Config">
+Portkey 中的配置定义了您请求的路由方式, 具有高级路由, 折返和重试等特性 。
+
+要创建您的配置 :
+1. 转到 [配置](C)https://app.portkey.ai/configs在Portkey仪表板中
+2. 创建新配置 :
+    ```json
+    {
+        "virtual_key": "YOUR_VIRTUAL_KEY_FROM_STEP1",
+       	"override_params": {
+          "model": "gpt-4o" // Your preferred model name
+        }
+    }
+    ```
+3. 保存并注意下一步的配置名称
+
+<Frame>
+<img src="https://raw.githubusercontent.com/siddharthsambharia-portkey/Portkey-Product-Images/refs/heads/main/CrewAI%20Portkey%20Docs%20Config.png" width="500"/>
+
+</Frame>
+</Step>
+
+<Step title="Configure Portkey API Key">
+现在创建 Portkey API 键,并附加您在 Step 2 中创建的配置 :
+
+1. 前往 Portkey 的 [API Keys](https://app.portkey.ai/api-keys) 页面并创建新的 API 密钥
+2. 选择您的配置`Step 2`
+3. 生成并保存您的 API 密钥
+
+<Frame>
+<img src="https://raw.githubusercontent.com/siddharthsambharia-portkey/Portkey-Product-Images/refs/heads/main/CrewAI%20API%20Key.png" width="500"/>
+
+</Frame>
+</Step>
+
+<Step title="Connect to CrewAI">
+在设置您的 Portkey API 密钥并附带配置后, 将其连接到您的 CrewAI 代理 :
+
+```python
+from crewai import Agent, LLM
+from portkey_ai import PORTKEY_GATEWAY_URL
+
+# Configure LLM with your API key
+portkey_llm = LLM(
+    model="gpt-4o",
+    base_url=PORTKEY_GATEWAY_URL,
+    api_key="YOUR_PORTKEY_API_KEY"
+)
+
+# Create agent with Portkey-enabled LLM
+researcher = Agent(
+    role="Senior Research Scientist",
+    goal="Discover groundbreaking insights about the assigned topic",
+    backstory="You are an expert researcher with deep domain knowledge.",
+    verbose=True,
+    llm=portkey_llm
+)
+```
+</Step>
+</Steps>
+
+<AccordionGroup>
+  <Accordion title="Step 1: Implement Budget Controls & Rate Limits">
+### 第1步:执行预算控制和费率限制
+
+虚拟密钥可以在团队/部门层面对LLM访问进行颗粒控制. 这帮助你:
+- 设置[预算限制](https://portkey.ai/docs/product/ai-gateway/virtual-keys/budget-limits)
+- 使用利率限制防止意外使用高峰
+- 跟踪部门支出
+
+#### 设置特定部门控制 :
+1. 导航到 [虚拟密钥](N)https://app.portkey.ai/virtual-keys在Portkey仪表板中
+2. 为每个预算限制和费率限制的部门创建新的虚拟密钥
+3. 配置具体部门的限制
+
+<Frame>
+<img src="https://raw.githubusercontent.com/siddharthsambharia-portkey/Portkey-Product-Images/refs/heads/main/Virtual%20Key%20from%20Portkey%20Docs.png" width="500"/>
+</Frame>
+  </Accordion>
+
+  <Accordion title="Step 2: Define Model Access Rules">
+### 步骤2:界定进入规则范本
+
+随着你的AI使用尺度,控制哪些团队可以访问特定的模型变得至关重要. Portkey配置提供了此控制层的特性,例如:
+
+#### 访问控制特性 :
+- ** 模式限制**: 限制对特定模型的访问
+- ** 数据保护**: 为敏感数据安装护栏
+- ** 可靠性控制**: 添加倒转和重试逻辑
+
+#### 示例配置 :
+以下是前往OpenAI的路由请求的基本配置,具体使用GPT-4o:
+
+```json
+{
+	"strategy": {
+		"mode": "single"
+	},
+	"targets": [
+		{
+			"virtual_key": "YOUR_OPENAI_VIRTUAL_KEY",
+			"override_params": {
+				"model": "gpt-4o"
+			}
+		}
+	]
+}
+```
+
+在 [配置页] 创建您的配置( C)https://app.portkey.ai/configs在你的Portkey仪表板。
+
+    <Note>
+配置可以随时更新以调整控制而不影响运行中的应用程序.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Step 3: Implement Access Controls">
+    ### 步骤3:实施访问控制
+
+创建用户专用的 API 密钥, 自动 :
+    - 在虚拟密钥帮助下,每个用户/团队的跟踪使用情况
+    - 对路由请求应用适当的配置
+    - 收集相关的元数据过滤日志
+    - 执行访问权限
+
+通过 [Portkey App] 创建 API 密钥(https://app.portkey.ai/)
+
+使用 Python SDK 的示例:
+    ```python
+    from portkey_ai import Portkey
+
+    portkey = Portkey(api_key="YOUR_ADMIN_API_KEY")
+
+    api_key = portkey.api_keys.create(
+        name="engineering-team",
+        type="organisation",
+        workspace_id="YOUR_WORKSPACE_ID",
+        defaults={
+            "config_id": "your-config-id",
+            "metadata": {
+                "environment": "production",
+                "department": "engineering"
+            }
+        },
+        scopes=["logs.view", "configs.read"]
+    )
+    ```
+
+详细的关键管理指示见[Portkey文档](https://portkey.ai/docs).
+  </Accordion>
+
+  <Accordion title="Step 4: Deploy & Monitor">
+    ### 步骤4:部署和监测
+在向团队成员分发API密钥后,你的企业准备的CrewAI设置准备就绪. 每位队员现在可以使用他们指定的API密钥,并有适当的访问级别和预算控制.
+
+Portkey仪表板中的监视器用途 :
+    - 按部门开列的费用追踪
+    - 模型使用模式
+    - 请求卷
+    - 错误率
+  </Accordion>
+
+</AccordionGroup>
+
+<Note>
+### 现在可用的企业特性
+** 你的CrewAI的整合现已:**
+- 部门预算控制
+- 准入管理模式
+- 用法跟踪和归属
+- 警卫
+- 可靠性特征
+</Note>
+
+## 经常问的问题
+
+<AccordionGroup>
+  <Accordion title="How does Portkey enhance CrewAI?">
+Portkey通过全面的可观察性(追踪,日志,度量衡),可靠性特性(倒置,复刻,缓存)和通过统一的接口访问200+LLMs,为CrewAI增加了生产准备. 这使得调试、优化和扩展您的代理应用程序更加容易。
+  </Accordion>
+
+  <Accordion title="Can I use Portkey with existing CrewAI applications?">
+对! Portkey与现有的CrewAI应用程序无缝集成. 你只需要用Portkey的版本更新你的LLM配置代码. 其余的特工和船员代码没有改变
+  </Accordion>
+
+  <Accordion title="Does Portkey work with all CrewAI features?">
+Portkey支持所有CrewAI特性,包括代理,工具,人入工作流程,以及所有任务流程类型(顺序,等级等). 它在不限制框架任何功能的情况下增加了可观察性和可靠性。
+  </Accordion>
+
+  <Accordion title="Can I track usage across multiple agents in a crew?">
+是的, Portkey 允许您使用一致`trace_id`整个工作流程的追踪 这对于复杂的机组人员特别有用,在那里你想了解跨越多个特工的完全执行路径.
+  </Accordion>
+
+  <Accordion title="How do I filter logs and traces for specific crew runs?">
+Portkey 允许您添加自定义元数据到您的 LLM 配置中, 然后您可以使用它进行过滤 。 添加字段像`crew_name`, `crew_type`,或`session_id`很容易发现和分析具体船员的死刑。
+  </Accordion>
+
+  <Accordion title="Can I use my own API keys with Portkey?">
+对! Portkey为各种LLM提供者使用你自己的API密钥. 它安全地把它们存储为虚拟密钥,可以方便地管理和旋转密钥而无需更改代码.
+  </Accordion>
+
+</AccordionGroup>
+
+## 资源
+
+<CardGroup cols="3">
+  <Card title="CrewAI Docs" icon="book" href="https://docs.crewai.com/">
+<p> 正式CrewAI文件 </p>
+  </Card>
+  <Card title="Book a Demo" icon="calendar" href="https://calendly.com/portkey-ai">
+<p>获得关于实施此集成的个性化指导 </p>
+  </Card>
+</CardGroup>

@@ -1,0 +1,160 @@
+---
+title: "人在环（HITL）工作流"
+description: "了解如何在 CrewAI 中实现人在环工作流，以增强决策质量与任务结果。"
+icon: "user-check"
+mode: "wide"
+---
+
+人在环（HITL）是一种将人工智能与人类专业判断结合的方法，可提升决策质量并改善任务结果。CrewAI 根据不同场景提供多种 HITL 实现方式。
+
+## 选择你的 HITL 方案
+
+CrewAI 提供两种主要的人在环工作流实现路径：
+
+| 方案 | 适用场景 | 集成方式 | 版本 |
+|----------|----------|-------------|---------|
+| **Flow 方案**（`@human_feedback` 装饰器） | 本地开发、控制台审核、同步工作流 | [Flows 中的人工反馈](/zh-CN/learn/human-feedback-in-flows) | **1.8.0+** |
+| **Webhook 方案**（Enterprise） | 生产部署、异步工作流、外部集成（Slack、Teams 等） | 本文档 | - |
+
+<Tip>
+如果你在构建 Flow，并希望基于人工反馈增加审核与路由步骤，请查看 `@human_feedback` 的 [Flows 中的人工反馈](/zh-CN/learn/human-feedback-in-flows) 指南。
+</Tip>
+
+## 配置基于 Webhook 的 HITL 工作流
+
+<Steps>
+    <Step title="Configure Your Task">
+        在任务中启用人工输入：
+        <Frame>
+            <img src="/images/enterprise/crew-human-input.png" alt="Crew Human Input" />
+        </Frame>
+    </Step>
+
+    <Step title="Provide Webhook URL">
+        在 kickoff crew 时传入用于人工输入的 Webhook URL：
+        <Frame>
+            <img src="/images/enterprise/crew-webhook-url.png" alt="Crew Webhook URL" />
+        </Frame>
+
+        Bearer 认证示例：
+        ```bash
+        curl -X POST {BASE_URL}/kickoff \
+          -H "Authorization: ******" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "inputs": {
+              "topic": "AI Research"
+            },
+            "humanInputWebhook": {
+              "url": "https://your-webhook.com/hitl",
+              "authentication": {
+                "strategy": "bearer",
+                "token": "your-webhook-secret-token"
+              }
+            }
+          }'
+        ```
+
+        或使用 Basic 认证：
+        ```bash
+        curl -X POST {BASE_URL}/kickoff \
+          -H "Authorization: ******" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "inputs": {
+              "topic": "AI Research"
+            },
+            "humanInputWebhook": {
+              "url": "https://your-webhook.com/hitl",
+              "authentication": {
+                "strategy": "basic",
+                "username": "your-username",
+                "password": "your-password"
+              }
+            }
+          }'
+        ```
+    </Step>
+
+    <Step title="Receive Webhook Notification">
+        当 crew 完成需要人工输入的任务后，你会收到一条 Webhook 通知，其中包含：
+            - Execution ID
+            - Task ID
+            - Task output
+    </Step>
+
+    <Step title="Review Task Output">
+        系统会暂停在 `Pending Human Input` 状态。请仔细审核任务输出。
+    </Step>
+
+    <Step title="Submit Human Feedback">
+        使用以下信息调用 crew 的 resume 端点：
+        <Frame>
+            <img src="/images/enterprise/crew-resume-endpoint.png" alt="Crew Resume Endpoint" />
+        </Frame>
+
+        <Warning>
+            **关键：需要再次提供 Webhook URL**：
+            你**必须**在 resume 调用中提供与 kickoff 相同的 webhook URL（`taskWebhookUrl`、`stepWebhookUrl`、`crewWebhookUrl`）。Webhook 配置**不会**在 kickoff 后自动继承；若要继续接收任务完成、代理步骤和 crew 完成通知，必须在 resume 请求中显式传入。
+        </Warning>
+
+        携带 webhook 的 resume 调用示例：
+        ```bash
+        curl -X POST {BASE_URL}/resume \
+          -H "Authorization: ******" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "execution_id": "abcd1234-5678-90ef-ghij-klmnopqrstuv",
+            "task_id": "research_task",
+            "human_feedback": "Great work! Please add more details.",
+            "is_approve": true,
+            "taskWebhookUrl": "https://your-server.com/webhooks/task",
+            "stepWebhookUrl": "https://your-server.com/webhooks/step",
+            "crewWebhookUrl": "https://your-server.com/webhooks/crew"
+          }'
+        ```
+
+        <Warning>
+            **反馈对任务执行的影响**：
+            反馈全文会作为后续任务执行的附加上下文，因此请谨慎填写。
+        </Warning>
+        这意味着：
+        - 你反馈中的全部信息都会进入任务上下文。
+        - 不相关细节可能对结果造成负面影响。
+        - 简洁且相关的反馈有助于保持任务聚焦与效率。
+        - 提交前请再次检查反馈，仅保留对任务有帮助的信息。
+    </Step>
+
+    <Step title="Handle Negative Feedback">
+        如果你给出负向反馈：
+        - crew 会结合你的反馈补充上下文并重试任务。
+        - 你会收到新的 Webhook 通知以继续审核。
+        - 重复步骤 4-6，直到结果满足预期。
+    </Step>
+
+    <Step title="Execution Continuation">
+        当你提交正向反馈后，执行将继续进入后续步骤。
+    </Step>
+</Steps>
+
+## 最佳实践
+
+- **具体明确**：提供直接对应任务问题、可执行的反馈
+- **保持相关**：仅包含有助于改进任务执行的信息
+- **及时响应**：尽快处理 HITL 提示，避免工作流阻塞
+- **提交前复核**：提交前检查反馈内容，确保准确
+
+## 常见场景
+
+HITL 工作流尤其适用于：
+- 质量保障与结果校验
+- 复杂决策场景
+- 敏感或高风险操作
+- 需要人类判断的创意任务
+- 合规与监管审核
+
+## 企业能力
+
+<Card title="Flow HITL Management Platform" icon="users-gear" href="https://docs-platform.crewai.com/platform/zh-CN/features/flow-hitl-management">
+  CrewAI Enterprise 为 Flows 提供完整 HITL 管理系统，包括站内审核、响应者分配、权限控制、升级策略、SLA 管理、动态路由与全量分析。[了解更多 →](https://docs-platform.crewai.com/platform/zh-CN/features/flow-hitl-management)
+</Card>

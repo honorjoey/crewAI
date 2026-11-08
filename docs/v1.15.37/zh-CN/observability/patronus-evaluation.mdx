@@ -1,0 +1,206 @@
+---
+title: Patronus AI 评估
+description: 使用 Patronus AI 的 LLM 输出和代理行为综合评估平台监控和评估 CrewAI 代理性能。
+icon: shield-check
+mode: "wide"
+---
+
+# Patronus AI 评估
+
+## 概述
+
+[守护神人工智能](https://patronus.ai) 为 CrewAI 代理提供全面的评估和监控功能，使您能够评估模型输出、代理行为和整体系统性能。通过此集成，您可以实施持续评估工作流程，帮助维持生产环境中的质量和可靠性。
+
+## 主要功能
+
+- **自动评估**：实时评估代理输出和行为
+- **自定义标准**：定义适合您用例的具体评估标准
+- **性能监控**：随着时间的推移跟踪代理性能指标
+- **质量保证**：确保不同场景下一致的输出质量
+- **安全与合规**：监控潜在问题和政策违规
+
+## 评估工具
+
+Patronus为不同的用例提供三种主要评估工具：
+
+1. **PatronusEvalTool**：允许代理选择最合适的评估者和评估标准任务。
+2. **PatronusPredefinedCriteriaEvalTool**：使用用户指定的预定义评估器和标准。
+3. **PatronusLocalEvaluatorTool**：使用用户定义的自定义函数评估器。
+
+## 安装
+
+要使用这些工具，您需要安装 Patronus 软件包：
+
+```shell
+uv add patronus
+```
+
+您还需要将您的 Patronus API 密钥设置为环境变量：
+
+```shell
+export PATRONUS_API_KEY="your_patronus_api_key"
+```
+
+## 入门步骤
+
+要有效地使用Patronus评估工具，请按照以下步骤操作：
+
+1. **安装Patronus**：使用上述命令安装Patronus软件包。
+2. **设置API密钥**：将您的Patronus API密钥设置为环境变量。
+3. **选择正确的工具**：根据情况选择适当的Patronus评估工具
+4. **配置工具**：使用必要的参数配置工具。
+
+## 示例
+
+### 使用PatronusEvalTool
+
+以下示例演示如何使用`PatronusEvalTool`，它允许代理选择最合适的评估器和标准：
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import PatronusEvalTool
+
+# Initialize the tool
+patronus_eval_tool = PatronusEvalTool()
+
+# Define an agent that uses the tool
+coding_agent = Agent(
+    role="Coding Agent",
+    goal="Generate high quality code and verify that the output is code",
+    backstory="An experienced coder who can generate high quality python code.",
+    tools=[patronus_eval_tool],
+    verbose=True,
+)
+
+# Example task to generate and evaluate code
+generate_code_task = Task(
+    description="Create a simple program to generate the first N numbers in the Fibonacci sequence. Select the most appropriate evaluator and criteria for evaluating your output.",
+    expected_output="Program that generates the first N numbers in the Fibonacci sequence.",
+    agent=coding_agent,
+)
+
+# Create and run the crew
+crew = Crew(agents=[coding_agent], tasks=[generate_code_task])
+result = crew.kickoff()
+```
+
+### 使用PatronusPredefinedCriteriaEvalTool
+
+以下示例演示如何使用`PatronusPredefinedCriteriaEvalTool`，它使用预定义的求值器和标准：
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import PatronusPredefinedCriteriaEvalTool
+
+# Initialize the tool with predefined criteria
+patronus_eval_tool = PatronusPredefinedCriteriaEvalTool(
+    evaluators=[{"evaluator": "judge", "criteria": "contains-code"}]
+)
+
+# Define an agent that uses the tool
+coding_agent = Agent(
+    role="Coding Agent",
+    goal="Generate high quality code",
+    backstory="An experienced coder who can generate high quality python code.",
+    tools=[patronus_eval_tool],
+    verbose=True,
+)
+
+# Example task to generate code
+generate_code_task = Task(
+    description="Create a simple program to generate the first N numbers in the Fibonacci sequence.",
+    expected_output="Program that generates the first N numbers in the Fibonacci sequence.",
+    agent=coding_agent,
+)
+
+# Create and run the crew
+crew = Crew(agents=[coding_agent], tasks=[generate_code_task])
+result = crew.kickoff()
+```
+
+### 使用PatronusLocalEvaluatorTool
+
+以下示例演示如何使用`PatronusLocalEvaluatorTool`，它使用自定义函数评估器：
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import PatronusLocalEvaluatorTool
+from patronus import Client, EvaluationResult
+import random
+
+# Initialize the Patronus client
+client = Client()
+
+# Register a custom evaluator
+@client.register_local_evaluator("random_evaluator")
+def random_evaluator(**kwargs):
+    score = random.random()
+    return EvaluationResult(
+        score_raw=score,
+        pass_=score >= 0.5,
+        explanation="example explanation",
+    )
+
+# Initialize the tool with the custom evaluator
+patronus_eval_tool = PatronusLocalEvaluatorTool(
+    patronus_client=client,
+    evaluator="random_evaluator",
+    evaluated_model_gold_answer="example label",
+)
+
+# Define an agent that uses the tool
+coding_agent = Agent(
+    role="Coding Agent",
+    goal="Generate high quality code",
+    backstory="An experienced coder who can generate high quality python code.",
+    tools=[patronus_eval_tool],
+    verbose=True,
+)
+
+# Example task to generate code
+generate_code_task = Task(
+    description="Create a simple program to generate the first N numbers in the Fibonacci sequence.",
+    expected_output="Program that generates the first N numbers in the Fibonacci sequence.",
+    agent=coding_agent,
+)
+
+# Create and run the crew
+crew = Crew(agents=[coding_agent], tasks=[generate_code_task])
+result = crew.kickoff()
+```
+
+## 参数
+
+### PatronusEvalTool
+
+`PatronusEvalTool`在初始化期间不需要任何参数。它自动从Patronus API 获取可用的评估器和标准。
+
+### PatronusPredefinedCriteriaEvalTool
+
+`PatronusPredefinedCriteriaEvalTool` 在初始化期间接受以下参数：
+
+- **评估器**：必需。包含评估器和要使用的标准的字典列表。例如：`[{"evaluator": "judge", "criteria": "contains-code"}]`。
+
+### PatronusLocalEvaluatorTool
+
+`PatronusLocalEvaluatorTool` 在初始化期间接受以下参数：
+
+- **patronus_client**：必需。守护神客户端实例。
+- **评估者**：可选。要使用的注册本地评估员的姓名。默认为空字符串。
+- **evaluated_model_gold_answer**：可选。用于评估的黄金答案。默认为空字符串。
+
+## 用法
+
+使用Patronus评估工具时，您提供模型输入、输出和上下文，工具从Patronus API返回评估结果。
+
+对于`PatronusEvalTool`和`PatronusPredefinedCriteriaEvalTool`，调用该工具时需要以下参数：
+
+- **evaluated_model_input**：代理的简单文本任务描述。
+- **evaluated_model_output**：代理的任务输出。
+- **evaluated_model_retrieved_context**：代理的上下文。
+
+对于`PatronusLocalEvaluatorTool`，需要相同的参数，但评估器和黄金答案在初始化期间指定。
+
+## 结论
+
+Patronus 评估工具提供了一种使用 Patronus AI 平台评估和评分模型输入和输出的强大方法。通过使代理能够评估自己的输出或其他代理的输出，这些工具可以帮助提高 CrewAI 工作流程的质量和可靠性。

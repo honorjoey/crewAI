@@ -1,0 +1,333 @@
+---
+title: 工具
+description: 了解并善用 CrewAI 框架中的工具，实现 agent 协作与 task 执行。
+icon: screwdriver-wrench
+mode: "wide"
+---
+
+## 概述
+
+CrewAI 工具为 agent 赋予了从网页搜索、数据分析到协作以及在同事之间委派 task 的各种能力。
+本文档介绍如何在 CrewAI 框架中创建、集成和使用这些工具，并重点介绍协作工具。
+
+<Note type="info" title="工具是五种 agent 能力类型之一">
+  工具为 agent 提供**可调用的函数**以执行操作。它们与 [MCPs](/zh-CN/mcp/overview)（远程工具服务器）、[Apps](/zh-CN/concepts/agent-capabilities)（平台集成）、[Skills](/zh-CN/concepts/skills)（领域专长）和 [Knowledge](/zh-CN/concepts/knowledge)（检索到的事实）协同工作。请参阅 [Agent 能力](/zh-CN/concepts/agent-capabilities)概览，了解各自的适用场景。
+</Note>
+
+## 什么是工具？
+
+CrewAI 中的工具是 agent 可用于执行各种操作的技能或函数。
+这包括来自 [CrewAI Toolkit](https://github.com/joaomdmoura/crewai-tools) 和 [LangChain Tools](https://python.langchain.com/docs/integrations/tools) 的工具，
+支持从简单搜索到复杂交互以及 agent 之间高效协作的各类场景。
+
+<Note type="info" title="企业版增强：工具仓库">
+CrewAI AMP 提供了一个全面的工具仓库（Tools Repository），内置常见业务系统和 API 的预构建集成。只需几分钟即可部署带有企业工具的 agent，而无需花费数天时间。
+
+企业工具仓库包括：
+
+- 面向流行企业系统的预构建连接器
+- 自定义工具创建界面
+- 版本控制和共享能力
+- 安全与合规特性
+</Note>
+
+## 工具的关键特性
+
+- **实用性**：为网页搜索、数据分析、内容生成以及 agent 协作等 task 而打造。
+- **集成性**：将工具无缝集成到 agent 的工作流中，提升 agent 能力。
+- **可定制性**：提供开发自定义工具或使用现有工具的灵活性，满足 agent 的特定需求。
+- **错误处理**：内置健壮的错误处理机制，确保运行顺畅。
+- **缓存机制**：具备智能缓存功能，可优化性能并减少冗余操作。
+- **异步支持**：同时处理同步和异步工具，支持非阻塞操作。
+- **类型化输出**：使用可选的 Pydantic 模型为 agent 提供清晰的 JSON 字段，而直接的 Python 调用仍会收到工具的正常返回值。
+
+## 使用 CrewAI 工具
+
+要使用 crewAI 工具增强 agent 的能力，请先安装我们的扩展工具包：
+
+```bash
+pip install 'crewai[tools]'
+```
+
+以下示例演示了它们的用法：
+
+```python Code
+import os
+from crewai import Agent, Task, Crew
+# Importing crewAI tools
+from crewai_tools import (
+    DirectoryReadTool,
+    FileReadTool,
+    SerperDevTool,
+    WebsiteSearchTool
+)
+
+# Set up API keys
+os.environ["SERPER_API_KEY"] = "Your Key" # serper.dev API key
+os.environ["OPENAI_API_KEY"] = "Your Key"
+
+# Instantiate tools
+docs_tool = DirectoryReadTool(directory='./blog-posts')
+file_tool = FileReadTool()
+search_tool = SerperDevTool()
+web_rag_tool = WebsiteSearchTool()
+
+# Create agents
+researcher = Agent(
+    role='Market Research Analyst',
+    goal='Provide up-to-date market analysis of the AI industry',
+    backstory='An expert analyst with a keen eye for market trends.',
+    tools=[search_tool, web_rag_tool],
+    verbose=True
+)
+
+writer = Agent(
+    role='Content Writer',
+    goal='Craft engaging blog posts about the AI industry',
+    backstory='A skilled writer with a passion for technology.',
+    tools=[docs_tool, file_tool],
+    verbose=True
+)
+
+# Define tasks
+research = Task(
+    description='Research the latest trends in the AI industry and provide a summary.',
+    expected_output='A summary of the top 3 trending developments in the AI industry with a unique perspective on their significance.',
+    agent=researcher
+)
+
+write = Task(
+    description='Write an engaging blog post about the AI industry, based on the research analyst's summary. Draw inspiration from the latest blog posts in the directory.',
+    expected_output='A 4-paragraph blog post formatted in markdown with engaging, informative, and accessible content, avoiding complex jargon.',
+    agent=writer,
+    output_file='blog-posts/new_post.md'  # The final blog post will be saved here
+)
+
+# Assemble a crew with planning enabled
+crew = Crew(
+    agents=[researcher, writer],
+    tasks=[research, write],
+    verbose=True,
+    planning=True,  # Enable planning feature
+)
+
+# Execute tasks
+crew.kickoff()
+```
+
+## 可用的 CrewAI 工具
+
+- **错误处理**：所有工具都具备错误处理能力，使 agent 能够优雅地管理异常并继续执行其 task。
+- **缓存机制**：所有工具都支持缓存，使 agent 能够高效复用先前获取的结果，降低外部资源的负载并加快执行速度。您还可以通过工具上的 `cache_function` 属性对缓存机制进行更精细的控制。
+
+以下是可用工具及其描述的列表：
+
+| 工具                             | 描述                                                                                    |
+| :------------------------------- | :--------------------------------------------------------------------------------------------- |
+|**ApifyActorsTool**| 将 Apify Actors 集成到您的工作流中，用于网页抓取和自动化 task 的工具。 |
+|**BrowserbaseLoadTool**| 用于与网页浏览器交互并从中提取数据的工具。                             |
+|**CodeDocsSearchTool**| 针对代码文档及相关技术文档搜索优化的 RAG 工具。 |
+|**CodeInterpreterTool**| 用于解释执行 Python 代码的工具。                                                           |
+|**ComposioTool**| 支持使用 Composio 工具。                                                                 |
+|**CSVSearchTool**| 专为在 CSV 文件中搜索而设计的 RAG 工具，适合处理结构化数据。        |
+|**DALL-E Tool**| 使用 DALL-E API 生成图像的工具。                                             |
+|**DirectorySearchTool**| 用于在目录中搜索的 RAG 工具，便于在文件系统中导航。       |
+|**DOCXSearchTool**| 面向 DOCX 文档搜索的 RAG 工具，非常适合处理 Word 文件。          |
+|**DirectoryReadTool**| 便于读取和处理目录结构及其内容。                 |
+|**ExaSearchTool**| 使用 Exa 搜索网页，这是最快、最准确的网页搜索 API。支持节省 token 的高亮摘录和完整页面内容。 |
+|**FileReadTool**| 支持从文件中读取和提取数据，兼容多种文件格式。               |
+|**FirecrawlSearchTool**| 使用 Firecrawl 搜索网页并返回结果的工具。                              |
+|**FirecrawlCrawlWebsiteTool**| 使用 Firecrawl 爬取网页的工具。                                                  |
+|**FirecrawlScrapeWebsiteTool**| 使用 Firecrawl 抓取网页 URL 并返回其内容的工具。                   |
+|**GithubSearchTool**| 用于在 GitHub 仓库中搜索的 RAG 工具，适合代码和文档搜索。 |
+|**SerperDevTool**| 面向开发用途的专用工具，部分特定功能仍在开发中。  |
+|**TXTSearchTool**| 专注于在文本（.txt）文件中搜索的 RAG 工具，适合非结构化数据。      |
+|**JSONSearchTool**| 专为在 JSON 文件中搜索而设计的 RAG 工具，面向结构化数据处理。 |
+|**LlamaIndexTool**| 支持使用 LlamaIndex 工具。                                                           |
+|**MDXSearchTool**| 专为在 Markdown（MDX）文件中搜索而定制的 RAG 工具，适用于文档场景。       |
+|**MongoDBVectorSearchTool**| 在 MongoDB Atlas 集合上进行向量相似度搜索的 RAG 工具，并提供可选的辅助功能来创建和管理向量搜索索引。 |
+|**PDFSearchTool**| 面向 PDF 文档搜索的 RAG 工具，非常适合处理扫描文档。    |
+|**PGSearchTool**| 针对 PostgreSQL 数据库搜索优化的 RAG 工具，适合数据库查询。 |
+|**Vision Tool**| 使用 DALL-E API 生成图像的工具。                                             |
+|**RagTool**| 能够处理多种数据源和数据类型的通用 RAG 工具。                 |
+|**ScrapeElementFromWebsiteTool**| 支持从网站抓取特定元素，适合定向数据提取。         |
+|**ScrapeWebsiteTool**| 便于抓取整个网站，非常适合全面的数据收集。                 |
+|**WebsiteSearchTool**| 用于搜索网站内容的 RAG 工具，针对网页数据提取进行了优化。                   |
+|**XMLSearchTool**| 专为在 XML 文件中搜索而设计的 RAG 工具，适合结构化数据格式。      |
+|**YoutubeChannelSearchTool**| 用于在 YouTube 频道内搜索的 RAG 工具，适合视频内容分析。           |
+|**YoutubeVideoSearchTool**| 面向 YouTube 视频内搜索的 RAG 工具，非常适合视频数据提取。          |
+
+## 创建您自己的工具
+
+<Tip>
+  开发者可以为其 agent 的需求打造 `custom tools`（自定义工具），也可以使用预构建的选项。
+</Tip>
+
+创建 CrewAI 工具主要有两种方式：
+
+### 继承 `BaseTool`
+
+```python Code
+from crewai.tools import BaseTool
+from pydantic import BaseModel, Field
+
+class MyToolInput(BaseModel):
+    """Input schema for MyCustomTool."""
+    argument: str = Field(..., description="Description of the argument.")
+
+class MyCustomTool(BaseTool):
+    name: str = "Name of my tool"
+    description: str = "What this tool does. It's vital for effective utilization."
+    args_schema: Type[BaseModel] = MyToolInput
+
+    def _run(self, argument: str) -> str:
+        # Your tool's logic here
+        return "Tool's result"
+```
+
+### 类型化工具输出
+
+当工具返回结构化数据时，可以定义一个 Pydantic 输出模型。这为 agent 提供了可以信赖的字段名，例如 `sku`、`quantity` 或 `needs_reorder`。
+
+直接的 Python 调用仍会收到工具返回的值。当 agent 使用该工具时，CrewAI 会基于输出模型向 agent 发送一个 JSON 字符串。
+
+```python Code
+from crewai.tools import BaseTool
+from pydantic import BaseModel
+
+class InventoryResult(BaseModel):
+    sku: str
+    quantity: int
+    needs_reorder: bool
+
+class InventoryTool(BaseTool):
+    name: str = "Inventory Check"
+    description: str = "Checks current stock for a product SKU."
+
+    def _run(self, sku: str) -> InventoryResult:
+        quantity = {"SKU-123": 14, "SKU-456": 0}.get(sku, 0)
+        return InventoryResult(sku=sku, quantity=quantity, needs_reorder=quantity < 5)
+
+tool = InventoryTool()
+
+# Direct calls receive the raw Pydantic object.
+result = tool.run(sku="SKU-123")
+print(result.quantity)
+```
+
+若要向 agent 发送 Markdown 或其他简短文本格式，请重写 `format_output_for_agent`。直接调用 `tool.run(...)` 仍会返回正常的 Python 值。
+
+```python Code
+class InventoryTool(BaseTool):
+    name: str = "Inventory Check"
+    description: str = "Checks current stock for a product SKU."
+
+    def _run(self, sku: str) -> InventoryResult:
+        quantity = {"SKU-123": 14, "SKU-456": 0}.get(sku, 0)
+        return InventoryResult(sku=sku, quantity=quantity, needs_reorder=quantity < 5)
+
+    def format_output_for_agent(self, raw_result: object) -> str:
+        result = InventoryResult.model_validate(raw_result)
+        status = "reorder needed" if result.needs_reorder else "stock is healthy"
+        return f"{result.sku}: {result.quantity} units. {status}."
+```
+
+如果您不重写 `format_output_for_agent`，类型化输出会以 JSON 形式发送给 agent。纯字符串结果的行为与以前相同。
+
+## 异步工具支持
+
+CrewAI 支持异步工具，允许您实现执行非阻塞操作（如网络请求、文件 I/O 或其他异步操作）的工具，而不会阻塞主执行线程。
+
+### 创建异步工具
+
+您可以通过两种方式创建异步工具：
+
+#### 1. 对异步函数使用 `tool` 装饰器
+
+```python Code
+from crewai.tools import tool
+
+@tool("fetch_data_async")
+async def fetch_data_async(query: str) -> str:
+    """Asynchronously fetch data based on the query."""
+    # Simulate async operation
+    await asyncio.sleep(1)
+    return f"Data retrieved for {query}"
+```
+
+#### 2. 在自定义工具类中实现异步方法
+
+```python Code
+from crewai.tools import BaseTool
+
+class AsyncCustomTool(BaseTool):
+    name: str = "async_custom_tool"
+    description: str = "An asynchronous custom tool"
+
+    async def _run(self, query: str = "") -> str:
+        """Asynchronously run the tool"""
+        # Your async implementation here
+        await asyncio.sleep(1)
+        return f"Processed {query} asynchronously"
+```
+
+### 使用异步工具
+
+异步工具在标准 Crew 工作流和基于 Flow 的工作流中都能无缝工作：
+
+```python Code
+# In standard Crew
+agent = Agent(role="researcher", tools=[async_custom_tool])
+
+# In Flow
+class MyFlow(Flow):
+    @start()
+    async def begin(self):
+        crew = Crew(agents=[agent])
+        result = await crew.kickoff_async()
+        return result
+```
+
+CrewAI 框架会自动处理同步和异步工具的执行，因此您无需担心如何以不同方式调用它们。
+
+### 使用 `tool` 装饰器
+
+```python Code
+from crewai.tools import tool
+@tool("Name of my tool")
+def my_tool(question: str) -> str:
+    """Clear description for what this tool is useful for, your agent will need this information to use it."""
+    # Function logic here
+    return "Result from your custom tool"
+```
+
+### 自定义缓存机制
+
+<Tip>
+  工具可以选择性地实现 `cache_function` 来微调缓存行为。该函数根据特定条件决定何时缓存结果，为缓存逻辑提供细粒度的控制。
+</Tip>
+
+```python Code
+from crewai.tools import tool
+
+@tool
+def multiplication_tool(first_number: int, second_number: int) -> str:
+    """Useful for when you need to multiply two numbers together."""
+    return first_number * second_number
+
+def cache_func(args, result):
+    # In this case, we only cache the result if it's a multiple of 2
+    cache = result % 2 == 0
+    return cache
+
+multiplication_tool.cache_function = cache_func
+
+writer1 = Agent(
+        role="Writer",
+        goal="You write lessons of math for kids.",
+        backstory="You're an expert in writing and you love to teach kids but you know nothing of math.",
+        tools=[multiplication_tool],
+        allow_delegation=False,
+    )
+    #...
+```

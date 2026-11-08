@@ -1,0 +1,479 @@
+---
+title: 流式流程执行
+description: 从 CrewAI 流程执行流式传输实时输出
+icon: wave-pulse
+mode: "wide"
+---
+
+## 介绍
+
+CrewAI Flows 支持流输出，允许您在流程执行时接收实时更新。此功能使您能够构建响应式应用程序，以增量方式显示结果，提供实时进度更新，并为长时间运行的工作流程创建更好的用户体验。
+
+## 流式传输的工作原理
+
+当在流程上启用流式传输时，CrewAI 会捕获并流式传输流程中任何工作人员、LLM 调用、工具和生命周期事件的输出。随着执行的进行，该流会提供带有可打印内容以及结构化事件数据的有序 `StreamFrame` 项目。
+
+## 启用流媒体
+
+要启用流式传输，请将 Flow 类上的 `stream` 属性设置为 `True`：
+
+```python Code
+from crewai.flow.flow import Flow, listen, start
+from crewai import Agent, Crew, Task
+
+class ResearchFlow(Flow):
+    stream = True  # Enable streaming for the entire flow
+
+    @start()
+    def initialize(self):
+        return {"topic": "AI trends"}
+
+    @listen(initialize)
+    def research_topic(self, data):
+        researcher = Agent(
+            role="Research Analyst",
+            goal="Research topics thoroughly",
+            backstory="Expert researcher with analytical skills",
+        )
+
+        task = Task(
+            description="Research {topic} and provide insights",
+            expected_output="Detailed research findings",
+            agent=researcher,
+        )
+
+        crew = Crew(
+            agents=[researcher],
+            tasks=[task],
+        )
+
+        return crew.kickoff(inputs=data)
+```
+
+## 同步串流
+
+当您在启用了流处理的流上调用 `kickoff()` 时，它会返回一个流会话，该会话会生成有序的 `StreamFrame` 项：
+
+```python Code
+flow = ResearchFlow()
+
+# Start streaming execution
+streaming = flow.kickoff()
+
+# Iterate over stream items as they arrive
+for item in streaming:
+    print(item.content, end="", flush=True)
+
+# Access the final result after streaming completes
+result = streaming.result
+print(f"\n\nFinal output: {result}")
+```
+
+### 流项目信息
+
+每个项目都提供可打印内容和结构化事件数据：
+
+```python Code
+streaming = flow.kickoff()
+
+for item in streaming:
+    print(f"Channel: {item.channel}")
+    print(f"Type: {item.type}")
+    print(f"Content: {item.content}")
+    print(f"Event payload: {item.event}")
+```
+
+### 访问流媒体属性
+
+流会话提供有用的属性和方法：
+
+```python Code
+streaming = flow.kickoff()
+
+# Iterate and collect items
+for item in streaming:
+    print(item.content, end="", flush=True)
+
+# After iteration completes
+print(f"\nCompleted: {streaming.is_completed}")
+print(f"Total frames: {len(streaming.frames)}")
+print(f"Final result: {streaming.result}")
+```
+
+## 异步流式传输
+
+对于异步应用程序，请使用 `kickoff_async()` 进行异步迭代：
+
+```python Code
+import asyncio
+
+async def stream_flow():
+    flow = ResearchFlow()
+
+    # Start async streaming
+    streaming = await flow.kickoff_async()
+
+    # Async iteration over stream items
+    async for item in streaming:
+        print(item.content, end="", flush=True)
+
+    # Access final result
+    result = streaming.result
+    print(f"\n\nFinal output: {result}")
+
+asyncio.run(stream_flow())
+```
+
+## 使用多步骤流进行流式传输
+
+流媒体可以跨多个流程步骤无缝运行，包括执行多个工作人员的流程：
+
+```python Code
+from crewai.flow.flow import Flow, listen, start
+from crewai import Agent, Crew, Task
+
+class MultiStepFlow(Flow):
+    stream = True
+
+    @start()
+    def research_phase(self):
+        """First crew: Research the topic."""
+        researcher = Agent(
+            role="Research Analyst",
+            goal="Gather comprehensive information",
+            backstory="Expert at finding relevant information",
+        )
+
+        task = Task(
+            description="Research AI developments in healthcare",
+            expected_output="Research findings on AI in healthcare",
+            agent=researcher,
+        )
+
+        crew = Crew(agents=[researcher], tasks=[task])
+        result = crew.kickoff()
+
+        self.state["research"] = result.raw
+        return result.raw
+
+    @listen(research_phase)
+    def analysis_phase(self, research_data):
+        """Second crew: Analyze the research."""
+        analyst = Agent(
+            role="Data Analyst",
+            goal="Analyze information and extract insights",
+            backstory="Expert at identifying patterns and trends",
+        )
+
+        task = Task(
+            description="Analyze this research: {research}",
+            expected_output="Key insights and trends",
+            agent=analyst,
+        )
+
+        crew = Crew(agents=[analyst], tasks=[task])
+        return crew.kickoff(inputs={"research": research_data})
+
+
+# Stream across both phases
+flow = MultiStepFlow()
+streaming = flow.kickoff()
+
+current_step = ""
+for item in streaming:
+    # Track which flow step is executing
+    step_name = item.event.get("method_name") or item.event.get("task_name")
+    if step_name and step_name != current_step:
+        current_step = step_name
+        print(f"\n\n=== {step_name} ===\n")
+
+    print(item.content, end="", flush=True)
+
+result = streaming.result
+print(f"\n\nFinal analysis: {result}")
+```
+
+## 实际示例：进度仪表板
+
+这是一个完整的示例，展示了如何使用流式传输构建进度仪表板：
+
+```python Code
+import asyncio
+from crewai.flow.flow import Flow, listen, start
+from crewai import Agent, Crew, Task
+
+class ResearchPipeline(Flow):
+    stream = True
+
+    @start()
+    def gather_data(self):
+        researcher = Agent(
+            role="Data Gatherer",
+            goal="Collect relevant information",
+            backstory="Skilled at finding quality sources",
+        )
+
+        task = Task(
+            description="Gather data on renewable energy trends",
+            expected_output="Collection of relevant data points",
+            agent=researcher,
+        )
+
+        crew = Crew(agents=[researcher], tasks=[task])
+        result = crew.kickoff()
+        self.state["data"] = result.raw
+        return result.raw
+
+    @listen(gather_data)
+    def analyze_data(self, data):
+        analyst = Agent(
+            role="Data Analyst",
+            goal="Extract meaningful insights",
+            backstory="Expert at data analysis",
+        )
+
+        task = Task(
+            description="Analyze: {data}",
+            expected_output="Key insights and trends",
+            agent=analyst,
+        )
+
+        crew = Crew(agents=[analyst], tasks=[task])
+        return crew.kickoff(inputs={"data": data})
+
+
+async def run_with_dashboard():
+    flow = ResearchPipeline()
+
+    print("="*60)
+    print("RESEARCH PIPELINE DASHBOARD")
+    print("="*60)
+
+    streaming = await flow.kickoff_async()
+
+    current_agent = ""
+    current_task = ""
+    frame_count = 0
+
+    async for item in streaming:
+        frame_count += 1
+
+        # Display phase transitions
+        task_name = item.event.get("task_name", "")
+        agent_role = item.event.get("agent_role", "")
+        if task_name and task_name != current_task:
+            current_task = task_name
+            current_agent = agent_role
+            print(f"\n\n📋 Phase: {current_task}")
+            print(f"👤 Agent: {current_agent}")
+            print("-" * 60)
+
+        # Display text output
+        if item.content:
+            print(item.content, end="", flush=True)
+
+        # Display tool usage
+        elif item.channel == "tools":
+            print(f"\n🔧 Tool event: {item.type}")
+
+    # Show completion summary
+    result = streaming.result
+    print(f"\n\n{'='*60}")
+    print("PIPELINE COMPLETE")
+    print(f"{'='*60}")
+    print(f"Total frames: {frame_count}")
+    print(f"Final output length: {len(str(result))} characters")
+
+asyncio.run(run_with_dashboard())
+```
+
+## 使用状态管理进行流式传输
+
+流媒体自然地与 Flow 状态管理配合使用：
+
+```python Code
+from pydantic import BaseModel
+
+class AnalysisState(BaseModel):
+    topic: str = ""
+    research: str = ""
+    insights: str = ""
+
+class StatefulStreamingFlow(Flow[AnalysisState]):
+    stream = True
+
+    @start()
+    def research(self):
+        # State is available during streaming
+        topic = self.state.topic
+        print(f"Researching: {topic}")
+
+        researcher = Agent(
+            role="Researcher",
+            goal="Research topics thoroughly",
+            backstory="Expert researcher",
+        )
+
+        task = Task(
+            description=f"Research {topic}",
+            expected_output="Research findings",
+            agent=researcher,
+        )
+
+        crew = Crew(agents=[researcher], tasks=[task])
+        result = crew.kickoff()
+
+        self.state.research = result.raw
+        return result.raw
+
+    @listen(research)
+    def analyze(self, research):
+        # Access updated state
+        print(f"Analyzing {len(self.state.research)} chars of research")
+
+        analyst = Agent(
+            role="Analyst",
+            goal="Extract insights",
+            backstory="Expert analyst",
+        )
+
+        task = Task(
+            description="Analyze: {research}",
+            expected_output="Key insights",
+            agent=analyst,
+        )
+
+        crew = Crew(agents=[analyst], tasks=[task])
+        result = crew.kickoff(inputs={"research": research})
+
+        self.state.insights = result.raw
+        return result.raw
+
+
+# Run with streaming
+flow = StatefulStreamingFlow()
+streaming = flow.kickoff(inputs={"topic": "quantum computing"})
+
+for item in streaming:
+    print(item.content, end="", flush=True)
+
+result = streaming.result
+print(f"\n\nFinal state:")
+print(f"Topic: {flow.state.topic}")
+print(f"Research length: {len(flow.state.research)}")
+print(f"Insights length: {len(flow.state.insights)}")
+```
+
+## 使用案例
+
+流式传输对于以下方面特别有价值：
+
+- **多阶段工作流程**：显示研究、分析和综合阶段的进展
+- **复杂管道**：提供对长时间运行的数据处理流的可见性
+- **交互式应用程序**：构建显示中间结果的响应式 UI
+- **监控和调试**：实时观察流程执行和人员交互
+- **进度跟踪**：向用户显示当前正在执行工作流程的哪个阶段
+- **实时仪表板**：为生产流程创建监控界面
+
+## 流帧通道
+
+流式传输通过多个渠道产生 `StreamFrame` 项目：
+
+### LLM框架
+
+LLM 回复的标准文本内容：
+
+```python Code
+for item in streaming:
+    if item.channel == "llm" and item.content:
+        print(item.content, end="", flush=True)
+```
+
+### 工具架
+
+有关流程中工具调用的信息：
+
+```python Code
+for item in streaming:
+    if item.channel == "tools":
+        print(f"\nTool event: {item.type}")
+        print(f"Payload: {item.event}")
+```
+
+## 错误处理
+
+在流式传输过程中优雅地处理错误：
+
+```python Code
+flow = ResearchFlow()
+streaming = flow.kickoff()
+
+try:
+    for item in streaming:
+        print(item.content, end="", flush=True)
+
+    result = streaming.result
+    print(f"\nSuccess! Result: {result}")
+
+except Exception as e:
+    print(f"\nError during flow execution: {e}")
+    if streaming.is_completed:
+        print("Streaming completed but flow encountered an error")
+```
+
+## 取消和资源清理
+
+流会话支持优雅取消，以便当消费者断​​开连接时，正在进行的工作立即停止。
+
+### 异步上下文管理器
+
+```python Code
+streaming = await flow.kickoff_async()
+
+async with streaming:
+    async for item in streaming:
+        print(item.content, end="", flush=True)
+```
+
+### 显式取消
+
+```python Code
+streaming = await flow.kickoff_async()
+try:
+    async for item in streaming:
+        print(item.content, end="", flush=True)
+finally:
+    await streaming.aclose()  # async
+    # streaming.close()       # sync equivalent
+```
+
+取消后，`streaming.is_cancelled` 和`streaming.is_completed` 均为`True`。 `aclose()` 和 `close()` 都是幂等的。
+
+## 重要提示
+
+- 流媒体自动为流程中使用的任何工作人员启用 LLM 流媒体
+- 在访问 `.result` 属性之前，您必须迭代所有流项
+- 流媒体适用于结构化和非结构化流状态
+- 流式传输捕获流中所有工作人员和 L​​LM 调用的输出
+- 每个帧都包含结构化事件上下文，例如通道、类型、命名空间和有效负载
+- 流式传输为流程执行增加了最小的开销
+
+## 与流程可视化相结合
+
+您可以将流式传输与流程可视化结合起来以提供完整的图片：
+
+```python Code
+# Generate flow visualization
+flow = ResearchFlow()
+flow.plot("research_flow")  # Creates HTML visualization
+
+# Run with streaming
+streaming = flow.kickoff()
+for item in streaming:
+    print(item.content, end="", flush=True)
+
+result = streaming.result
+print(f"\nFlow complete! View structure at: research_flow.html")
+```
+
+通过利用流，您可以构建复杂的响应式应用程序，为用户提供复杂的多阶段工作流程的实时可见性，使您的 AI 自动化更加透明和有吸引力。

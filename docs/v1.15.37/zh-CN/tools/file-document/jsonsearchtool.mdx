@@ -1,0 +1,92 @@
+---
+title: "JSON RAG 搜索"
+description: "JSON RAG 搜索 工具文档。"
+icon: file-code
+mode: "wide"
+---
+
+# `JSONSearchTool`
+
+<Note>
+  JSONSearch Tool目前处于实验阶段. 这就是工具
+  正在积极开发中,用户可能会遇到意外行为或
+  变化。 我们大力鼓励对任何问题或建议提供反馈。
+  改进。
+</Note>
+
+## 说明
+
+JSONSearch Tool旨在便利在JSON文件内容内进行高效和精确的搜索. 它使用RAG(检索和生成)搜索机制,允许用户指定JSON路径,用于特定JSON文件中的定向搜索. 这一能力大大提高了搜索结果的准确性和相关性。
+
+## 安装
+
+要安装 JSONSearch Tool, 请使用以下 pip 命令 :
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 用法实例
+
+以下是如何有效利用JSONSearch Tool在JSON文件中搜索的最新实例。 这些例子考虑到代码库中确定的当前实施和使用模式。
+
+```python Code
+from crewai_tools import JSONSearchTool
+
+# General JSON content search
+# This approach is suitable when the JSON path is either known beforehand or can be dynamically identified.
+tool = JSONSearchTool()
+
+# Restricting search to a specific JSON file
+# Use this initialization method when you want to limit the search scope to a specific JSON file.
+tool = JSONSearchTool(json_path='./path/to/your/file.json')
+```
+
+## 参数
+
+- `json_path` (str,可选): 指定要搜索的 JSON 文件的路径。 如果工具初始化进行一般性搜索,则不需要这个参数. 在提供时,它仅限于指定的JSON文件。
+
+## 配置选项
+
+JSONSearch Tool通过配置词典支持广泛的定制. 这使得用户可以根据自己的要求选择不同的嵌入和归纳模型.
+
+```python Code
+tool = JSONSearchTool(
+    config={
+        "llm": {
+            "provider": "ollama",  # Other options include google, openai, anthropic, llama2, etc.
+            "config": {
+                "model": "llama2",
+                # Additional optional configurations can be specified here.
+                # temperature=0.5,
+                # top_p=1,
+                # stream=true,
+            },
+        },
+        "embedding_model": {
+            "provider": "google-generativeai", # or openai, ollama, ...
+            "config": {
+                "model_name": "gemini-embedding-001",
+                "task_type": "RETRIEVAL_DOCUMENT",
+                # Further customization options can be added here.
+            },
+        },
+    }
+)
+```
+
+## 警卫
+
+### 路径验证
+
+向本工具提供的文件路径会对照当前工作目录进行验证. 在工作目录之外解决的路径被拒绝 。`ValueError`.
+
+为了允许工作目录以外的路径(例如测试或信任的管道),设置环境变量:
+
+```shell
+CREWAI_TOOLS_ALLOW_UNSAFE_PATHS=true
+```
+
+### URL 验证
+
+URL 输入被验证 :`file://` 以私人或保留的IP范围为目标的URI和请求被屏蔽,以防止服务器侧请求伪造(SSRF)攻击.

@@ -1,0 +1,107 @@
+---
+title: "谷歌服务器搜索"
+description: "谷歌服务器搜索 工具文档。"
+icon: google
+mode: "wide"
+---
+
+# `SerperDevTool`
+
+## 说明
+
+这个工具旨在通过互联网对文本内容进行语义查询。 它使用 API 。
+根据用户提供的查询获取并显示最相关的搜索结果。
+
+## 安装
+
+有效利用`SerperDevTool`,遵循这些步骤:
+
+1. **软件包安装**:确认:`crewai[tools]` 软件包安装在您的 Python 环境中。
+2. 获得`serper.dev` API 密钥在 https://serper.dev/ (可自由使用).
+3. \ 0 : 将您获得的 API 密钥存储在一个名为 的 环境变量中`SERPER_API_KEY` 便利工具使用。
+
+为将这一工具纳入您的项目,请遵循以下安装指令:
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 示例
+
+以下示例说明如何初始化工具,并用给定查询执行搜索:
+
+```python Code
+from crewai_tools import SerperDevTool
+
+# Initialize the tool for internet searching capabilities
+tool = SerperDevTool()
+```
+
+## 参数
+
+那个`SerperDevTool` 包含数个参数,
+
+- "0":搜索 API 的 URL 端点. (过失是)`https://google.serper.dev/search`)
+
+- 零:可选。 指定搜索结果的国家。
+- 零:可选。 指定搜索结果的位置。
+- 零:可选。 指定搜索结果的地点。
+- 0: 返回的搜索结果数量。 默认为`10`.
+
+用于`country`, `location`, `locale` 和`search_url` 可在“0”栏中查找。
+
+## 有参数的示例
+
+以下是一个实例,说明如何用其他参数使用该工具:
+
+```python Code
+from crewai_tools import SerperDevTool
+
+tool = SerperDevTool(
+    search_url="https://google.serper.dev/scholar",
+    n_results=2,
+)
+
+print(tool.run(search_query="ChatGPT"))
+
+# Using Tool: Search the internet
+
+# Search results: Title: Role of chat gpt in public health
+# Link: https://link.springer.com/article/10.1007/s10439-023-03172-7
+# Snippet: … ChatGPT in public health. In this overview, we will examine the potential uses of ChatGPT in
+# ---
+# Title: Potential use of chat gpt in global warming
+# Link: https://link.springer.com/article/10.1007/s10439-023-03171-8
+# Snippet: … as ChatGPT, have the potential to play a critical role in advancing our understanding of climate
+# ---
+
+```
+
+```python Code
+from crewai_tools import SerperDevTool
+
+tool = SerperDevTool(
+    country="fr",
+    locale="fr",
+    location="Paris, Paris, Ile-de-France, France",
+    n_results=2,
+)
+
+print(tool.run(search_query="Jeux Olympiques"))
+
+# Using Tool: Search the internet
+
+# Search results: Title: Jeux Olympiques de Paris 2024 - Actualités, calendriers, résultats
+# Link: https://olympics.com/fr/paris-2024
+# Snippet: Quels sont les sports présents aux Jeux Olympiques de Paris 2024 ? · Athlétisme · Aviron · Badminton · Basketball · Basketball 3x3 · Boxe · Breaking · Canoë ...
+# ---
+# Title: Billetterie Officielle de Paris 2024 - Jeux Olympiques et Paralympiques
+# Link: https://tickets.paris2024.org/
+# Snippet: Achetez vos billets exclusivement sur le site officiel de la billetterie de Paris 2024 pour participer au plus grand événement sportif au monde.
+# ---
+```
+
+## 结论
+
+通过整合`SerperDevTool` 在Python项目中,用户直接从其应用程序获得在互联网上进行实时相关搜索的能力。
+更新的参数可以使搜索结果更加定制化和本地化。 通过遵守所提供的设置和使用准则,将这一工具纳入项目是精简和直截了当的。

@@ -1,0 +1,821 @@
+---
+title: "战略 LLM 选择指南"
+description: "为 CrewAI 代理选择合适 LLM，并制定有效任务与代理定义的战略框架"
+icon: "brain-circuit"
+mode: "wide"
+---
+
+## CrewAI 的 LLM 选型方法
+
+我们提倡的不是规定性的模型建议，而是一个**思维框架**，它可以帮助您根据特定的用例、约束和要求做出明智的决策。LLM 领域发展迅速，新模型定期出现，现有模型也经常更新。最重要的是开发一种系统的评估方法，无论有哪些特定模型可用，该方法都保持相关性。
+
+<Note>
+本指南聚焦战略思维，而非具体模型推荐，因为 LLM 领域变化极快。
+</Note>
+
+## 快速决策框架
+
+<Steps>
+  <Step title="Analyze Your Tasks">
+首先深入了解您的任务实际需要什么。考虑
+涉及的认知复杂性、所需推理的深度、推理的格式
+预期输出，以及模型需要处理的上下文量。
+这一基础分析将指导后续的每一个决策。
+  </Step>
+  <Step title="Map Model Capabilities">
+了解您的需求后，将它们映射到模型优势。
+不同模型家族各有优势：有些针对推理与分析进行了优化，另一些擅长创意与内容生成，还有一些强调速度与效率。
+  </Step>
+  <Step title="Consider Constraints">
+考虑您现实世界的运营限制，包括预算
+限制、延迟要求、数据隐私需求和基础设施
+能力。理论上最好的模型不一定是实际最好的
+根据您的情况进行选择。
+  </Step>
+  <Step title="Test and Iterate">
+从可靠、易于理解的模型开始，并根据实际情况进行优化
+在您的特定用例中的性能。现实世界的结果通常与
+理论基准，因此实证检验至关重要。
+  </Step>
+</Steps>
+
+## 核心选择框架
+
+### a. 任务优先思维
+
+选择 LLM时最关键的一步是了解您的任务的实际要求。很多时候，团队根据一般声誉或基准分数来选择模型，而没有仔细分析他们的具体要求。这种方法要么会导致使用昂贵、复杂的模型过度设计简单的任务，要么会导致使用缺乏必要功能的模型来实现复杂工作的动力不足。
+
+<Tabs>
+  <Tab title="Reasoning Complexity">
+    - **简单任务**代表大部分日常人工智能工作，包括基本指令遵循、简单的数据处理和简单的格式化操作。这些任务通常具有明确的输入和输出，并且模糊性最小。认知负荷较低，模型主要需要遵循明确的指令，而不是进行复杂的推理。
+
+    - **复杂任务**需要多步骤推理、战略思维以及处理模糊或不完整信息的能力。这些可能涉及分析多个数据源、制定全面的策略或解决需要分解为更小的组件的问题。该模型需要在多个推理步骤中维护上下文，并且通常必须做出未明确说明的推论。
+
+    - **创意任务**需要不同类型的认知能力，专注于生成新颖、引人入胜且适合情境的内容。这包括讲故事、营销文案创作和创造性地解决问题。该模型需要理解细微差别、语气和受众，同时制作让人感觉真实且引人入胜的内容，而不是公式化的内容。
+
+  </Tab>
+
+  <Tab title="Output Requirements">
+    - **结构化数据**任务需要格式遵循的精确性和一致性。当使用 JSON、XML 或数据库格式时，模型必须可靠地生成语法正确的输出，并且可以通过编程方式进行处理。这些任务通常有严格的验证要求，并且对格式错误的容忍度很小，因此可靠性比创造力更重要。
+
+    - **创意内容**输出需要技术能力和创意天赋的平衡。该模型需要了解受众、语气和品牌声音，同时制作吸引读者并实现特定传播目标的内容。这里的质量通常是主观的，需要模型能够使他们的写作风格适应不同的背景和目的。
+
+    - **技术内容**位于结构化数据和创意内容之间，需要精确性和清晰度。文档、代码生成和技术分析需要准确且全面，同时保持目标受众的可访问性。该模型必须理解复杂的技术概念并有效地传达它们。
+
+  </Tab>
+
+  <Tab title="Context Needs">
+    - **短上下文**场景涉及重点突出的即时任务，其中模型需要快速处理有限的信息。这些通常是事务性交互，其中速度和效率比深入理解更重要。该模型不需要维护大量的对话历史记录或处理大型文档。
+
+    - 在处理大量文档、扩展对话或复杂的多部分任务时，会出现**长上下文**要求。该模型需要保持数千个标记的一致性，同时准确引用早期信息。这种能力对于文档分析、综合研究和复杂的对话系统至关重要。
+
+    - **非常长的上下文**场景突破了当前可能的界限，涉及大量文档处理、广泛的研究综合或复杂的多会话交互。这些用例需要专门为扩展上下文处理而设计的模型，并且通常涉及上下文长度和处理速度之间的权衡。
+
+  </Tab>
+</Tabs>
+
+### b. 模型能力映射
+
+了解模型功能需要超越营销主张和基准分数，以了解不同模型架构和训练方法的基本优势和局限性。
+
+<AccordionGroup>
+  <Accordion title="Reasoning Models" icon="brain">
+推理模型代表了专门为复杂、多步骤的思维任务而设计的专门类别。当问题需要仔细分析、战略规划或系统的问题分解时，这些模型表现出色。他们通常采用思想链推理或思想树处理等技术来逐步解决复杂的问题。
+
+推理模型的优势在于它们能够在扩展推理链上保持逻辑一致性，并将复杂问题分解为可管理的组件。它们对于战略规划、复杂分析以及推理质量比响应速度更重要的情况特别有价值。
+
+然而，推理模型通常需要在速度和成本方面进行权衡。它们也可能不太适合不需要复杂推理能力的创造性任务或简单操作。当您的任务涉及真正的复杂性并受益于系统的、逐步的分析时，请考虑这些模型。
+
+  </Accordion>
+
+  <Accordion title="General Purpose Models" icon="microchip">
+通用模型为LLM选择提供了最平衡的方法，在广泛的任务中提供可靠的性能，而无需在任何特定领域进行极端专业化。这些模型在不同的数据集上进行训练，并针对多功能性而不是特定领域的最佳性能进行了优化。
+
+通用模型的主要优点是它们在不同类型的工作中的可靠性和可预测性。他们能够胜任大多数标准业务任务，从研究和分析到内容创建和数据处理。这使得它们成为需要在不同工作流程中保持一致性能的团队的绝佳选择。
+
+虽然通用模型可能无法达到特定领域专用替代方案的最佳性能，但它们提供了操作简单性并降低了模型管理的复杂性。它们通常是新项目的最佳起点，使团队能够在使用更专业的模型进行优化之前了解他们的特定需求。
+
+  </Accordion>
+
+  <Accordion title="Fast & Efficient Models" icon="bolt">
+快速高效的模型优先考虑速度、成本效益和资源效率，而不是复杂的推理能力。这些模型针对高吞吐量场景进行了优化，在这些场景中，快速响应和低运营成本比细致入微的理解或复杂的推理更重要。
+
+这些模型在涉及常规操作、简单数据处理、函数调用以及认知要求相对简单的大批量任务的场景中表现出色。它们对于需要快速处理许多请求或在严格的预算限制内运行的应用程序特别有价值。
+
+高效模型的关键考虑因素是确保其功能符合您的任务要求。虽然他们可以有效地处理许多日常操作，但他们可能会难以完成需要细致入微的理解、复杂的推理或复杂的内容生成的任务。它们最适合用于定义明确的例行操作，在这些操作中速度和成本比复杂性更重要。
+
+  </Accordion>
+
+  <Accordion title="Creative Models" icon="pen">
+创意模型专门针对内容生成、写作质量和创意思维任务进行了优化。这些模型通常擅长理解细微差别、语气和风格，同时生成引人入胜、适合上下文的、感觉自然和真实的内容。
+
+创意模型的优势在于它们能够适应不同受众的写作风格，保持一致的声音和语气，并生成有效吸引读者的内容。他们通常在涉及讲故事、营销文案、品牌传播以及其他以创造力和参与度为主要目标的内容方面表现更好。
+
+选择创意模型时，不仅要考虑他们生成文本的能力，还要考虑他们对受众、背景和目的的理解。最好的创意模型可以调整其输出以匹配特定的品牌声音，针对不同的受众群体，并保持扩展内容的一致性。
+
+  </Accordion>
+
+  <Accordion title="Open Source Models" icon="code">
+开源模型在成本控制、定制潜力、数据隐私和部署灵活性方面具有独特的优势。这些模型可以在本地或私有基础设施上运行，从而提供对数据处理和模型行为的完全控制。
+
+开源模型的主要好处包括消除每个代币的成本、针对特定用例进行微调的能力、完整的数据隐私以及独立于外部 API 提供商。它们对于具有严格数据隐私要求、预算限制或特定定制需求的组织特别有价值。
+
+然而，开源模型需要更多的技术专业知识才能有效地部署和维护。团队需要考虑基础设施成本、模型管理复杂性以及保持模型更新和优化所需的持续努力。考虑到技术开销时，总拥有成本可能高于基于云的替代方案。
+
+  </Accordion>
+</AccordionGroup>
+
+## 战略配置模式
+
+### 一个。多模型方法
+
+<Tip>
+在同一机组内使用不同的模型用于不同的目的来优化
+性能和成本。
+</Tip>
+
+最复杂的 CrewAI 实施通常会战略性地采用多个模型，根据不同的代理的特定角色和要求将不同的模型分配给不同的代理。这种方法允许团队通过针对每种工作类型使用最合适的模型来优化性能和成本。
+
+规划代理受益于可以处理复杂的战略思维和多步骤分析的推理模型。这些特工通常充当行动的“大脑”，制定策略并协调其他特工的工作。另一方面，内容代理在写作质量和受众参与度方面表现出色的创意模型表现最佳。处理日常操作的处理代理可以使用优先考虑速度和成本效益的高效模型。
+
+**示例：研究和分析人员**
+
+```python
+from crewai import Agent, Task, Crew, LLM
+
+# High-capability reasoning model for strategic planning
+manager_llm = LLM(model="gemini/gemini-3.7-flash", temperature=0.1)
+
+# Creative model for content generation
+content_llm = LLM(model="claude-3-5-sonnet-20241022", temperature=0.7)
+
+# Efficient model for data processing
+processing_llm = LLM(model="gpt-4o-mini", temperature=0)
+
+research_manager = Agent(
+    role="Research Strategy Manager",
+    goal="Develop comprehensive research strategies and coordinate team efforts",
+    backstory="Expert research strategist with deep analytical capabilities",
+    llm=manager_llm,  # High-capability model for complex reasoning
+    verbose=True
+)
+
+content_writer = Agent(
+    role="Research Content Writer",
+    goal="Transform research findings into compelling, well-structured reports",
+    backstory="Skilled writer who excels at making complex topics accessible",
+    llm=content_llm,  # Creative model for engaging content
+    verbose=True
+)
+
+data_processor = Agent(
+    role="Data Analysis Specialist",
+    goal="Extract and organize key data points from research sources",
+    backstory="Detail-oriented analyst focused on accuracy and efficiency",
+    llm=processing_llm,  # Fast, cost-effective model for routine tasks
+    verbose=True
+)
+
+crew = Crew(
+    agents=[research_manager, content_writer, data_processor],
+    tasks=[...],  # Your specific tasks
+    manager_llm=manager_llm,  # Manager uses the reasoning model
+    verbose=True
+)
+```
+
+成功实施多模型的关键是了解不同代理如何交互并确保模型功能与代理职责保持一致。这需要仔细规划，但可以显着提高输出质量和运营效率。
+
+### b.特定于组件的选择
+
+<Tabs>
+  <Tab title="Manager LLM">
+经理 LLM 在分层 CrewAI 流程中发挥着至关重要的作用，充当多个代理和任务的协调点。该模型需要擅长委派、任务优先级划分以及跨多个并发操作维护上下文。
+
+有效的经理LLM需要强大的推理能力来做出良好的授权决策，需要一致的性能来确保可预测的协调，以及出色的上下文管理来同时跟踪多个代理的状态。该模型需要了解不同代理的能力和局限性，同时优化任务分配以提高效率和质量。
+
+成本考虑对于经理LLM来说尤其重要，因为他们参与每项业务。该模型需要提供足够的能力来进行有效协调，同时保持频繁使用的成本效益。这通常意味着寻找能够提供良好推理能力的模型，而无需为最复杂的选项支付高价。
+
+  </Tab>
+
+  <Tab title="Function Calling LLM">
+函数调用 LLM 处理所有代理的工具使用情况，这使得它们对于严重依赖外部工具和 API 的工作人员至关重要。这些模型需要擅长理解工具功能、准确提取参数以及有效处理工具响应。
+
+函数调用LLM最重要的特征是精确性和可靠性，而不是创造力或复杂的推理。该模型需要一致地从自然语言请求中提取正确的参数并适当地处理工具响应。速度也很重要，因为工具的使用通常涉及多次往返，这可能会影响整体性能。
+
+许多团队发现，具有强大工具支持的专用函数调用模型或通用模型比该角色的创意或推理模型效果更好。关键是确保模型能够可靠地弥合自然语言指令和结构化工具调用之间的差距。
+
+  </Tab>
+
+  <Tab title="Agent-Specific Overrides">
+当个别代理的特定需求与一般团队要求显着不同时，他们可以覆盖团队级别的 LLM 设置。此功能允许进行微调优化，同时保持大多数代理的操作简单性。
+
+当代理的角色需要与其他机组成员有很大不同的能力时，请考虑特定于代理的覆盖。例如，创意写作代理可能会受益于针对内容生成而优化的模型，而数据分析代理可能会通过以推理为中心的模型表现更好。
+
+特定于代理的覆盖的挑战是平衡优化与操作复杂性。每个附加模型都会增加部署、监控和成本管理的复杂性。团队应将重点放在代理上，因为性能改进证明额外的复杂性是合理的。
+
+  </Tab>
+</Tabs>
+
+## 任务定义框架
+
+### a. 注重清晰度而非复杂性
+
+在确定 CrewAI 输出的质量方面，有效的任务定义通常比模型选择更重要。定义良好的任务提供了明确的方向和背景，即使是最普通的模型也能表现良好，而定义不明确的任务可能会导致即使是复杂的模型也产生不令人满意的结果。
+
+<AccordionGroup>
+  <Accordion title="Effective Task Descriptions" icon="list-check">
+最好的任务描述在提供足够的细节和保持清晰度之间取得平衡。他们应该足够清晰地定义具体目标，以便对成功的样子没有任何歧义，同时足够详细地解释方法或方法，以便代理了解如何继续。
+
+有效的任务描述包括相关的背景和约束，帮助代理了解更广泛的目的以及他们工作所需的任何限制。他们将复杂的工作分解为可以系统执行的重点步骤，而不是提出难以系统实现的压倒性的、多方面的目标。
+
+常见的错误包括目标过于模糊、未能提供必要的背景、设定不明确的成功标准或将多个不相关的任务合并到一个描述中。目标是为代理取得成功提供足够的信息，同时保持对单一、明确目标的关注。
+
+  </Accordion>
+
+  <Accordion title="Expected Output Guidelines" icon="bullseye">
+预期输出指南充当任务定义和代理之间的合同，明确指定可交付成果应该是什么样子以及如何评估它。这些指南应描述所需的格式和结构，以及输出被视为完整时必须包含的关键元素。
+
+最佳输出指南提供了质量指标的具体示例，并足够清晰地定义了完成标准，以便代理和人工审核者都可以评估任务是否已成功完成。这减少了歧义并有助于确保多个任务执行的结果一致。
+
+避免适用于任何任务的通用输出描述、缺少导致代理猜测结构的格式规范、导致评估困难的质量标准不明确或未能提供帮助代理理解期望的示例或模板。
+
+  </Accordion>
+</AccordionGroup>
+
+### b. 任务排序策略
+
+<Tabs>
+  <Tab title="Sequential Dependencies">
+当任务建立在先前的输出之上、信息从一项任务流向另一项任务或质量取决于先决条件工作的完成时，顺序任务依赖性至关重要。这种方法确保每个任务都可以访问成功所需的信息和上下文。
+
+有效地实现顺序依赖关系需要使用上下文参数来链接相关任务，通过任务进展逐渐构建复杂性，并确保每个任务产生的输出可以作为后续任务的有意义的输入。目标是维持相关任务之间的逻辑流，同时避免不必要的瓶颈。
+
+当从一项任务到另一项任务有清晰的逻辑进展，并且一项任务的输出真正提高了后续任务的质量或可行性时，顺序依赖性效果最佳。但是，如果不仔细管理，它们可能会造成瓶颈，因此确定哪些依赖项是真正必要的，哪些依赖项只是为了方便，这一点很重要。
+
+  </Tab>
+
+  <Tab title="Parallel Execution">
+当任务彼此独立、时间效率很重要或涉及不需要协调的不同专业领域时，并行执行就变得很有价值。这种方法可以显着减少总体执行时间，同时允许专业代理同时在其优势领域开展工作。
+
+成功的并行执行需要识别可以真正独立运行的任务，有效地对相关但独立的工作流进行分组，并在并行任务需要组合成最终可交付成果时规划结果集成。关键是确保并行任务不会产生冲突或冗余，从而降低整体质量。
+
+当您有多个独立的研究流、彼此不依赖的不同类型的分析或可以同时开发的内容创建任务时，请考虑并行执行。但是，请注意资源分配并确保并行执行不会超出您的可用模型容量或预算。
+
+  </Tab>
+</Tabs>
+
+## 优化代理配置以提高 LLM 性能
+
+### a. 角色驱动的 LLM 选型
+
+<Warning>
+通用代理角色使您无法选择正确的LLM。具体角色
+启用有针对性的模型优化。
+</Warning>
+
+您的代理角色的特殊性直接决定了哪些 LLM 能力对于最佳绩效最重要。这创造了一个将精确的模型优势与代理职责相匹配的战略机会。
+
+**通用与特定角色对LLM选择的影响：**
+
+定义角色时，请考虑对于代理将处理的任务最有价值的特定领域知识、工作风格和决策框架。角色定义越具体、越符合情境，模型就越能有效地体现该角色。
+
+```python
+# ✅ Specific role - clear LLM requirements
+specific_agent = Agent(
+    role="SaaS Revenue Operations Analyst",  # Clear domain expertise needed
+    goal="Analyze recurring revenue metrics and identify growth opportunities",
+    backstory="Specialist in SaaS business models with deep understanding of ARR, churn, and expansion revenue",
+    llm=LLM(model="gpt-4o")  # Reasoning model justified for complex analysis
+)
+```
+
+**角色到模型映射策略：**
+
+- **“研究分析师”** → 用于复杂分析的推理模型（GPT-4o，Claude Sonnet）
+- **“内容编辑器”** → 用于写作质量的创意模型（Claude、GPT-4o）
+- **“数据处理器”** → 用于结构化任务的高效模型（GPT-4o-mini、Gemini Flash）
+- **“API 协调器”** → 用于工具使用的函数调用优化模型（GPT-4o，Claude）
+
+### b. 背景故事作为模型上下文放大器
+
+<Info>
+战略背景故事通过提供以下内容来倍增您选择的LLM的有效性：
+通用提示无法实现的特定领域上下文。
+</Info>
+
+精心设计的背景故事将您的LLM选择从通用能力转变为专业知识。这对于成本优化尤其重要 - 上下文良好的高效模型可以在没有适当上下文的情况下胜过优质模型。
+
+**上下文驱动的性能示例：**
+
+```python
+# Context amplifies model effectiveness
+domain_expert = Agent(
+    role="B2B SaaS Marketing Strategist",
+    goal="Develop comprehensive go-to-market strategies for enterprise software",
+    backstory="""
+    You have 10+ years of experience scaling B2B SaaS companies from Series A to IPO.
+    You understand the nuances of enterprise sales cycles, the importance of product-market
+    fit in different verticals, and how to balance growth metrics with unit economics.
+    You've worked with companies like Salesforce, HubSpot, and emerging unicorns, giving
+    you perspective on both established and disruptive go-to-market strategies.
+    """,
+    llm=LLM(model="claude-3-5-sonnet", temperature=0.3)  # Balanced creativity with domain knowledge
+)
+
+# This context enables Claude to perform like a domain expert
+# Without it, even it would produce generic marketing advice
+```
+
+**提高LLM绩效的背景元素：**
+
+- **领域经验**：“10 年以上企业 SaaS 销售经验”
+- **具体专业知识**：“专门从事 B+ 轮的技术尽职调查”
+- **工作风格**：“更喜欢具有清晰文档的数据驱动决策”
+- **质量标准**：“坚持引用来源并展示分析工作”
+
+### c. 整体代理-LLM 优化
+
+最有效的代理配置可以在角色特异性、背景深度和LLM选择之间产生协同作用。每个元素都会增强其他元素以最大限度地提高模型性能。
+
+**优化框架：**
+
+```python
+# Example: Technical Documentation Agent
+tech_writer = Agent(
+    role="API Documentation Specialist",  # Specific role for clear LLM requirements
+    goal="Create comprehensive, developer-friendly API documentation",
+    backstory="""
+    You're a technical writer with 8+ years documenting REST APIs, GraphQL endpoints,
+    and SDK integration guides. You've worked with developer tools companies and
+    understand what developers need: clear examples, comprehensive error handling,
+    and practical use cases. You prioritize accuracy and usability over marketing fluff.
+    """,
+    llm=LLM(
+        model="claude-3-5-sonnet",  # Excellent for technical writing
+        temperature=0.1  # Low temperature for accuracy
+    ),
+    tools=[code_analyzer_tool, api_scanner_tool],
+    verbose=True
+)
+```
+
+**对齐检查表：**
+
+- ✅ **角色特异性**：明确的领域和职责
+- ✅ **LLM 匹配**：模型优势与角色要求相符
+- ✅ **背景故事深度**：提供LLM可以利用的领域背景
+- ✅ **工具集成**：工具支持代理的专业功能
+- ✅ **参数调整**：温度和设置根据角色需求进行优化
+
+关键是创建代理，其中每个配置选择都会强化您的 LLM 选择策略，在优化成本的同时最大限度地提高性能。
+
+## 实际实施清单
+
+这里没有重复战略框架，而是在 CrewAI 中实施 LLM 选择决策的战术清单：
+
+<Steps>
+  <Step title="Audit Your Current Setup" icon="clipboard-check">
+**要审查什么：**
+- 默认情况下，所有代理都使用相同的 LLM 吗？
+- 哪些代理处理最复杂的推理任务？
+- 哪些代理主要进行数据处理或格式化？
+- 是否有任何代理严重依赖工具？
+
+**行动**：记录当前代理角色并确定优化机会。
+
+  </Step>
+
+  <Step title="Implement Crew-Level Strategy" icon="users-gear">
+**设定你的基线：**
+    ```python
+    # Start with a reliable default for the crew
+    default_crew_llm = LLM(model="gpt-4o-mini")  # Cost-effective baseline
+
+    crew = Crew(
+        agents=[...],
+        tasks=[...],
+        memory=True
+    )
+    ```
+
+**行动**：在优化单个代理之前建立团队的默认 LLM。
+
+  </Step>
+
+  <Step title="Optimize High-Impact Agents" icon="star">
+**识别并升级关键代理：**
+    ```python
+    # Manager or coordination agents
+    manager_agent = Agent(
+        role="Project Manager",
+        llm=LLM(model="gemini/gemini-3.7-flash"),  # Premium for coordination
+        # ... rest of config
+    )
+
+    # Creative or customer-facing agents
+    content_agent = Agent(
+        role="Content Creator",
+        llm=LLM(model="claude-3-5-sonnet"),  # Best for writing
+        # ... rest of config
+    )
+    ```
+
+**行动**：升级 20% 的代理，以处理 80% 的复杂性。
+
+  </Step>
+
+  <Step title="Validate with Enterprise Testing" icon="test-tube">
+**将代理部署到生产环境后：**
+- 使用 [CrewAI AMP 平台](https://app.crewai.com) 对您的模型选择进行 A/B 测试
+- 使用真实输入运行多次迭代以衡量一致性和性能
+- 比较优化设置的成本与性能
+- 与您的团队分享结果以进行协作决策
+
+**行动**：使用测试平台将猜测替换为数据驱动的验证。
+
+  </Step>
+</Steps>
+
+### 何时使用不同的模型类型
+
+<Tabs>
+  <Tab title="Reasoning Models">
+当任务需要真正的多步骤逻辑思维、战略规划或受益于系统分析的高级决策时，推理模型就变得至关重要。当问题需要分解为多个组件并进行系统分析而不是通过模式匹配或简单的指令遵循来处理时，这些模型表现出色。
+
+考虑业务战略开发的推理模型、需要从多个来源获取见解的复杂数据分析、每一步都取决于先前分析的多步骤问题解决，以及需要考虑多个变量及其相互作用的战略规划任务。
+
+然而，推理模型通常成本较高且响应时间较慢，因此它们最好保留用于其复杂功能提供真正价值的任务，而不是用于不需要复杂推理的简单操作。
+
+  </Tab>
+
+  <Tab title="Creative Models">
+当内容生成是主要输出并且内容的质量、风格和参与水平直接影响成功时，创意模型就变得有价值。当写作质量和风格非常重要、需要创意构思或集思广益、或者品牌声音和语气是重要考虑因素时，这些模型表现出色。
+
+使用创意模型进行博客文章写作和文章创作、需要吸引和说服的营销文案、创意讲故事和叙事发展，以及声音和语气至关重要的品牌传播。这些模型通常比通用替代模型更好地理解细微差别和上下文。
+
+创意模型可能不太适合技术或分析任务，因为在这些任务中，精度和事实准确性比参与度和风格更重要。当输出的创意和沟通方面是主要成功因素时，最好使用它们。
+
+  </Tab>
+
+  <Tab title="Efficient Models">
+高效模型非常适合优先考虑速度和成本优化的高频日常操作。当任务具有清晰、定义明确的参数并且不需要复杂的推理或创造性能力时，这些模型效果最佳。
+
+考虑数据处理和转换任务的高效模型、简单的格式化和组织操作、精度比复杂性更重要的函数调用和工具使用，以及每次操作成本是重要因素的大批量操作。
+
+高效模型的关键是确保其能力符合任务要求。他们可以有效地处理许多日常操作，但可能难以完成需要细致入微的理解、复杂的推理或复杂的内容生成的任务。
+
+  </Tab>
+
+  <Tab title="Open Source Models">
+当预算限制很大、存在数据隐私要求、定制需求很重要或者出于运营或合规性原因需要本地部署时，开源模型就会变得有吸引力。
+
+考虑数据隐私至关重要的内部公司工具的开源模型、不能使用外部 API 的隐私敏感应用程序、每个代币定价过高成本优化部署，以及需要自定义模型修改或微调的情况。
+
+然而，开源模型需要更多的技术专业知识才能有效地部署和维护。在评估开源选项时，请考虑总拥有成本，包括基础设施、技术开销和持续维护。
+
+  </Tab>
+</Tabs>
+
+## 常见的 CrewAI 模型选择陷阱
+
+<AccordionGroup>
+  <Accordion title="The 'One Model Fits All' Trap" icon="triangle-exclamation">
+**问题**：对团队中的所有代理人使用相同的 LLM，无论他们的具体角色和职责如何。这通常是默认方法，但很少是最佳方法。
+
+**真实示例**：将 GPT-4o 用于战略规划经理和数据提取代理。经理需要的推理能力值得付出高昂的成本，但数据提取器的性能与 GPT-4o-mini 一样好，但价格仅为 GPT-4o-mini 的一小部分。
+
+**CrewAI 解决方案**：利用特定于代理的 LLM 配置将模型功能与代理角色相匹配：
+    ```python
+    # Strategic agent gets premium model
+    manager = Agent(role="Strategy Manager", llm=LLM(model="gpt-4o"))
+
+    # Processing agent gets efficient model
+    processor = Agent(role="Data Processor", llm=LLM(model="gpt-4o-mini"))
+    ```
+
+  </Accordion>
+
+  <Accordion title="Ignoring Crew-Level vs Agent-Level LLM Hierarchy" icon="shuffle">
+**问题**：不了解 CrewAI 的 LLM 层次结构如何工作 - 团队 LLM、经理 LLM 和代理 LLM 设置可能会发生冲突或协调不善。
+
+**真实示例**：设置一个工作人员使用 Claude，但使用 GPT 模型配置代理，从而产生不一致的行为和不必要的模型切换开销。
+
+**CrewAI 解决方案**：战略性地规划您的 LLM 层次结构：
+    ```python
+    crew = Crew(
+        agents=[agent1, agent2],
+        tasks=[task1, task2],
+        manager_llm=LLM(model="gpt-4o"),  # For crew coordination
+        process=Process.hierarchical  # When using manager_llm
+    )
+
+    # Agents inherit crew LLM unless specifically overridden
+    agent1 = Agent(llm=LLM(model="claude-3-5-sonnet"))  # Override for specific needs
+    ```
+
+  </Accordion>
+
+  <Accordion title="Function Calling Model Mismatch" icon="screwdriver-wrench">
+**问题**：根据一般功能选择模型，而忽略工具密集型 CrewAI 工作流程的函数调用性能。
+
+**真实示例**：为主要需要调用 API、搜索工具或处理结构化数据的代理选择以创意为中心的模型。代理在工具参数提取和可靠的函数调用方面遇到了困难。
+
+**CrewAI 解决方案**：优先考虑工具密集型代理的函数调用功能：
+    ```python
+    # For agents that use many tools
+    tool_agent = Agent(
+        role="API Integration Specialist",
+        tools=[search_tool, api_tool, data_tool],
+        llm=LLM(model="gpt-4o"),  # Excellent function calling
+        # OR
+        llm=LLM(model="claude-3-5-sonnet")  # Also strong with tools
+    )
+    ```
+
+  </Accordion>
+
+  <Accordion title="Premature Optimization Without Testing" icon="gear">
+**问题**：根据理论性能做出复杂的模型选择决策，而没有使用实际的 CrewAI 工作流程和任务进行验证。
+
+**真实示例**：根据任务类型实现复杂的模型切换逻辑，而无需测试性能提升是否证明操作复杂性合理。
+
+**CrewAI 解决方案**：从简单开始，然后根据真实性能数据进行优化：
+    ```python
+    # Start with this
+    crew = Crew(agents=[...], tasks=[...], llm=LLM(model="gpt-4o-mini"))
+
+    # Test performance, then optimize specific agents as needed
+    # Use Enterprise platform testing to validate improvements
+    ```
+
+  </Accordion>
+
+  <Accordion title="Overlooking Context and Memory Limitations" icon="brain">
+**问题**：没有考虑模型上下文窗口如何与 CrewAI 的内存以及代理之间的上下文共享进行交互。
+
+**真实示例**：对于需要在多个任务迭代中维护对话历史记录的代理，或者在具有广泛代理间通信的工作人员中，使用短上下文模型。
+
+**CrewAI 解决方案**：将上下文功能与团队通信模式相匹配。
+
+  </Accordion>
+</AccordionGroup>
+
+## 测试和迭代策略
+
+<Steps>
+  <Step title="Start Simple" icon="play">
+从可靠的、易于理解的通用模型开始
+得到广泛支持。这为了解您的情况提供了稳定的基础
+优化之前的具体要求和性能期望
+特殊需求。
+  </Step>
+  <Step title="Measure What Matters" icon="chart-line">
+制定与您的特定用例和业务相符的指标
+要求而不是仅仅依赖一般基准。专注于
+衡量直接影响您成功的结果而不是理论上的结果
+绩效指标。
+  </Step>
+  <Step title="Iterate Based on Results" icon="arrows-rotate">
+根据在特定环境中观察到的性能来更改模型
+而不是理论考虑或一般建议。
+实际性能通常与基准结果或
+一般声誉。
+  </Step>
+  <Step title="Consider Total Cost" icon="calculator">
+评估完整的拥有成本，包括模型成本、​​开发成本
+时间、维护开销和操作复杂性。最便宜的型号
+考虑到所有因素时，每个代币可能不是最具成本效益的选择
+因素。
+  </Step>
+</Steps>
+
+<Tip>
+首先重点了解您的需求，然后选择最适合的型号
+满足这些需求。最好的 LLM选择是始终如一的交付
+在您的运营限制范围内获得您需要的结果。
+</Tip>
+
+### 企业级模型验证
+
+对于认真优化 LLM 选择的团队来说，**CrewAI AMP 平台**提供了远远超出基本 CLI 测试的复杂测试功能。该平台支持全面的模型评估，帮助您就 LLM 策略做出数据驱动的决策。
+
+<Frame>
+![企业测试接口](/images/enterprise/enterprise-testing.png)
+</Frame>
+
+**高级测试功能：**
+
+- **多模型比较**：在相同的任务和输入中同时测试多个LLM。并行比较 GPT-4o、Claude、Llama、Groq、Cerebras 和其他领先模型之间的性能，以确定最适合您的特定用例的模型。
+
+- **统计严谨性**：使用一致的输入配置多次迭代，以测量可靠性和性能差异。这有助于识别不仅表现良好而且在运行中表现一致的模型。
+
+- **真实世界验证**：使用您的实际机组输入和场景，而不是综合基准。该平台允许您使用特定的行业背景、公司信息和真实用例进行测试，以便进行更准确的评估。
+
+- **全面分析**：访问所有测试模型的详细性能指标、执行时间和成本分析。这使得数据驱动的决策成为可能，而不是依赖于一般模型的声誉或理论能力。
+
+- **团队协作**：在整个团队中共享测试结果和模型性能数据，从而实现跨项目的协作决策和一致的模型选择策略。
+
+前往 [app.crewai.com](https://app.crewai.com) 开始吧！
+
+<Info>
+企业平台将模型选择从猜测转变为
+数据驱动的流程，使您能够验证本指南中的原则
+结合您的实际用例和要求。
+</Info>
+
+## 关键原则总结
+
+<CardGroup cols={2}>
+  <Card title="Task-Driven Selection" icon="bullseye">
+根据任务实际需要选择模型，而不是理论能力或一般声誉。
+  </Card>
+
+{" "}
+<Card title="Capability Matching" icon="puzzle-piece">
+将模型优势与代理角色和职责相结合，以实现最佳效果
+表现。
+</Card>
+
+{" "}
+<Card title="Strategic Consistency" icon="link">
+跨相关组件保持一致的模型选择策略
+工作流程。
+</Card>
+
+{" "}
+<Card title="Practical Testing" icon="flask">
+通过实际使用而不是仅通过基准来验证选择。
+</Card>
+
+{" "}
+<Card title="Iterative Improvement" icon="arrow-up">
+从简单入手，根据实际性能和需求进行优化。
+</Card>
+
+  <Card title="Operational Balance" icon="scale-balanced">
+平衡性能要求与成本和复杂性约束。
+  </Card>
+</CardGroup>
+
+<Check>
+请记住：最好的 LLM选择是能够始终如一地提供
+在您的运营限制范围内获得您需要的结果。注重理解
+首先您的需求，然后选择最符合这些需求的型号。
+</Check>
+
+## 当前模型景观（2025 年 6 月）
+
+<Warning>
+**时间快照**：以下型号排名代表当前
+截至 2025 年 6 月的排行榜排名，编译自 [LMSys
+竞技场](https://arena.lmsys.org/)，[人工
+分析](https://artificialanalysis.ai/)，以及其他领先的基准。LLM
+性能、可用​​性和定价变化很快。永远做自己的事
+根据您的具体用例和数据进行评估。
+</Warning>
+
+### 按类别划分的领先型号
+
+下表显示了当前不同类别中表现最佳的模型的代表性样本，以及它们对 CrewAI 代理的适用性的指导：
+
+<Note>
+这些表格/指标展示了每个类别中选定的领先模型，并且是
+并不详尽。除了这里列出的之外，还有许多优秀的模型。目标
+是为了说明要寻找的能力类型，而不是提供
+完整的目录。
+</Note>
+
+<Tabs>
+  <Tab title="Reasoning & Planning">
+**最适合LLM经理和复杂分析**
+
+    | 模型 | 智力分数 | 成本（美元/百万代币） | 速度 | CrewAI 最佳应用 |
+    |:------|:------------------|:------------------|:------|:------------------|
+    | **o3** | 70 | $17.50 | 快 | 用于复杂多代理协调的LLM经理 |
+    | **Gemini 2.5 专业版** | 69 | $3.44 | 快 | 战略规划代理、研究协调 |
+    | **DeepSeek R1** | 68 | $0.96 | 中等 | 为精打细算的工作人员提供具有成本效益的推理 |
+    | **Claude第四Sonnet** | 53 | $6.00 | 快 | 需要细致入微的理解的分析代理 |
+    | **Qwen3 235B（推理）** | 62 | $2.63 | 中等 | 推理任务的开源替代方案 |
+
+这些模型擅长多步骤推理，非常适合需要制定策略、协调其他智能体或分析复杂信息的智能体。
+
+  </Tab>
+
+  <Tab title="Coding & Technical">
+**最适合开发和工具密集型工作流程**
+
+    | 模型 | 编码性能 | 工具使用分数 | 成本（美元/百万代币） | CrewAI 最佳应用 |
+    |:------|:------------------|:---------------|:------------------|:------------------|
+    | **Claude第四Sonnet** | 出色的 | 72.7% | $6.00 | 主要编码剂、技术文档 |
+    | **Claude4号Opus** | 出色的 | 72.5% | $30.00 | 软件架构复杂，代码审查 |
+    | **DeepSeek V3** | 非常好 | 高 | $0.48 | 用于日常开发的经济有效的编码 |
+    | **Qwen2.5编码器32B** | 非常好 | 中等的 | $0.15 | 预算友好的编码代理 |
+    | **Llama 3.1 405B** | 好的 | 81.1% | $3.50 | 针对工具密集型工作流程的函数调用 LLM |
+
+这些模型针对代码生成、调试和技术问题解决进行了优化，使其成为专注于开发的团队的理想选择。
+
+  </Tab>
+
+  <Tab title="Speed & Efficiency">
+**最适合高吞吐量和实时应用程序**
+
+    | 模型 | 速度（令牌/秒） | 延迟 (TTFT) | 成本（美元/百万代币） | CrewAI 最佳应用 |
+    |:------|:-----------------|:---------------|:------------------|:------------------|
+    | **Llama 4 侦察兵** | 2,600 | 0.33秒 | $0.27 | 大批量处理剂 |
+    | **Gemini 2.5 Flash** | 376 | 0.30秒 | $0.26 | 实时响应代理 |
+    | **DeepSeek R1 Distill** | 383 | 可变 | $0.04 | 成本优化的高速处理 |
+    | **Llama 3.3 70B** | 2,500 | 0.52秒 | $0.60 | 平衡的速度和能力 |
+    | **Nova Micro** | 高 | 0.30秒 | $0.04 | 简单、快速的任务执行 |
+
+这些模型优先考虑速度和效率，非常适合处理日常操作或需要快速响应的代理。 **专业提示**：将这些模型与 Groq 等快速推理提供程序配对可以实现更好的性能，特别是对于 Llama 等开源模型。
+
+  </Tab>
+
+  <Tab title="Balanced Performance">
+**适合普通团队的最佳全能型号**
+
+    | 模型 | 总分 | 多功能性 | 成本（美元/百万代币） | CrewAI 最佳应用 |
+    |:------|:--------------|:------------|:------------------|:------------------|
+    | **GPT-4.1** | 53 | 出色的 | $3.50 | 通用团队LLM |
+    | **Claude 3.7 Sonnet** | 48 | 非常好 | $6.00 | 平衡的推理和创造力 |
+    | **Gemini2.0Flash** | 48 | 好的 | $0.17 | 通用性高性价比 |
+    | **Llama 4 特立独行** | 51 | 好的 | $0.37 | 开源通用 |
+    | **Qwen3 32B** | 44 | 好的 | $1.23 | 经济实惠的多功能性 |
+
+这些模型在多个维度上提供了良好的性能，适合具有不同任务要求的团队。
+
+  </Tab>
+</Tabs>
+
+### 当前型号的选型框架
+
+<AccordionGroup>
+  <Accordion title="High-Performance Crews" icon="rocket">
+**当性能优先时**：对于经理 LLM 和关键代理，使用 **o3**、**Gemini 2.5 Pro** 或 **Claude 4 Sonnet** 等顶级模型。这些模型擅长复杂的推理和协调，但成本较高。
+
+**战略**：实施多模型方法，其中优质模型处理战略思维，而高效模型处理日常运营。
+
+  </Accordion>
+
+  <Accordion title="Cost-Conscious Crews" icon="dollar-sign">
+**当预算是主要限制时**：重点关注 **DeepSeek R1**、**Llama 4 Scout** 或 **Gemini 2.0 Flash** 等型号。这些以显着降低的成本提供了强大的性能。
+
+**策略**：对大多数代理使用具有成本效益的模型，仅为最关键的决策角色保留高级模型。
+
+  </Accordion>
+
+  <Accordion title="Specialized Workflows" icon="screwdriver-wrench">
+**针对特定领域的专业知识**：选择针对您的主要用例优化的模型。 **Claude 4** 系列用于编码，**Gemini 2.5 Pro** 用于研究，**Llama 405B** 用于函数调用。
+
+**策略**：根据团队的主要功能选择型号，确保核心能力与型号优势相一致。
+
+  </Accordion>
+
+  <Accordion title="Enterprise & Privacy" icon="shield">
+**对于数据敏感的操作**：考虑使用 **Llama 4** 系列、**DeepSeek V3** 或 **Qwen3** 等开源模型，这些模型可以在本地部署，同时保持具有竞争力的性能。
+
+**策略**：在私有基础设施上部署开源模型，接受数据控制的潜在性能权衡。
+
+  </Accordion>
+  </AccordionGroup>
+
+### 模型选择的关键考虑因素
+
+- **性能趋势**：当前的形势显示，推理型模型（o3、Gemini 2.5 Pro）和平衡模型（Claude 4、GPT-4.1）之间存在激烈竞争。 DeepSeek R1 等专业型号具有出色的性价比。
+
+- **速度与智能的权衡**：像 Llama 4 Scout 这样的模型优先考虑速度（2,600 个令牌/秒），同时保持合理的智能，而像 o3 这样的模型则以速度和价格为代价最大化推理能力。
+
+- **开源可行性**：开源和专有模型之间的差距持续缩小，Llama 4 Maverick 和 DeepSeek V3 等模型以有吸引力的价格提供具有竞争力的性能。快速推理提供商尤其擅长开源模型，通常比专有替代方案提供更好的速度成本比。
+
+<Info>
+**测试至关重要**：排行榜排名提供一般指导，但是
+您的具体用例、提示风格和评估标准可能会产生
+不同的结果。始终用您的实际任务来测试候选模型
+做出最终决定之前的数据。
+</Info>
+
+### 实际实施策略
+
+<Steps>
+  <Step title="Start with Proven Models">
+从 **GPT-4.1**、**Claude 3.7 Sonnet** 或 **Gemini 2.0 Flash** 等成熟模型开始，它们在多个维度上提供良好的性能，并经过广泛的现实世界验证。
+  </Step>
+
+<Step title="Identify Specialized Needs">
+确定您的团队是否有特定要求（编码、推理、速度）
+这将受益于 **Claude 4 Sonnet** 等专门模型
+开发或 **o3** 用于复杂分析。对于速度关键的应用，
+在模型选择的同时考虑像 **Groq** 这样的快速推理提供程序。
+</Step>
+
+<Step title="Implement Multi-Model Strategy">
+根据角色的不同，为不同的代理使用不同的模型。
+适合管理者和复杂任务的高性能模型，适合管理者和复杂任务的高效模型
+日常操作。
+</Step>
+
+  <Step title="Monitor and Optimize">
+跟踪与您的用例相关的性能指标，并准备在新模型发布或定价变化时调整模型选择。
+  </Step>
+</Steps>

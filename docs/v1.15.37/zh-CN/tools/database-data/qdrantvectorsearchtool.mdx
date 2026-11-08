@@ -1,0 +1,343 @@
+---
+title: 'Qdrant 矢量搜索工具'
+description: '使用 Qdrant 矢量数据库的 CrewAI 代理的语义搜索功能'
+icon: vector-square
+mode: "wide"
+---
+
+## 概述
+
+Qdrant 矢量搜索工具通过利用矢量相似性搜索引擎 [奎德兰特](https://qdrant.tech/)，在您的 CrewAI 代理中启用语义搜索功能。该工具允许您的代理使用语义相似性搜索存储在 Qdrant 集合中的文档。
+
+## 安装
+
+安装所需的软件包：
+
+```bash
+uv add qdrant-client
+```
+
+## 基本用法
+
+以下是如何使用该工具的最小示例：
+
+```python
+from crewai import Agent
+from crewai_tools import QdrantVectorSearchTool, QdrantConfig
+
+# Initialize the tool with QdrantConfig
+qdrant_tool = QdrantVectorSearchTool(
+    qdrant_config=QdrantConfig(
+        qdrant_url="your_qdrant_url",
+        qdrant_api_key="your_qdrant_api_key",
+        collection_name="your_collection"
+    )
+)
+
+# Create an agent that uses the tool
+agent = Agent(
+    role="Research Assistant",
+    goal="Find relevant information in documents",
+    tools=[qdrant_tool]
+)
+
+# The tool will automatically use OpenAI embeddings
+# and return the 3 most relevant results with scores > 0.35
+```
+
+## 完整的工作示例
+
+这是一个完整的示例，展示了如何：
+1. 从 PDF 中提取文本
+2. 使用 OpenAI 生成嵌入
+3. 商店在 Qdrant
+4. 创建用于语义搜索的 CrewAI 代理 RAG 工作流程
+
+```python
+import os
+import uuid
+import pdfplumber
+from openai import OpenAI
+from dotenv import load_dotenv
+from crewai import Agent, Task, Crew, Process, LLM
+from crewai_tools import QdrantVectorSearchTool
+from qdrant_client import QdrantClient
+from qdrant_client.models import PointStruct, Distance, VectorParams
+
+# Load environment variables
+load_dotenv()
+
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Extract text from PDF
+def extract_text_from_pdf(pdf_path):
+    text = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text.append(page_text.strip())
+    return text
+
+# Generate OpenAI embeddings
+def get_openai_embedding(text):
+    response = client.embeddings.create(
+        input=text,
+        model="text-embedding-3-large"
+    )
+    return response.data[0].embedding
+
+# Store text and embeddings in Qdrant
+def load_pdf_to_qdrant(pdf_path, qdrant, collection_name):
+    # Extract text from PDF
+    text_chunks = extract_text_from_pdf(pdf_path)
+
+    # Create Qdrant collection
+    if qdrant.collection_exists(collection_name):
+        qdrant.delete_collection(collection_name)
+    qdrant.create_collection(
+        collection_name=collection_name,
+        vectors_config=VectorParams(size=3072, distance=Distance.COSINE)
+    )
+
+    # Store embeddings
+    points = []
+    for chunk in text_chunks:
+        embedding = get_openai_embedding(chunk)
+        points.append(PointStruct(
+            id=str(uuid.uuid4()),
+            vector=embedding,
+            payload={"text": chunk}
+        ))
+    qdrant.upsert(collection_name=collection_name, points=points)
+
+# Initialize Qdrant client and load data
+qdrant = QdrantClient(
+    url=os.getenv("QDRANT_URL"),
+    api_key=os.getenv("QDRANT_API_KEY")
+)
+collection_name = "example_collection"
+pdf_path = "path/to/your/document.pdf"
+load_pdf_to_qdrant(pdf_path, qdrant, collection_name)
+
+# Initialize Qdrant search tool
+from crewai_tools import QdrantConfig
+
+qdrant_tool = QdrantVectorSearchTool(
+    qdrant_config=QdrantConfig(
+        qdrant_url=os.getenv("QDRANT_URL"),
+        qdrant_api_key=os.getenv("QDRANT_API_KEY"),
+        collection_name=collection_name,
+        limit=3,
+        score_threshold=0.35
+    )
+)
+
+# Create CrewAI agents
+search_agent = Agent(
+    role="Senior Semantic Search Agent",
+    goal="Find and analyze documents based on semantic search",
+    backstory="""You are an expert research assistant who can find relevant
+    information using semantic search in a Qdrant database.""",
+    tools=[qdrant_tool],
+    verbose=True
+)
+
+answer_agent = Agent(
+    role="Senior Answer Assistant",
+    goal="Generate answers to questions based on the context provided",
+    backstory="""You are an expert answer assistant who can generate
+    answers to questions based on the context provided.""",
+    tools=[qdrant_tool],
+    verbose=True
+)
+
+# Define tasks
+search_task = Task(
+    description="""Search for relevant documents about the {query}.
+    Your final answer should include:
+    - The relevant information found
+    - The similarity scores of the results
+    - The metadata of the relevant documents""",
+    agent=search_agent
+)
+
+answer_task = Task(
+    description="""Given the context and metadata of relevant documents,
+    generate a final answer based on the context.""",
+    agent=answer_agent
+)
+
+# Run CrewAI workflow
+crew = Crew(
+    agents=[search_agent, answer_agent],
+    tasks=[search_task, answer_task],
+    process=Process.sequential,
+    verbose=True
+)
+
+result = crew.kickoff(
+    inputs={"query": "What is the role of X in the document?"}
+)
+print(result)
+```
+
+## 工具参数
+
+### 所需参数
+- `qdrant_config` (QdrantConfig)：包含所有 Qdrant 设置的配置对象
+
+### Qdrant 配置参数
+- `qdrant_url` (str)：您的 Qdrant 服务器的 URL
+- `qdrant_api_key` （str，可选）：用于使用 Qdrant 进行身份验证的 API 密钥
+- `collection_name` (str)：要搜索的 Qdrant 集合的名称
+- `limit` (int)：返回的最大结果数（默认值：3）
+- `score_threshold` (float)：最小相似度分数阈值（默认值：0.35）
+- `filter` （任意，可选）：用于高级过滤的 Qdrant Filter 实例（默认值：无）
+
+### 可选工具参数
+- `custom_embedding_fn` (Callable[[str], list[float]])：文本矢量化的自定义函数
+- `qdrant_package` (str)：Qdrant 的基础包路径（默认值：“qdrant_client”）
+- `client` （任意）：预初始化的 Qdrant 客户端（可选）
+
+## 高级过滤
+
+QdrantVectorSearchTool 支持强大的过滤功能来优化您的搜索结果：
+
+### 动态过滤
+使用`filter_by` 和`filter_value` 搜索中的参数可动态过滤结果：
+
+```python
+# Agent will use these parameters when calling the tool
+# The tool schema accepts filter_by and filter_value
+# Example: search with category filter
+# Results will be filtered where category == "technology"
+```
+
+### 使用 Qdrant Config 预设过滤器
+对于复杂的过滤，请在配置中使用 Qdrant Filter 实例：
+
+```python
+from qdrant_client.http import models as qmodels
+from crewai_tools import QdrantVectorSearchTool, QdrantConfig
+
+# Create a filter for specific conditions
+preset_filter = qmodels.Filter(
+    must=[
+        qmodels.FieldCondition(
+            key="category",
+            match=qmodels.MatchValue(value="research")
+        ),
+        qmodels.FieldCondition(
+            key="year",
+            match=qmodels.MatchValue(value=2024)
+        )
+    ]
+)
+
+# Initialize tool with preset filter
+qdrant_tool = QdrantVectorSearchTool(
+    qdrant_config=QdrantConfig(
+        qdrant_url="your_url",
+        qdrant_api_key="your_key",
+        collection_name="your_collection",
+        filter=preset_filter  # Preset filter applied to all searches
+    )
+)
+```
+
+### 组合过滤器
+该工具自动组合来自的预设过滤器`QdrantConfig` 带有动态过滤器`filter_by` 和`filter_value`:
+
+```python
+# If QdrantConfig has a preset filter for category="research"
+# And the search uses filter_by="year", filter_value=2024
+# Both filters will be combined (AND logic)
+```
+
+## 搜索参数
+
+该工具在其架构中接受这些参数：
+- `query` (str)：查找相似文档的搜索查询
+- `filter_by` （str，可选）：要过滤的元数据字段
+- `filter_value` （任意，可选）：过滤依据的值
+
+## 返回格式
+
+该工具以 JSON 格式返回结果：
+
+```json
+[
+  {
+    "metadata": {
+      // Any metadata stored with the document
+    },
+    "context": "The actual text content of the document",
+    "distance": 0.95  // Similarity score
+  }
+]
+```
+
+## 默认嵌入
+
+默认情况下，该工具使用 OpenAI`text-embedding-3-large` 矢量化模型。这需要：
+- 环境中的 OpenAI API 密钥设置：`OPENAI_API_KEY`
+
+## 定制嵌入
+
+在以下情况下，您可能希望使用自己的嵌入函数，而不是使用默认的嵌入模型：
+
+1. 想要使用不同的嵌入模型（例如 Cohere、HuggingFace、Ollama 模型）
+2. 需要通过使用开源嵌入模型来降低成本
+3. 对向量尺寸或嵌入质量有特定要求
+4. 想要使用特定领域的嵌入（例如，用于医学或法律文本）
+
+以下是使用 HuggingFace 模型的示例：
+
+```python
+from transformers import AutoTokenizer, AutoModel
+import torch
+
+# Load model and tokenizer
+tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/all-MiniLM-L6-v2')
+model = AutoModel.from_pretrained('sentence-transformers/all-MiniLM-L6-v2')
+
+def custom_embeddings(text: str) -> list[float]:
+    # Tokenize and get model outputs
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+    outputs = model(**inputs)
+
+    # Use mean pooling to get text embedding
+    embeddings = outputs.last_hidden_state.mean(dim=1)
+
+    # Convert to list of floats and return
+    return embeddings[0].tolist()
+
+# Use custom embeddings with the tool
+from crewai_tools import QdrantConfig
+
+tool = QdrantVectorSearchTool(
+    qdrant_config=QdrantConfig(
+        qdrant_url="your_url",
+        qdrant_api_key="your_key",
+        collection_name="your_collection"
+    ),
+    custom_embedding_fn=custom_embeddings  # Pass your custom function
+)
+```
+
+## 错误处理
+
+该工具处理这些特定错误：
+- 如果出现以下情况则引发 ImportError`qdrant-client` 未安装（可以选择自动安装）
+- 如果出现以下情况，则引发 ValueError`QDRANT_URL` 未设置
+- 提示安装`qdrant-client` 如果缺少使用`uv add qdrant-client`
+
+## 环境变量
+
+所需的环境变量：
+```bash
+export QDRANT_URL="your_qdrant_url"  # If not provided in constructor
+export QDRANT_API_KEY="your_api_key"  # If not provided in constructor
+export OPENAI_API_KEY="your_openai_key"  # If using default embeddings

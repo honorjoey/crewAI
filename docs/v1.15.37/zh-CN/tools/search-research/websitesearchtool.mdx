@@ -1,0 +1,78 @@
+---
+title: "网站RAG 搜索"
+description: "网站RAG 搜索 工具文档。"
+icon: globe-stand
+mode: "wide"
+---
+
+# `WebsiteSearchTool`
+
+<Note>
+    网站SearchToole目前正处于实验阶段. 我们正在积极努力,将这一工具纳入我们的一揽子提议,并将相应更新文件。
+</Note>
+
+## 说明
+
+" WebsiteSearchTool " 是一个在网站内容范围内进行语义搜索的概念。
+它旨在利用Retrieval-Augmented Generation(RAG)等先进的机器学习模型,从指定的URL中有效导航和提取信息.
+该工具旨在提供灵活性,允许用户在任何网站进行搜索,或侧重于感兴趣的特定网站。
+请注意,WebsSearchTool目前的实施细节正在开发中,其描述的功能可能还无法获取。
+
+## 安装
+
+为了准备您在网站SearchToole可用时的环境,您可以安装基础软件包:
+
+```shell
+pip install 'crewai[tools]'
+```
+
+此命令安装了必要的依赖,以确保工具完全集成后,用户可以立即开始使用.
+
+## 示例使用
+
+以下是不同情景下如何使用WebsSearch Tool的例子。 请注意,这些实例是说明性的,是计划中的功能:
+
+```python Code
+from crewai_tools import WebsiteSearchTool
+
+# Example of initiating tool that agents can use 
+# to search across any discovered websites
+tool = WebsiteSearchTool()
+
+# Example of limiting the search to the content of a specific website, 
+# so now agents can only search within that website
+tool = WebsiteSearchTool(website='https://example.com')
+```
+
+## 参数
+
+- `website`: 旨在指定网站URL用于焦点搜索的可选参数。 这一论点的目的是通过允许在必要时进行有针对性的搜索来增强工具的灵活性。
+
+## 自定义选项
+
+默认情况下,该工具同时使用OpenAI进行嵌入和概括. 要自定义模型,可以使用配置词典如下:
+
+
+```python Code
+tool = WebsiteSearchTool(
+    config=dict(
+        llm=dict(
+            provider="ollama", # or google, openai, anthropic, llama2, ...
+            config=dict(
+                model="llama2",
+                # temperature=0.5,
+                # top_p=1,
+                # stream=true,
+            ),
+        ),
+        embedder=dict(
+            provider="google-generativeai", # or openai, ollama, ...
+            config=dict(
+                model_name="gemini-embedding-001",
+                task_type="RETRIEVAL_DOCUMENT",
+                # title="Embeddings",
+            ),
+        ),
+    )
+)
+```

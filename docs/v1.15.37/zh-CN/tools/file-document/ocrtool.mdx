@@ -1,0 +1,90 @@
+---
+title: "OCR 工具"
+description: "OCR 工具 工具文档。"
+icon: image
+mode: "wide"
+---
+
+# `OCRTool`
+
+## 说明
+
+从图像( 本地路径或 URL) 中提取文本 。 通过 CrewAI 的 LLM 接口使用可视LLM 。
+
+## 安装
+
+没有额外的安装超出`crewai-tools`。确保您选定的 LLM 支持视觉。
+
+## 参数
+
+### 运行参数
+
+- `image_path_url` (str, required):本地图像路径或HTTP(S) URL.
+
+## 实例
+
+### 直接使用量
+
+```python Code
+from crewai_tools import OCRTool
+
+print(OCRTool().run(image_path_url="/tmp/receipt.png"))
+```
+
+### 和经纪人在一起
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import OCRTool
+
+ocr = OCRTool()
+
+agent = Agent(
+    role="OCR", 
+    goal="Extract text", 
+    tools=[ocr],
+)
+
+task = Task(
+    description="Extract text from https://example.com/invoice.jpg", 
+    expected_output="All detected text in plain text",
+    agent=agent,
+)
+
+crew = Crew(agents=[agent], tasks=[task])
+result = crew.kickoff()
+```
+
+## 页:1
+
+- 确保选定的LLM支持图像输入.
+- 对于大图像,考虑缩小缩放以减少符号使用.
+ - 您可以向工具传递特定的 LLM 实例( 例如 )`LLM(model="gpt-4o")`如果需要,则匹配README指导。
+
+## 示例
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import OCRTool
+
+tool = OCRTool()
+
+agent = Agent(
+    role="OCR Specialist",
+    goal="Extract text from images",
+    backstory="Vision‑enabled analyst",
+    tools=[tool],
+    verbose=True,
+)
+
+task = Task(
+    description="Extract text from https://example.com/receipt.png",
+    expected_output="All detected text in plain text",
+    agent=agent,
+)
+
+crew = Crew(agents=[agent], tasks=[task])
+result = crew.kickoff()
+```
+
+

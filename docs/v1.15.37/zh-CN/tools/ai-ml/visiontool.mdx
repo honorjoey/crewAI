@@ -1,0 +1,62 @@
+---
+title: 视觉工具
+description: “VisionTool”旨在从图像中提取文本。
+icon: eye
+mode: "wide"
+---
+
+# `VisionTool`
+
+## 描述
+
+该工具用于从图像中提取文本。当传递给代理时，它将从图像中提取文本，然后使用它来生成响应、报告或任何其他输出。
+图像的 URL 或 PATH 应传递给代理。
+
+也可以询问定制`query` 关于图像并选择一个`complexity_level` 自动选择最适合请求的模型：
+
+| 复杂程度| 模型|
+| :--------------- | :------------ |
+| `简单`| `gpt-5.6-luna`|
+| `中`（默认）| `gpt-5.6-terra`|
+| ‘难’| `gpt-5.6-sol`|
+
+当明确的`llm` 或者`model` 提供给工具时，它优先于基于复杂性的模型选择。
+
+## 安装
+
+安装crewai_tools包
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 用法
+
+为了使用 VisionTool，应在环境变量中设置 OpenAI API 密钥`OPENAI_API_KEY`.
+
+```python Code
+from crewai_tools import VisionTool
+
+vision_tool = VisionTool()
+
+@agent
+def researcher(self) -> Agent:
+    '''
+    This agent uses the VisionTool to extract text from images.
+    '''
+    return Agent(
+        config=self.agents_config["researcher"],
+        allow_delegation=False,
+        tools=[vision_tool]
+    )
+```
+
+## 论点
+
+VisionTool 接受以下参数：
+
+| 争论| 类型| 描述|
+| :------------------- | :------- | :----------------------------------------------------------------------------------------------------------- |
+| **图片路径网址**   | `字符串`| **强制的**.需要从中提取文本的图像文件（或 URL）的路径。|
+| **询问**            | `字符串`| **选修的**.向模特询问有关图像的问题或说明。默认为“这张图片里有什么？”。|
+| **复杂度级别** | `字符串`| **选修的**.请求的复杂性，选择模型：“easy”、“medium”或“hard”。默认为“中”。|

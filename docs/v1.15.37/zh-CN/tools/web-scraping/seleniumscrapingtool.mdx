@@ -1,0 +1,196 @@
+---
+title: "硒碎屑"
+description: "硒碎屑 工具文档。"
+icon: clipboard-user
+mode: "wide"
+---
+
+# `SeleniumScrapingTool`
+
+<Note>
+    该工具目前正在开发中。 随着我们完善其能力,用户可能会遇到意想不到的行为.
+    你的反馈对我们改进工作是宝贵的。
+</Note>
+
+## 说明
+
+那个`SeleniumScrapingTool` 用于高效的网络刮刮任务。
+它能够通过使用CSS选择器瞄准特定元素,精确地从网页中提取内容.
+它的设计满足了广泛的刮刮需求,为使用任何提供的网站URL提供了灵活性。
+
+## 安装
+
+要使用此工具, 您需要安装 CrewAI 工具包和 Selenium :
+
+```shell
+pip install 'crewai[tools]'
+uv add selenium webdriver-manager
+```
+
+您还需要将Chrome安装在您的系统中,因为该工具使用Chrome WebDriver进行浏览器自动化.
+
+## 示例
+
+以下例子说明如何使用`SeleniumScrapingTool` 与CrewAI的代理人:
+
+```python Code
+from crewai import Agent, Task, Crew, Process
+from crewai_tools import SeleniumScrapingTool
+
+# Initialize the tool
+selenium_tool = SeleniumScrapingTool()
+
+# Define an agent that uses the tool
+web_scraper_agent = Agent(
+    role="Web Scraper",
+    goal="Extract information from websites using Selenium",
+    backstory="An expert web scraper who can extract content from dynamic websites.",
+    tools=[selenium_tool],
+    verbose=True,
+)
+
+# Example task to scrape content from a website
+scrape_task = Task(
+    description="Extract the main content from the homepage of example.com. Use the CSS selector 'main' to target the main content area.",
+    expected_output="The main content from example.com's homepage.",
+    agent=web_scraper_agent,
+)
+
+# Create and run the crew
+crew = Crew(
+    agents=[web_scraper_agent],
+    tasks=[scrape_task],
+    verbose=True,
+    process=Process.sequential,
+)
+result = crew.kickoff()
+```
+
+您也可以以预定义参数初始化工具 :
+
+```python Code
+# Initialize the tool with predefined parameters
+selenium_tool = SeleniumScrapingTool(
+    website_url='https://example.com',
+    css_element='.main-content',
+    wait_time=5
+)
+
+# Define an agent that uses the tool
+web_scraper_agent = Agent(
+    role="Web Scraper",
+    goal="Extract information from websites using Selenium",
+    backstory="An expert web scraper who can extract content from dynamic websites.",
+    tools=[selenium_tool],
+    verbose=True,
+)
+```
+
+## 参数
+
+那个`SeleniumScrapingTool` 初始化时接受以下参数:
+
+- 零:可选。 要刮掉的网站的 URL 。 如果在初始化期间提供,代理在使用工具时不需要指定.
+- 零:可选。 要提取元素的 CSS 选择器 。 如果在初始化期间提供,代理在使用工具时不需要指定.
+- 零:可选。 包含 cookie 信息的字典, 用于模拟登录的会话以访问限制的内容 。
+- 零:可选。 指定删除前的延迟( 秒) , 允许网站和任何动态内容全部加载 。 默认为`3` 秒数。
+- 零:可选。 是否返回 HTML 内容而不只是文本 。 默认为`False`.
+
+在使用带有代理的工具时,代理需要提供以下参数(除非在初始化过程中指定):
+
+- 需要吗? 要刮掉的网站的 URL 。
+- 需要吗? 要提取元素的 CSS 选择器 。
+
+## 代理集成示例
+
+这里有一个更详细的例子,说明如何整合`SeleniumScrapingTool` 与CrewAI的代理人:
+
+```python Code
+from crewai import Agent, Task, Crew, Process
+from crewai_tools import SeleniumScrapingTool
+
+# Initialize the tool
+selenium_tool = SeleniumScrapingTool()
+
+# Define an agent that uses the tool
+web_scraper_agent = Agent(
+    role="Web Scraper",
+    goal="Extract and analyze information from dynamic websites",
+    backstory="""You are an expert web scraper who specializes in extracting 
+    content from dynamic websites that require browser automation. You have 
+    extensive knowledge of CSS selectors and can identify the right selectors 
+    to target specific content on any website.""",
+    tools=[selenium_tool],
+    verbose=True,
+)
+
+# Create a task for the agent
+scrape_task = Task(
+    description="""
+    Extract the following information from the news website at {website_url}:
+    
+    1. The headlines of all featured articles (CSS selector: '.headline')
+    2. The publication dates of these articles (CSS selector: '.pub-date')
+    3. The author names where available (CSS selector: '.author')
+    
+    Compile this information into a structured format with each article's details grouped together.
+    """,
+    expected_output="A structured list of articles with their headlines, publication dates, and authors.",
+    agent=web_scraper_agent,
+)
+
+# Run the task
+crew = Crew(
+    agents=[web_scraper_agent],
+    tasks=[scrape_task],
+    verbose=True,
+    process=Process.sequential,
+)
+result = crew.kickoff(inputs={"website_url": "https://news-example.com"})
+```
+
+## 执行详情
+
+那个`SeleniumScrapingTool` 使用 Selenium WebDriver 实现浏览器交互自动化 :
+
+```python Code
+class SeleniumScrapingTool(BaseTool):
+    name: str = "Read a website content"
+    description: str = "A tool that can be used to read a website content."
+    args_schema: Type[BaseModel] = SeleniumScrapingToolSchema
+    
+    def _run(self, **kwargs: Any) -> Any:
+        website_url = kwargs.get("website_url", self.website_url)
+        css_element = kwargs.get("css_element", self.css_element)
+        return_html = kwargs.get("return_html", self.return_html)
+        driver = self._create_driver(website_url, self.cookie, self.wait_time)
+
+        content = self._get_content(driver, css_element, return_html)
+        driver.close()
+
+        return "\n".join(content)
+```
+
+该工具执行以下步骤:
+1. 创建无头 Chrome 浏览器实例
+2. 导航到指定的 URL
+3. 等待指定时间允许页面加载
+4. 提供时添加任何 cookie
+5. 基于 CSS 选择器提取内容
+6. 返回已提取的内容为文本或 HTML
+7. 关闭浏览器实例
+
+## 处理动态内容
+
+那个`SeleniumScrapingTool` 用于删除通过 JavaScript 装入的动态内容的网站。 通过使用真正的浏览器实例,它可以:
+
+1. 执行页面上的 JavaScript
+2. 等待动态内容加载
+3. 必要时与元素互动
+4. 简单的 HTTP 请求无法获取的摘录内容
+
+你可以调整`wait_time` 参数,以确保所有动态内容在提取前已经加载。
+
+## 结论
+
+那个`SeleniumScrapingTool` 提供了使用浏览器自动化从网站上提取内容的有力方式. 通过使代理商能够作为真正的用户与网站进行互动,它有助于删除难以或不可能使用更简单方法提取的动态内容。 这个工具对于涉及JavaScript-landed内容的现代网络应用的研究,数据收集和监测任务特别有用.

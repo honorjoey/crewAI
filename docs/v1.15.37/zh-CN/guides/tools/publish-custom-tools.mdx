@@ -1,0 +1,305 @@
+---
+title: 发布自定义工具
+description: 如何将你自己的 CrewAI 兼容工具构建、打包并发布到 PyPI，让任何 CrewAI 用户都能安装和使用。
+icon: box-open
+mode: "wide"
+---
+
+## 概述
+
+CrewAI 的工具系统支持扩展。如果你已经开发了一个对他人也有价值的工具，可以将它打包成独立的 Python 库，发布到 PyPI，并提供给任何 CrewAI 用户使用——无需向 CrewAI 仓库提交 PR。
+
+本指南将完整介绍流程：实现工具契约、组织包结构，以及发布到 PyPI。
+
+<Note type="info" title="不打算发布？">
+如果你只需要给自己的项目使用自定义工具，请改看 [创建自定义工具](/zh-CN/learn/create-custom-tools) 指南。
+</Note>
+
+## 工具契约
+
+每个 CrewAI 工具都必须满足以下两种接口之一：
+
+### 方案 1：继承 `BaseTool`
+
+继承 `crewai.tools.BaseTool` 并实现 `_run` 方法。定义 `name`、`description`，并可选提供 `args_schema` 做输入校验。
+
+```python
+from crewai.tools import BaseTool
+from pydantic import BaseModel, Field
+
+
+class GeolocateInput(BaseModel):
+    """Input schema for GeolocateTool."""
+    address: str = Field(..., description="The street address to geolocate.")
+
+
+class GeolocateTool(BaseTool):
+    name: str = "Geolocate"
+    description: str = "Converts a street address into latitude/longitude coordinates."
+    args_schema: type[BaseModel] = GeolocateInput
+
+    def _run(self, address: str) -> str:
+        # Your implementation here
+        return f"40.7128, -74.0060"
+```
+
+### 方案 2：使用 `@tool` 装饰器
+
+对于更简单的工具，可用 `@tool` 装饰器把函数转成 CrewAI 工具。函数**必须**包含 docstring（用作工具说明）并带有类型注解。
+
+```python
+from crewai.tools import tool
+
+
+@tool("Geolocate")
+def geolocate(address: str) -> str:
+    """Converts a street address into latitude/longitude coordinates."""
+    return "40.7128, -74.0060"
+```
+
+### 关键要求
+
+无论你采用哪种方式，工具都必须：
+
+- 拥有 **`name`** —— 简短且有描述性的标识符。
+- 拥有 **`description`** —— 告诉智能体何时、如何使用该工具。这会直接影响工具调用效果，因此要清晰具体。
+- 实现 **`_run`**（BaseTool）或提供 **函数体**（@tool）—— 即同步执行逻辑。
+- 为所有参数和返回值添加**类型注解**。
+- 返回**字符串**结果，或定义可选的 Pydantic 输出 schema 以返回结构化结果。
+
+### 可选：异步支持
+
+如果工具执行 I/O 密集型工作，可实现 `_arun` 以支持异步执行：
+
+```python
+class GeolocateTool(BaseTool):
+    name: str = "Geolocate"
+    description: str = "Converts a street address into latitude/longitude coordinates."
+
+    def _run(self, address: str) -> str:
+        # Sync implementation
+        ...
+
+    async def _arun(self, address: str) -> str:
+        # Async implementation
+        ...
+```
+
+### 可选：用 `args_schema` 做输入校验
+
+将 Pydantic 模型定义为 `args_schema`，即可获得自动输入校验与清晰的报错信息。如果不提供，CrewAI 会根据 `_run` 方法签名自动推断。
+
+```python
+from pydantic import BaseModel, Field
+
+
+class TranslateInput(BaseModel):
+    """Input schema for TranslateTool."""
+    text: str = Field(..., description="The text to translate.")
+    target_language: str = Field(
+        default="en",
+        description="ISO 639-1 language code for the target language.",
+    )
+```
+
+对于要发布的工具，建议显式声明 schema —— 这通常能带来更好的智能体行为和更清晰的文档。
+
+### 可选：用 `result_schema` 声明类型化输出
+
+如果工具返回结构化数据，请定义 Pydantic 输出模型。对已发布工具来说这是很好的默认做法，因为用户和智能体都可以依赖命名字段。
+
+直接在 Python 中调用时，仍会拿到工具真实返回值。由智能体调用时，CrewAI 会基于输出模型向智能体发送 JSON。
+
+CrewAI 可以根据 Pydantic 返回注解推断输出 schema：
+
+```python
+from crewai.tools import BaseTool
+from pydantic import BaseModel, Field
+
+
+class GeolocateResult(BaseModel):
+    latitude: float = Field(..., description="Latitude in decimal degrees.")
+    longitude: float = Field(..., description="Longitude in decimal degrees.")
+
+
+class GeolocateTool(BaseTool):
+    name: str = "Geolocate"
+    description: str = "Converts a street address into latitude/longitude coordinates."
+
+    def _run(self, address: str) -> GeolocateResult:
+        if "1600 Pennsylvania" in address:
+            return GeolocateResult(latitude=38.8977, longitude=-77.0365)
+        return GeolocateResult(latitude=40.7128, longitude=-74.0060)
+```
+
+当你的工具返回字典时，可显式设置 `result_schema`：
+
+```python
+class GeolocateTool(BaseTool):
+    name: str = "Geolocate"
+    description: str = "Converts a street address into latitude/longitude coordinates."
+    result_schema: type[BaseModel] = GeolocateResult
+
+    def _run(self, address: str) -> dict[str, float]:
+        if "1600 Pennsylvania" in address:
+            return {"latitude": 38.8977, "longitude": -77.0365}
+        return {"latitude": 40.7128, "longitude": -74.0060}
+```
+
+如果希望智能体看到简短文本摘要而非 JSON，可在 `BaseTool` 子类中覆盖 `format_output_for_agent`。
+
+```python
+class GeolocateTool(BaseTool):
+    name: str = "Geolocate"
+    description: str = "Converts a street address into latitude/longitude coordinates."
+
+    def _run(self, address: str) -> GeolocateResult:
+        if "1600 Pennsylvania" in address:
+            return GeolocateResult(latitude=38.8977, longitude=-77.0365)
+        return GeolocateResult(latitude=40.7128, longitude=-74.0060)
+
+    def format_output_for_agent(self, raw_result: object) -> str:
+        result = GeolocateResult.model_validate(raw_result)
+        return f"Latitude {result.latitude}, longitude {result.longitude}"
+```
+
+该覆盖只影响智能体看到的内容。直接使用你包的用户仍会收到 `tool.run(...)` 的正常返回值。
+
+### 可选：环境变量
+
+如果工具依赖 API key 或其他配置，建议通过 `env_vars` 声明，让用户清楚需要设置什么：
+
+```python
+from crewai.tools import BaseTool, EnvVar
+
+
+class GeolocateTool(BaseTool):
+    name: str = "Geolocate"
+    description: str = "Converts a street address into latitude/longitude coordinates."
+    env_vars: list[EnvVar] = [
+        EnvVar(
+            name="GEOCODING_API_KEY",
+            description="API key for the geocoding service.",
+            required=True,
+        ),
+    ]
+
+    def _run(self, address: str) -> str:
+        ...
+```
+
+## 包结构
+
+将项目组织为标准 Python 包。推荐结构如下：
+
+```
+crewai-geolocate/
+├── pyproject.toml
+├── LICENSE
+├── README.md
+└── src/
+    └── crewai_geolocate/
+        ├── __init__.py
+        └── tools.py
+```
+
+### `pyproject.toml`
+
+```toml
+[project]
+name = "crewai-geolocate"
+version = "0.1.0"
+description = "A CrewAI tool for geolocating street addresses."
+requires-python = ">=3.10"
+dependencies = [
+    "crewai",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+```
+
+声明 `crewai` 作为依赖，这样用户会自动获得兼容版本。
+
+### `__init__.py`
+
+重新导出你的工具类，方便用户直接导入：
+
+```python
+from crewai_geolocate.tools import GeolocateTool
+
+__all__ = ["GeolocateTool"]
+```
+
+### 命名约定
+
+- **包名**：使用前缀 `crewai-`（例如 `crewai-geolocate`），便于用户在 PyPI 中检索。
+- **模块名**：使用下划线（例如 `crewai_geolocate`）。
+- **工具类名**：使用 PascalCase，并以 `Tool` 结尾（例如 `GeolocateTool`）。
+
+## 测试你的工具
+
+发布前，请先验证工具能在 crew 中正常运行：
+
+```python
+from crewai import Agent, Crew, Task
+from crewai_geolocate import GeolocateTool
+
+agent = Agent(
+    role="Location Analyst",
+    goal="Find coordinates for given addresses.",
+    backstory="An expert in geospatial data.",
+    tools=[GeolocateTool()],
+)
+
+task = Task(
+    description="Find the coordinates of 1600 Pennsylvania Avenue, Washington, DC.",
+    expected_output="The latitude and longitude of the address.",
+    agent=agent,
+)
+
+crew = Crew(agents=[agent], tasks=[task])
+result = crew.kickoff()
+print(result)
+```
+
+## 发布到 PyPI
+
+当工具测试完成并可发布后：
+
+```bash
+# Build the package
+uv build
+
+# Publish to PyPI
+uv publish
+```
+
+如果是第一次发布，你需要先准备 [PyPI 账号](https://pypi.org/account/register/) 和 [API token](https://pypi.org/help/#apitoken)。
+
+### 发布后
+
+用户可通过以下命令安装你的工具：
+
+```bash
+pip install crewai-geolocate
+```
+
+或使用 uv：
+
+```bash
+uv add crewai-geolocate
+```
+
+然后在他们的 crew 中使用：
+
+```python
+from crewai_geolocate import GeolocateTool
+
+agent = Agent(
+    role="Location Analyst",
+    tools=[GeolocateTool()],
+    # ...
+)
+```

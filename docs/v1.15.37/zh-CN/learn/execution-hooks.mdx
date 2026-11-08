@@ -1,0 +1,281 @@
+---
+title: 执行挂钩
+description: 使用 @on 装饰器拦截、修改和控制 CrewAI 的运行时 - 一份涵盖每个拦截点的合约
+mode: "wide"
+---
+
+执行挂钩提供对运行时行为的细粒度控制
+CrewAI 代理。与在船员处决之前和之后运行的开球钩不同，
+执行钩子在执行过程中拦截特定操作——从那一刻起
+运行开始，通过每个模型调用、工具调用以及任务或流程方法步骤，
+直至最终输出。
+
+钩子是用 `@on` 装饰器编写的：一个注册 API 和一个
+合约涵盖了框架中的每个拦截点。
+
+```python
+from crewai.hooks import on, HookAborted, InterceptionPoint
+
+@on(InterceptionPoint.PRE_TOOL_CALL, tools=["delete_file"])
+def guard_deletes(ctx):
+    raise HookAborted(reason="file deletion is not allowed", source="policy")
+```
+
+<Note>
+特定于点的装饰器（`@before_llm_call`，`@after_tool_call`，...）保留
+工作原理不变——它们是同一引擎上的适配器。看
+[点特定装饰器（遗留）](#point-specific-decorators-legacy)
+本页末尾。
+</Note>
+
+## 合同
+
+每个钩子都是一个**同步**可调用的，它接收单个类型化上下文：
+
+```python
+from crewai.hooks import on, HookAborted, InterceptionPoint
+
+@on(InterceptionPoint.INPUT)
+def add_defaults(ctx):
+    # 1. Observe: read anything off the context.
+    # 2. Mutate in place: change ctx.payload or nested fields directly.
+    ctx.payload.setdefault("locale", "en-US")
+    # 3. Or replace: return a new value to swap ctx.payload.
+    # 4. Or abort: raise HookAborted(reason, source) to stop the operation.
+    return None
+```
+
+钩子可以执行以下四种操作中的任何操作：
+
+| 行动 | 如何 | 影响 |
+|--------|-----|--------|
+| **继续** | `return None`（或什么都没有） | 操作继续不变 |
+| **变异** | 更改 `ctx.payload` / 字段 | 变化在下游可见 |
+| **代替** | `return new_payload` | 非`None` 返回替换`ctx.payload` |
+| **中止** | `raise HookAborted(reason, source)` | 操作已停止；原因传播 |
+
+## 注册钩子
+
+使用`@on`作为全局钩子。它接受 `agents=` / `tools=` 过滤器来确定范围
+挂钩到特定代理角色或工具名称：
+
+```python
+from crewai.hooks import on, InterceptionPoint
+
+@on(InterceptionPoint.POST_TOOL_CALL, agents=["researcher"], tools=["web_search"])
+def log_search_results(ctx):
+    print(f"search returned: {(ctx.tool_result or '')[:80]}")
+```
+
+应用于 `@CrewBase` 类中的方法时，`@on` 注册了一个
+**船员范围**钩子，仅在船员运行时激活：
+
+```python
+from crewai.project import CrewBase
+from crewai.hooks import on, InterceptionPoint
+
+@CrewBase
+class MyProjCrew:
+    @on(InterceptionPoint.PRE_MODEL_CALL)
+    def validate_inputs(self, ctx):
+        # Only applies to this crew
+        return None
+```
+
+## 拦截点目录
+
+每个系列都有详细的指南，涵盖其上下文模式、有效负载
+语义和示例。
+
+### [执行边界](/edge/zh-CN/learn/execution-boundary-hooks)
+
+| 观点 | 什么时候 | `ctx.payload` |
+|-------|------|---------------|
+| `EXECUTION_START` | 工作人员或流程即将开始 | 输入`dict` |
+| `INPUT` | 执行的解析输入 | 输入`dict` |
+| `OUTPUT` | 最终结果已准备就绪 | 输出对象 |
+| `EXECUTION_END` | 工作人员或流程已完成 | 输出对象 |
+
+### [模型边界](/edge/zh-CN/learn/llm-hooks) & [工具边界](/edge/zh-CN/learn/tool-hooks)
+
+| 观点 | 什么时候 | 钩子接收 |
+|-------|------|---------------|
+| `PRE_MODEL_CALL` | 在致电 LLM 之前 | `LLMCallHookContext` |
+| `POST_MODEL_CALL` | 接到LLM电话后 | `LLMCallHookContext`（带`response`组） |
+| `PRE_TOOL_CALL` | 在工具运行之前 | `ToolCallHookContext` |
+| `POST_TOOL_CALL` | 工具运行后 | `ToolCallHookContext`（带结果集） |
+
+在这四个点上，钩子**直接**接收丰富的遗留上下文，如下所示
+它的论点——没有单独的`ctx.payload`。变异`ctx.messages` /
+`ctx.tool_input` 到位，并从后挂钩返回一个字符串来替换
+响应/工具结果。
+
+### [步数](/edge/zh-CN/learn/step-hooks)
+
+| 观点 | 什么时候 | `ctx.payload` |
+|-------|------|---------------|
+| `PRE_STEP` | 在任务或流程方法步骤之前 | 步进输入 |
+| `POST_STEP` | 在任务或流程方法步骤之后 | 步进输出 |
+
+`PRE_STEP` / `POST_STEP` 携带 `ctx.kind` (`"task"` 或 `"flow_method"`) 和
+`ctx.step_name`。
+
+## 中止操作
+
+`HookAborted` 带有`reason` 和可选的`source`。 `source` 默认值
+省略时到中止钩子，这对于遥测和故障很有用
+消息：
+
+```python
+@on(InterceptionPoint.EXECUTION_START)
+def enforce_policy(ctx):
+    if not ctx.payload.get("authorized"):
+        raise HookAborted(reason="unauthorized execution", source="access-control")
+```
+
+## 组成、排序和故障开放
+
+- 同一点上的多个钩子按**注册顺序**运行，全局钩子
+首先，然后是执行范围的钩子。为同一点注册的旧挂钩
+参与同一个链。
+- （可能发生变异的）有效负载从一个钩子流向下一个钩子。
+- `HookAborted` **按设计传播**并停止链条。
+- 钩子引发的任何*其他*异常都会被**吞掉**（失败打开），因此单个
+越野车挂钩不会导致运行崩溃。
+- 当没有为某个点注册钩子时，调度是单个字典查找
+（无操作快速路径），因此未使用的点实际上没有任何成本。
+
+## 常见模式
+
+### 安全护栏
+
+```python
+@on(InterceptionPoint.PRE_TOOL_CALL)
+def block_dangerous_tools(ctx):
+    dangerous = {"delete_file", "drop_table", "system_shutdown"}
+    if ctx.tool_name in dangerous:
+        raise HookAborted(reason=f"{ctx.tool_name} is blocked", source="safety-policy")
+
+@on(InterceptionPoint.PRE_MODEL_CALL)
+def iteration_limit(ctx):
+    if ctx.iterations > 15:
+        raise HookAborted(reason="maximum iterations exceeded", source="loop-guard")
+```
+
+### 人机交互审批
+
+```python
+@on(InterceptionPoint.PRE_TOOL_CALL, tools=["send_email", "make_payment"])
+def require_approval(ctx):
+    response = ctx.request_human_input(
+        prompt=f"Approve {ctx.tool_name}?",
+        default_message="Type 'yes' to approve:",
+    )
+    if response.lower() != "yes":
+        raise HookAborted(reason="rejected by operator", source="approval-gate")
+```
+
+### 清理输出
+
+非`None`返回值替换了可拦截值，因此转换
+是简单的返回语句：
+
+```python
+import re
+
+@on(InterceptionPoint.POST_MODEL_CALL)
+def redact_keys(ctx):
+    return re.sub(
+        r'(api[_-]?key)["\']?\s*[:=]\s*["\']?[\w-]+',
+        r"\1: [REDACTED]",
+        ctx.response,
+        flags=re.IGNORECASE,
+    )
+```
+
+### 观察步骤
+
+```python
+@on(InterceptionPoint.POST_STEP)
+def trace_steps(ctx):
+    print(f"{ctx.kind} '{ctx.step_name}' finished")
+```
+
+## 遥测
+
+每当一个点实际调度到至少一个钩子时，CrewAI 就会发出一个
+`HookDispatchedEvent` 事件总线上的点，结果
+(`proceeded` / `modified` / `aborted`)、钩子计数、持续时间和 —
+中止——原因和来源。无操作快速路径不发出任何信号。
+
+## 管理测试中的钩子
+
+全局钩子在进程的生命周期内持续存在。在测试之间重置它们：
+
+```python
+import pytest
+from crewai.hooks import clear_all_hooks
+
+@pytest.fixture(autouse=True)
+def reset_hooks():
+    clear_all_hooks()
+    yield
+    clear_all_hooks()
+```
+
+## 最佳实践
+
+1. **保持钩子的重点**——每个钩子都有一个明确的责任；注册几个
+小钩子而不是万能的钩子。
+2. **保持钩子快速**——钩子在其点的每次调度上运行；避免重物
+计算和惰性导入严重依赖。
+3. **首选范围** — 使用`agents=` / `tools=` 过滤器和人员范围
+注册而不是无条件全局挂钩。
+4. **大声中止** — 用有意义的 `reason` 提高 `HookAborted` 并
+`source`；该上下文出现在错误消息和遥测中。记住
+任何其他异常都会被吞掉（失败打开），所以不要依赖于引发
+`ValueError` 停止运行。
+
+## 特定于点的装饰器（遗留）
+
+在`@on`之前，LLM和工具调用与专用的装饰器对挂钩。
+这些保持不变——它们是同一个调度程序上的适配器，所以
+它们与同一注册顺序链中的 `@on` 钩子组成：
+
+```python
+from crewai.hooks import before_llm_call, after_llm_call, before_tool_call, after_tool_call
+
+@before_llm_call
+def limit_iterations(context):
+    if context.iterations > 10:
+        return False  # Block execution
+
+@after_tool_call
+def log_tool_result(context):
+    print(f"Tool {context.tool_name} completed")
+```
+
+与`@on`的区别：
+
+- 它们**仅**四个模型/工具点 - 没有执行边界，没有
+步骤。
+- 阻塞是`return False`，没有中止原因或附加来源。
+- 他们收到相同的丰富上下文 - `LLMCallHookContext`（具有完整的
+执行器访问）和 `ToolCallHookContext` — `@on` 钩子在
+模型/工具点。
+- Crew 作用域的工作方式相同：将装饰器应用于 a 内的方法
+`@CrewBase` 类。
+- 它们支持相同的 `agents=` / `tools=` 过滤器。
+
+对于已经使用的现有代码库，您可能仍然更喜欢它们
+`return False` 语义，或者当您想要特定于点的类型签名时。
+详细指南 — 上下文属性、模式和管理 API
+(`register_*` / `unregister_*` / `clear_*`) — 参见：
+
+- [LLM呼叫挂钩 →](/edge/zh-CN/learn/llm-hooks)
+- [工具调用挂钩 →](/edge/zh-CN/learn/tool-hooks)
+
+## 相关文档
+
+- [开球钩前后→](/edge/zh-CN/learn/before-and-after-kickoff-hooks)
+- [人在环 →](/edge/zh-CN/learn/human-in-the-loop)

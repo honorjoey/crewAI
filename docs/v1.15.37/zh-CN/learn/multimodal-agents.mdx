@@ -1,0 +1,141 @@
+---
+title: 使用多模式代理
+description: 了解如何在代理中启用和使用多模式功能，以在 CrewAI 框架内处理图像和其他非文本内容。
+icon: video
+mode: "wide"
+---
+
+## 使用多模式代理
+
+CrewAI 支持多模式代理，可以处理文本和非文本内容（例如图像）。本指南将向您展示如何在代理中启用和使用多模式功能。
+
+### 启用多式联运功能
+
+要创建多模式代理，只需在初始化代理时将`multimodal`参数设置为`True`：
+
+```python
+from crewai import Agent
+
+agent = Agent(
+    role="Image Analyst",
+    goal="Analyze and extract insights from images",
+    backstory="An expert in visual content interpretation with years of experience in image analysis",
+    multimodal=True  # This enables multimodal capabilities
+)
+```
+
+当您设置`multimodal=True`时，代理会自动配置处理非文本内容所需的工具，包括`AddImageTool`。
+
+### 处理图像
+
+多模式代理预先配置了`AddImageTool`，这使得它能够处理图像。您无需手动添加此工具 - 当您启用多模式功能时，它会自动包含在内。
+
+这是一个完整的示例，展示了如何使用多模式代理来分析图像：
+
+```python
+from crewai import Agent, Task, Crew
+
+# Create a multimodal agent
+image_analyst = Agent(
+    role="Product Analyst",
+    goal="Analyze product images and provide detailed descriptions",
+    backstory="Expert in visual product analysis with deep knowledge of design and features",
+    multimodal=True
+)
+
+# Create a task for image analysis
+task = Task(
+    description="Analyze the product image at https://example.com/product.jpg and provide a detailed description",
+    expected_output="A detailed description of the product image",
+    agent=image_analyst
+)
+
+# Create and run the crew
+crew = Crew(
+    agents=[image_analyst],
+    tasks=[task]
+)
+
+result = crew.kickoff()
+```
+
+### 结合上下文的高级用法
+
+在为多模式代理创建任务时，您可以提供有关图像的其他上下文或特定问题。任务描述可以包括您希望客服人员重点关注的特定方面：
+
+```python
+from crewai import Agent, Task, Crew
+
+# Create a multimodal agent for detailed analysis
+expert_analyst = Agent(
+    role="Visual Quality Inspector",
+    goal="Perform detailed quality analysis of product images",
+    backstory="Senior quality control expert with expertise in visual inspection",
+    multimodal=True  # AddImageTool is automatically included
+)
+
+# Create a task with specific analysis requirements
+inspection_task = Task(
+    description="""
+    Analyze the product image at https://example.com/product.jpg with focus on:
+    1. Quality of materials
+    2. Manufacturing defects
+    3. Compliance with standards
+    Provide a detailed report highlighting any issues found.
+    """,
+    expected_output="A detailed report highlighting any issues found",
+    agent=expert_analyst
+)
+
+# Create and run the crew
+crew = Crew(
+    agents=[expert_analyst],
+    tasks=[inspection_task]
+)
+
+result = crew.kickoff()
+```
+
+### 工具详情
+
+使用多模式代理时，`AddImageTool` 会自动配置以下模式：
+
+```python
+class AddImageToolSchema:
+    image_url: str  # Required: The URL or path of the image to process
+    action: Optional[str] = None  # Optional: Additional context or specific questions about the image
+```
+
+多模式代理将通过其内置工具自动处理图像，从而使其能够：
+- 通过 URL 或本地文件路径访问图像
+- 使用可选上下文或特定问题处理图像内容
+- 根据视觉信息和任务要求提供分析和见解
+
+### 最佳实践
+
+与多式联运代理合作时，请记住以下最佳实践：
+
+1. **图像访问**
+   - 确保您的图像可以通过代理可以访问的 URL 访问
+   - 对于本地图像，请考虑临时托管它们或使用绝对文件路径
+   - 在运行任务之前验证图像 URL 是否有效且可访问
+
+2. **任务描述**
+   - 具体说明您希望代理分析图像的哪些方面
+   - 在任务描述中包含明确的问题或要求
+   - 考虑使用可选的`action`参数进行重点分析
+
+3. **资源管理**
+   - 图像处理可能比纯文本任务需要更多的计算资源
+   - 某些语言模型可能需要对图像数据进行 Base64 编码
+   - 考虑对多个图像进行批处理以优化性能
+
+4. **环境设置**
+   - 验证您的环境是否具有图像处理所需的依赖项
+   - 确保您的语言模型支持多模式功能
+   - 首先使用小图像进行测试以验证您的设置
+
+5. **错误处理**
+   - 对图像加载失败实施正确的错误处理
+   - 当图像处理失败时有后备策略
+   - 监视并记录图像处理操作以进行调试

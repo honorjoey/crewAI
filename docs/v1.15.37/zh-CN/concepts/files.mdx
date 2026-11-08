@@ -1,0 +1,267 @@
+---
+title: 文件
+description: 将图像、PDF、音频、视频和文本文件传递给您的 agent 进行多模态处理。
+icon: file-image
+---
+
+## 概述
+
+CrewAI 原生支持多模态文件输入，允许您将图像、PDF、音频、视频和文本文件直接传递给您的 agent。文件会根据每个 LLM 提供商的 API 要求自动进行格式化。
+
+<Note type="info" title="可选依赖">
+文件支持需要可选的 `crewai-files` 包。使用以下命令安装：
+
+```bash
+uv add 'crewai[file-processing]'
+```
+</Note>
+
+<Note type="warning" title="抢先体验">
+文件处理 API 目前处于抢先体验阶段。
+</Note>
+
+## 文件类型
+
+CrewAI 支持五种特定的文件类型，以及一个可自动检测类型的通用 `File` 类：
+
+| 类型 | 类 | 使用场景 |
+|:-----|:------|:----------|
+|**图像**| `ImageFile` | 照片、截图、示意图、图表 |
+|**PDF**| `PDFFile` | 文档、报告、论文 |
+|**音频**| `AudioFile` | 语音录音、播客、会议 |
+|**视频**| `VideoFile` | 屏幕录制、演示 |
+|**文本**| `TextFile` | 代码文件、日志、数据文件 |
+|**通用**| `File` | 根据内容自动检测类型 |
+
+```python
+from crewai_files import File, ImageFile, PDFFile, AudioFile, VideoFile, TextFile
+
+image = ImageFile(source="screenshot.png")
+pdf = PDFFile(source="report.pdf")
+audio = AudioFile(source="meeting.mp3")
+video = VideoFile(source="demo.mp4")
+text = TextFile(source="data.csv")
+
+file = File(source="document.pdf")
+```
+
+## 文件来源
+
+`source` 参数接受多种输入类型，并自动检测相应的处理方式：
+
+### 从路径
+
+```python
+from crewai_files import ImageFile
+
+image = ImageFile(source="./images/chart.png")
+```
+
+### 从 URL
+
+```python
+from crewai_files import ImageFile
+
+image = ImageFile(source="https://example.com/image.png")
+```
+
+### 从字节数据
+
+```python
+from crewai_files import ImageFile, FileBytes
+
+image_bytes = download_image_from_api()
+image = ImageFile(source=FileBytes(data=image_bytes, filename="downloaded.png"))
+image = ImageFile(source=image_bytes)
+```
+
+## 使用文件
+
+文件可以在多个层级传递，更具体的层级具有更高的优先级。
+
+### 与 Crew 一起使用
+
+在启动 crew 时传递文件：
+
+```python
+from crewai import Crew
+from crewai_files import ImageFile
+
+crew = Crew(agents=[analyst], tasks=[analysis_task])
+
+result = crew.kickoff(
+    inputs={"topic": "Q4 Sales"},
+    input_files={
+        "chart": ImageFile(source="sales_chart.png"),
+        "report": PDFFile(source="quarterly_report.pdf"),
+    }
+)
+```
+
+### 与 Task 一起使用
+
+将文件附加到特定的 task：
+
+```python
+from crewai import Task
+from crewai_files import ImageFile
+
+task = Task(
+    description="Analyze the sales chart and identify trends in {chart}",
+    expected_output="A summary of key trends",
+    input_files={
+        "chart": ImageFile(source="sales_chart.png"),
+    }
+)
+```
+
+### 与 Flow 一起使用
+
+将文件传递给 flow，文件会自动被 crew 继承：
+
+```python
+from crewai.flow.flow import Flow, start
+from crewai_files import ImageFile
+
+class AnalysisFlow(Flow):
+    @start()
+    def analyze(self):
+        return self.analysis_crew.kickoff()
+
+flow = AnalysisFlow()
+result = flow.kickoff(
+    input_files={"image": ImageFile(source="data.png")}
+)
+```
+
+### 与独立 Agent 一起使用
+
+将文件直接传递给 agent 的 kickoff：
+
+```python
+from crewai import Agent
+from crewai_files import ImageFile
+
+agent = Agent(
+    role="Image Analyst",
+    goal="Analyze images",
+    backstory="Expert at visual analysis",
+    llm="gpt-4o",
+)
+
+result = agent.kickoff(
+    messages="What's in this image?",
+    input_files={"photo": ImageFile(source="photo.jpg")},
+)
+```
+
+## 文件优先级
+
+当文件在多个层级传递时，更具体的层级会覆盖更宽泛的层级：
+
+```
+Flow input_files < Crew input_files < Task input_files
+```
+
+例如，如果 Flow 和 Task 都定义了名为 `"chart"` 的文件，则使用 Task 的版本。
+
+## 提供商支持
+
+不同的提供商支持不同的文件类型。CrewAI 会自动按照每个提供商的 API 对文件进行格式化。
+
+| 提供商 | 图像 | PDF | 音频 | 视频 | 文本 |
+|:---------|:-----:|:---:|:-----:|:-----:|:----:|
+|**OpenAI**（completions API） | ✓ | | | | |
+|**OpenAI**（responses API） | ✓ | ✓ | ✓ | | |
+|**Anthropic**（claude-3.x） | ✓ | ✓ | | | |
+|**Google Gemini**（gemini-1.5、2.0、2.5） | ✓ | ✓ | ✓ | ✓ | ✓ |
+|**AWS Bedrock**（claude-3） | ✓ | ✓ | | | |
+|**Azure OpenAI**（gpt-4o） | ✓ | | ✓ | | |
+
+<Note type="info" title="使用 Gemini 获得最全面的文件支持">
+Google Gemini 模型支持包括视频（最长 1 小时、2GB）在内的所有文件类型。当您需要处理视频内容时，请使用 Gemini。
+</Note>
+
+<Note type="warning" title="不支持的文件类型">
+如果您传递了提供商不支持的文件类型（例如向 OpenAI 传递视频），您将收到 `UnsupportedFileTypeError`。请根据需要处理的文件类型选择提供商。
+</Note>
+
+## 文件的发送方式
+
+CrewAI 会自动选择向每个提供商发送文件的最佳方式：
+
+| 方式 | 描述 | 使用时机 |
+|:-------|:------------|:----------|
+|**内联 Base64**| 文件直接嵌入请求中 | 小文件（通常 < 5MB） |
+|**文件上传 API**| 文件单独上传，通过 ID 引用 | 超过阈值的大文件 |
+|**URL 引用**| 直接将 URL 传递给模型 | 文件来源本身就是 URL |
+
+### 提供商传输方式
+
+| 提供商 | 内联 Base64 | 文件上传 API | URL 引用 |
+|:---------|:-------------:|:---------------:|:--------------:|
+|**OpenAI**| ✓ | ✓（> 5 MB） | ✓ |
+|**Anthropic**| ✓ | ✓（> 5 MB） | ✓ |
+|**Google Gemini**| ✓ | ✓（> 20 MB） | ✓ |
+|**AWS Bedrock**| ✓ | | ✓（S3 URI） |
+|**Azure OpenAI**| ✓ | | ✓ |
+
+<Note type="info" title="自动优化">
+您无需自行管理这些细节。CrewAI 会根据文件大小和提供商能力自动使用最高效的方式。没有文件上传 API 的提供商会对所有文件使用内联 base64。
+</Note>
+
+## 文件处理模式
+
+控制文件超出提供商限制时的处理方式：
+
+```python
+from crewai_files import ImageFile, PDFFile
+
+image = ImageFile(source="large.png", mode="strict")
+image = ImageFile(source="large.png", mode="auto")
+image = ImageFile(source="large.png", mode="warn")
+pdf = PDFFile(source="large.pdf", mode="chunk")
+```
+
+## 提供商限制
+
+每个提供商对文件大小和尺寸都有特定限制：
+
+### OpenAI
+- **图像**：最大 20 MB，每个请求最多 10 张图像
+- **PDF**：最大 32 MB，最多 100 页
+- **音频**：最大 25 MB，最长 25 分钟
+
+### Anthropic
+- **图像**：最大 5 MB，最大 8000x8000 像素，最多 100 张图像
+- **PDF**：最大 32 MB，最多 100 页
+
+### Google Gemini
+- **图像**：最大 100 MB
+- **PDF**：最大 50 MB
+- **音频**：最大 100 MB，最长 9.5 小时
+- **视频**：最大 2 GB，最长 1 小时
+
+### AWS Bedrock
+- **图像**：最大 3.75 MB，最大 8000x8000 像素
+- **PDF**：最大 4.5 MB，最多 100 页
+
+## 在提示词中引用文件
+
+在 task 描述中使用文件的键名来引用文件：
+
+```python
+task = Task(
+    description="""
+    Analyze the provided materials:
+    1. Review the chart in {sales_chart}
+    2. Cross-reference with data in {quarterly_report}
+    3. Summarize key findings
+    """,
+    expected_output="Analysis summary with key insights",
+    input_files={
+        "sales_chart": ImageFile(source="chart.png"),
+        "quarterly_report": PDFFile(source="report.pdf"),
+    }
+)
+```

@@ -1,0 +1,113 @@
+---
+title: 层次化流程
+description: 用于理解和应用 CrewAI 项目中的分层流程的综合指南，已更新以反映最新的编码实践和功能。
+icon: sitemap
+mode: "wide"
+---
+
+## 介绍
+
+CrewAI 中的分层流程引入了一种结构化的任务管理方法，模拟传统的组织层次结构，以实现高效的任务委派和执行。
+这种系统化的工作流程可确保以最佳效率和准确性处理任务，从而提高项目成果。
+
+<Tip>
+分层流程旨在利用 GPT-4 等先进模型，优化代币使用，同时更高效地处理复杂任务。
+</Tip>
+
+## 分层流程概述
+
+默认情况下，CrewAI 中的任务通过顺序流程进行管理。然而，采用分层方法可以在任务管理中实现清晰的层次结构，
+其中“经理”代理协调工作流程、委派任务并验证结果以实现简化且有效的执行。该经理代理现在可以是
+由 CrewAI 自动创建或由用户明确设置。
+
+### 主要特点
+
+- **任务委派**：经理代理根据机组成员的角色和能力在机组成员之间分配任务。
+- **结果验证**：经理评估结果以确保它们符合所需的标准。
+- **高效的工作流程**：模拟公司结构，提供有组织的任务管理方法。
+- **系统提示处理**：可选择指定系统是否应使用预定义的提示。
+- **停用词控制**：可选择指定是否应使用停用词，支持包括 o1 模型在内的各种模型。
+- **上下文窗口尊重**：通过启用上下文窗口尊重来优先考虑重要上下文，这是现在的默认行为。
+- **委派控制**：现在默认情况下禁用委派，以便为用户提供明确的控制。
+- **每分钟最大请求数**：可配置选项，用于设置每分钟最大请求数。
+- **最大迭代次数**：限制获得最终答案的最大迭代次数。
+
+
+## 实施分层流程
+
+要利用分层流程，必须将流程属性显式设置为`Process.hierarchical`，因为默认行为是`Process.sequential`。
+指定一个工作人员并指定一名经理，并建立清晰的指挥系统。
+
+<Tip>
+在座席级别分配工具，以方便指定座席在经理的指导下委派和执行任务。
+还可以在任务级别指定工具，以便在任务执行期间精确控制工具的可用性。
+</Tip>
+
+<Tip>
+配置`manager_llm`参数对于分层过程至关重要。
+该系统需要设立一名LLM经理才能发挥适当的作用，确保制定量身定制的决策。
+</Tip>
+
+```python Code
+from crewai import Crew, Process, Agent
+
+# Agents are defined with attributes for backstory, cache, and verbose mode
+researcher = Agent(
+    role='Researcher',
+    goal='Conduct in-depth analysis',
+    backstory='Experienced data analyst with a knack for uncovering hidden trends.',
+)
+writer = Agent(
+    role='Writer',
+    goal='Create engaging content',
+    backstory='Creative writer passionate about storytelling in technical domains.',
+)
+
+# Establishing the crew with a hierarchical process and additional configurations
+project_crew = Crew(
+    tasks=[...],  # Tasks to be delegated and executed under the manager's supervision
+    agents=[researcher, writer],
+    manager_llm="gpt-4o",  # Specify which LLM the manager should use
+    process=Process.hierarchical,  
+    planning=True, 
+)
+```
+
+### 使用自定义管理器代理
+
+或者，您可以创建一个自定义管理器代理，该代理具有根据您的项目管理需求定制的特定属性。这使您可以更好地控制经理的行为和能力。
+
+```python
+# Define a custom manager agent
+manager = Agent(
+    role="Project Manager",
+    goal="Efficiently manage the crew and ensure high-quality task completion",
+    backstory="You're an experienced project manager, skilled in overseeing complex projects and guiding teams to success.",
+    allow_delegation=True,
+)
+
+# Use the custom manager in your crew
+project_crew = Crew(
+    tasks=[...],
+    agents=[researcher, writer],
+    manager_agent=manager,  # Use your custom manager agent
+    process=Process.hierarchical,
+    planning=True,
+)
+```
+
+<Tip>
+有关创建和自定义管理器代理的更多详细信息，请查看[自定义管理器代理文档](/zh-CN/learn/custom-manager-agent)。
+</Tip>
+
+
+### 实际工作流程
+
+1. **任务分配**：经理考虑每个代理的能力和可用工具，战略性地分配任务。
+2. **执行和审查**：代理可以使用异步执行和回调函数选项来完成任务，以简化工作流程。
+3. **顺序任务进展**：尽管是一个分层过程，但任务遵循逻辑顺序以顺利进展，并在经理的监督下进行。
+
+## 结论
+
+在 CrewAI 中采用分层流程，并进行正确的配置和对系统功能的理解，有助于采用有组织且高效的项目管理方法。
+利用高级功能和自定义功能根据您的特定需求定制工作流程，确保最佳的任务执行和项目成功。

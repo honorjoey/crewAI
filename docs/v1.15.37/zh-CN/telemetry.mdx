@@ -1,0 +1,105 @@
+---
+title: 遥测
+description: 了解 CrewAI 收集的遥测数据，以及这些数据如何帮助改进该库。
+icon: signal-stream
+mode: "wide"
+---
+
+## 遥测
+
+<Note>
+    默认情况下，我们不会收集任何在 GDPR 及其他隐私法规下可被视为个人信息的数据。
+    我们会收集工具名称和 Agent 角色名称，因此请勿在工具名称或 Agent 角色中包含任何个人信息。
+	由于不收集个人信息，因此无需担心数据驻留问题。
+	当启用 `share_crew` 时，会收集额外数据；如果用户在其中包含个人信息，这些数据可能含有个人信息。
+    启用此功能时，用户应谨慎操作，以确保符合隐私法规。
+</Note>
+
+CrewAI 使用匿名遥测来收集使用统计信息，主要目标是改进该库。
+我们的重点是持续优化并开发用户最常使用的功能、集成和工具。
+
+必须明确的是，默认情况下，关于提示词、任务描述、Agent 背景故事或目标、
+工具使用、API 调用、响应、Agent 处理的任何数据，以及密钥和环境变量，**均不会收集任何个人数据**。
+启用 `share_crew` 功能后，会收集包括任务描述、Agent 背景故事或目标及其他特定属性在内的详细数据，
+以提供更深入的洞察。如果用户已将个人信息纳入其 crew 或任务，此扩展数据收集可能包含个人信息。
+用户在启用 `share_crew` 前，应仔细考虑其 crew 与任务中的内容。
+用户可将 `CREWAI_DISABLE_TELEMETRY` 设为 `true`、`1`、`yes` 或 `on`（不区分大小写）来禁用 CrewAI 遥测。将 `OTEL_SDK_DISABLED` 设为相同取值也会禁用 CrewAI 的导出器。但 OpenTelemetry SDK 本身在禁用进程中其他埋点时仍只识别 `true`。
+AMP 追踪另见 [Tracing](/zh-CN/observability/tracing)。`OTEL_SDK_DISABLED` 不会关闭它：请设置 `CREWAI_TRACING_ENABLED=false`，或在 Crew 或 Flow 上设置 `tracing=False`。
+
+### 示例：
+```python
+# Disable CrewAI telemetry only
+os.environ['CREWAI_DISABLE_TELEMETRY'] = 'true'
+
+# Disable all OpenTelemetry instrumentation, CrewAI's telemetry included (not AMP tracing)
+os.environ['OTEL_SDK_DISABLED'] = 'true'
+```
+
+`CREWAI_DISABLE_TELEMETRY=1`（或 `yes` / `on`）与 `true` 效果相同。无法识别的取值会被忽略，遥测保持开启。
+
+### 与你自己的 OpenTelemetry 配置隔离
+
+CrewAI 的遥测运行在其私有 `TracerProvider` 上，且绝不会将
+自己注册为全局 provider。这使两条链路彼此隔离：
+
+- 进程中其他已埋点库（如 Web 框架、
+  数据库客户端、HTTP 客户端）的 spans 永远不会发送到 CrewAI。
+- CrewAI 的遥测 spans 也永远不会发送到你的可观测性后端，
+  因此不会出现在 Langfuse、Braintrust、Phoenix 或你配置的任何其他采集器中。
+
+可观测性集成不受影响：它们通过各自的 tracer provider 为 CrewAI 添加埋点，
+该 provider 与此处描述的 provider 相互独立。
+
+### 独立 Agent 对话
+
+实验性的独立 Agent 对话会发出这些 `Feature Usage` spans。每个 span 计一次发生：
+
+| `feature` | 计数事件 |
+| --- | --- |
+| `standalone_agent:handle_turn` | 在会话 opt-in 校验通过后，一次公开的 `Agent.handle_turn()` 调用。 |
+| `standalone_agent:chat:repl` | 一次用于普通聊天的公开 `Agent.chat()` 调用。 |
+| `standalone_agent:chat:tui` | 一次公开 `Agent.chat(tui=True)` 调用。 |
+| `standalone_agent:conversation_turn` | 一次已完成的会话式 Agent 回合。 |
+| `standalone_agent:conversation_turn_failed` | 一次失败的会话式 Agent 回合。 |
+
+调用计数并不意味着聊天会话一定成功启动。回合结果还覆盖托管的 Agent Flow bridge 与流式回合；现有 Flow 对话计数保持不变。普通 Agent 与普通会话式 Flow 不会发出这些 Agent 专属信号。
+
+这些信号不会附带消息内容、响应、会话 ID、Agent 角色、模型名称或错误文本。它们保留下文列出的通用 Execution Environment 属性。静默模式和禁用 AMP 追踪不会禁用使用遥测。将 `CREWAI_DISABLE_TELEMETRY=true`、`CREWAI_DISABLE_TRACKING=true` 或 `OTEL_SDK_DISABLED=true` 可禁用这些信号。
+
+### 数据说明：
+| Defaulted | 数据                                      | 原因与细节                                                                                                       |
+|:----------|:------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------|
+| Yes       | CrewAI 和 Python 版本                 | 用于跟踪软件版本。示例：CrewAI v1.2.3、Python 3.8.10。不含个人数据。 |
+| Yes       | Crew 元数据 | 包括：随机生成的 key 和 ID、流程类型（如 `sequential`、`parallel`）、是否使用内存的布尔标记（true/false）、运行时是否传入任何输入的布尔标记（true/false——绝不包含输入键或值，后者仅在启用 `share_crew` 时收集）、任务数量、Agent 数量。均为非个人数据。 |
+| Yes       | Agent 数据 | 包括：随机生成的 key 和 ID、角色名称（不应包含个人信息）、布尔设置（verbose、是否允许 delegation、是否允许代码执行）、最大迭代次数、最大 RPM、最大重试限制、LLM 信息（见 LLM Attributes）、工具名称列表（不应包含个人信息）。不含个人数据。 |
+| Yes       | 任务元数据 | 包括：随机生成的 key 和 ID、布尔执行设置（async_execution、human_input）、关联 Agent 的角色和 key、工具名称列表。均为非个人数据。 |
+| Yes       | 工具使用统计 | 包括：工具名称（不应包含个人信息）、使用尝试次数（整数）、所用 LLM 属性。不含个人数据。 |
+| Yes       | 测试执行数据 | 包括：crew 随机生成的 key 和 ID、迭代次数、使用的模型名称、质量分数（float）、执行时间（秒）。均为非个人数据。 |
+| Yes       | 任务生命周期数据 | 包括：创建时间与执行开始/结束时间、crew 与任务标识符，以及任务成功或失败状态。任务失败时，会记录异常的**类名**（例如 `TimeoutError`），用于统计和诊断失败——绝不会记录错误消息（其中可能包含提示词、模型输出、文件路径或凭据）。以带时间戳的 spans 存储。不含个人数据。 |
+| Yes       | LLM 属性 | 包括：name、model_name、model、top_k、temperature 以及 LLM 的类名。均为技术性、非个人数据。 |
+| Yes       | 使用 crewAI CLI 创建项目 | 包括：是否通过 `crewai create` 脚手架创建了新项目、其类型（`crew`、`json_crew`、`flow` 或 `agent`），以及为该新项目生成并写入其 `pyproject.toml` 的项目 ID。该 ID 是新项目自身的 ID，与命令执行目录的 `project_id` 分开记录——两者可能不同。不含项目名称、文件内容或代码。不含个人数据。 |
+| Yes       | 使用 crewAI CLI 的运行尝试 | 包括：`crewai run` 是否已启动，以及运行的项目类型（`crew`、`json_crew`、`flow`、`agent`、`declarative_flow`，或在未找到可读 `pyproject.toml` 时为 `unknown`）；当运行在 crew 或 flow 启动前停止时，还会记录停止位置（固定列表之一：`no_project`、`invalid_project`、`api_key_prompt`、`unsupported_option`、`invalid_inputs`、`missing_inputs`、`install_failed`、`crewai_missing`、`load_failed`、`no_terminal`、`launch_failed`）；当 Python crew 或 flow 项目的脚本在启动前或启动后错误退出时，记录 `script_failed`；当 JSON crew 因模型所需 API key 未设置而停止时（无论在加载时还是启动后），记录 `missing_api_key`。当运行开始前缺少某模型所需 key 时，还会记录：是否在提示中粘贴了 key（`saved`）、是否跳过了全部提示（`skipped`）、或是否只打印了添加该 key 的提示行（`warned`）。当运行在 `load_failed` 且伴随错误停止时，若该加载失败异常类名属于 Python 内置异常或来自 crewAI 及其项目加载相关库（如 pydantic、PyYAML、LiteLLM 或模型提供商 SDK），也会记录该错误的**类名**（例如 `ImportError`、`ValidationError` 或 `JSONDecodeError`）；其他类（如项目自定义类）会记录为 `other`。绝不会记录错误消息或 traceback、项目名称、路径、输入，或 key 的名称和值。在项目 `.env` 中设置 `CREWAI_DISABLE_TELEMETRY`（或 `OTEL_SDK_DISABLED`）也会关闭这些采集。不含个人数据。 |
+| Yes       | 使用 crewAI CLI 的 Crew 部署尝试 | 包括：是否正在进行部署及 crew id、是否尝试拉取日志、部署是从 CLI 命令发起还是从 run TUI 发起。若创建部署失败，还会记录失败类别（固定列表之一，如 `api_4xx`、`network_error` 或 `user_declined`）以及（若存在）API 响应的 HTTP 状态码——绝不会记录错误消息。不含项目或 crew 内容。不含个人数据。 |
+| Yes       | 执行环境 | 包括：当前运行进程的 AI 编码助手（如有；固定列表之一，如 `claude_code`、`codex`、`cursor` 或 `unknown`）、进程运行位置（固定列表之一，如 `ci`、`container`、`serverless`、`interactive`）、当已配置时来自 `pyproject.toml` 的 `project_id`，以及机器规模的粗粒度区间（`1-2`、`3-4`、`5-8`、`9-16`、`17-32`、`33+` 或 `unknown` 之一）。该规模是区间而非精确核心数——精确核心数仅在下方 Environment Information 中按 opt-in 收集。规模区间来源于主机 CPU 数量；助手与运行位置检测仅读取已知环境变量是否存在，绝不读取其值。不含个人数据。 |
+| Yes       | Flow 生命周期信号 | 包括：flow 是否启动、是否完成或失败、其某个方法是否失败、是否因人工输入或反馈而暂停、是否为恢复运行启动、对话回合是否失败、flow 运行时长，以及该 flow 是 CrewAI 内部运行还是用户编写。flow 名称会被记录，这与 flow 创建和执行时一致。flow 或其方法失败时，会记录异常的**类名**（例如 `TimeoutError`）用于诊断失败——绝不会记录错误消息（其中可能包含提示词、模型输出、文件路径或凭据）。绝不会记录方法名或 flow 状态。不含个人数据。 |
+| Yes       | Trace 分享信号 | 包括：一批 traces 是否已成功分享至 CrewAI AMP，以及该分享是匿名（拥有账号前）还是已关联你的账号。与每个 span 一样，它还携带上文所述 Execution Environment 属性（配置时的 `project_id`、编码助手和运行时）。此行仅描述分享遥测本身——不包含 trace 内容，也不包含共享 trace 链接授予的访问权限。此信号绝不会记录 trace 内容、输入或输出。在分享 traces 前，请审查机密信息、个人数据以及 AMP 的脱敏与保留设置。 |
+| No        | Agent 扩展数据 | 包括：目标描述、背景故事文本、i18n 提示文件标识符。用户应确保文本字段不包含个人信息。 |
+| No        | 详细任务信息 | 包括：任务描述、期望输出描述、上下文引用。用户应确保这些字段不包含个人信息。 |
+| No        | 环境信息 | 包括：platform、release、system、version 和 CPU count。示例：`Windows 10`、`x86_64`。不含个人数据。 |
+| No        | Crew 和任务输入输出 | 包括：作为不可识别数据的输入参数与输出结果。用户应确保不包含个人信息。 |
+| No        | 完整 Crew 执行数据 | 包括：crew 操作详细日志、所有 Agent 与任务数据、最终输出。均为非个人、技术性数据。 |
+
+<Note>
+    “Defaulted” 列中的 “No” 表示仅当 `share_crew` 设为 `true` 时才会收集该数据。
+</Note>
+
+### 选择加入更多遥测共享
+
+用户可在 crew 配置中将 `share_crew` 属性设为 `True`，选择共享完整遥测数据。
+启用 `share_crew` 后，会收集详细的 crew 与任务执行数据，包括任务的 `goal`、`backstory`、`context` 与 `output`。
+这有助于更深入地洞察使用模式。
+
+<Warning>
+    如果启用 `share_crew`，所收集数据可能包含个人信息（若其已被纳入 crew 配置、任务描述或输出）。
+    用户在启用此功能前应仔细审查其数据，并确保符合 GDPR 及其他适用隐私法规。
+</Warning>

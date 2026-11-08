@@ -1,0 +1,449 @@
+---
+title: 在没有 LiteLLM 的情况下使用 CrewAI
+description: 如何将 CrewAI 与本机提供商集成结合使用，并从项目中删除 LiteLLM 依赖项。
+icon: shield-check
+mode: "wide"
+---
+
+## 概述
+
+CrewAI 支持两种连接 LLM 提供商的路径：
+
+1. **本机集成** — 与 OpenAI、Anthropic、Google Gemini、Azure OpenAI 和 AWS Bedrock 的直接 SDK 连接
+2. **LiteLLM 后备** — 支持 100 多个其他提供商的转换层
+
+本指南介绍了如何仅将 CrewAI 与本机提供商集成结合使用，从而消除对 LiteLLM 的任何依赖。
+
+<Warning>
+由于安全/可靠性事件，`litellm` 包在 PyPI 上被隔离。如果您依赖于 LiteLLM 的提供商，则应该迁移到本机集成。 CrewAI 的本机集成为您提供完整功能，无需 LiteLLM。
+</Warning>
+
+## 为什么要删除 LiteLLM？
+
+- **减少依赖面**——更少的包装意味着更少的潜在供应链风险
+- **更好的性能** - 本机 SDK 直接与提供商 API 通信，消除了转换层
+- **更简单的调试** — 代码和提供者之间少了一个抽象层
+- **安装占用空间更小** — LiteLLM 引入了许多传递依赖项
+
+## 本地提供商（无需 LiteLLM）
+
+这些提供商使用自己的 SDK，无需安装 LiteLLM 即可工作：
+
+<CardGroup cols={2}>
+  <Card title="OpenAI" icon="bolt">
+GPT-4o、GPT-4o-mini、o1、o3-mini 等。
+    ```bash
+    uv add "crewai[openai]"
+    ```
+  </Card>
+  <Card title="Anthropic" icon="a">
+克劳德十四行诗、克劳德俳句等等。
+    ```bash
+    uv add "crewai[anthropic]"
+    ```
+  </Card>
+  <Card title="Google Gemini" icon="google">
+Gemini 2.0 Flash、Gemini 2.0 Pro 等。
+    ```bash
+    uv add "crewai[gemini]"
+    ```
+  </Card>
+  <Card title="Azure OpenAI" icon="microsoft">
+Azure 托管的 OpenAI 模型。
+    ```bash
+    uv add "crewai[azure]"
+    ```
+  </Card>
+  <Card title="AWS Bedrock" icon="aws">
+Claude、Llama、Titan 等通过 AWS 提供。
+    ```bash
+    uv add "crewai[bedrock]"
+    ```
+  </Card>
+</CardGroup>
+
+<Info>
+如果您只使用本机提供程序，您**永远**不需要安装`crewai[litellm]`。基本`crewai` 套餐加上您选择的提供商额外费用就是您所需要的。
+</Info>
+
+## 如何检查您是否使用 LiteLLM
+
+### 检查您的模型字符串
+
+如果您的代码使用此类模型前缀，则您将通过 LiteLLM 进行路由：
+
+| 前缀 | 提供者 | 使用 LiteLLM？ |
+|--------|----------|---------------|
+| `ollama/` | 奥拉玛 | ✅ 是的 |
+| `groq/` | 格罗克 | ✅ 是的 |
+| `together_ai/` | 一起人工智能 | ✅ 是的 |
+| `mistral/` | 米斯特拉尔 | ✅ 是的 |
+| `cohere/` | 连贯 | ✅ 是的 |
+| `huggingface/` | 抱脸 | ✅ 是的 |
+| `openai/` | 开放人工智能 | ❌ 本土 |
+| `anthropic/` | 人择 | ❌ 本土 |
+| `gemini/` | 谷歌双子座 | ❌ 本土 |
+| `azure/` | Azure 开放人工智能 | ❌ 本土 |
+| `bedrock/` | AWS 基岩 | ❌ 本土 |
+
+### 检查是否安装了 LiteLLM
+
+```bash
+# Using pip
+pip show litellm
+
+# Using uv
+uv pip show litellm
+```
+
+如果该命令返回包信息，则表明您的环境中已安装 LiteLLM。
+
+### 检查你的依赖关系
+
+查看您的`pyproject.toml` 中的`crewai[litellm]`：
+
+```toml
+# If you see this, you have LiteLLM as a dependency
+dependencies = [
+    "crewai[litellm]>=0.100.0",  # ← Uses LiteLLM
+]
+
+# Change to a native provider extra instead
+dependencies = [
+    "crewai[openai]>=0.100.0",   # ← Native, no LiteLLM
+]
+```
+
+## 迁移指南
+
+### 第 1 步：确定您当前的提供商
+
+查找代码中的所有 `LLM()` 调用和模型字符串：
+
+```bash
+# Search your codebase for LLM model strings
+grep -r "LLM(" --include="*.py" .
+grep -r "llm=" --include="*.yaml" .
+grep -r "llm:" --include="*.yaml" .
+```
+
+### 第 2 步：切换到本地提供商
+
+<Tabs>
+  <Tab title="Switch to OpenAI">
+    ```python
+    from crewai import LLM
+
+    # Before (LiteLLM):
+    # llm = LLM(model="groq/llama-3.1-70b")
+
+    # After (Native):
+    llm = LLM(model="openai/gpt-4o")
+    ```
+
+    ```bash
+    # Install
+    uv add "crewai[openai]"
+
+    # Set your API key
+    export OPENAI_API_KEY="sk-..."
+    ```
+  </Tab>
+  <Tab title="Switch to Anthropic">
+    ```python
+    from crewai import LLM
+
+    # Before (LiteLLM):
+    # llm = LLM(model="together_ai/meta-llama/Meta-Llama-3.1-70B")
+
+    # After (Native):
+    llm = LLM(model="anthropic/claude-sonnet-4-20250514")
+    ```
+
+    ```bash
+    # Install
+    uv add "crewai[anthropic]"
+
+    # Set your API key
+    export ANTHROPIC_API_KEY="sk-ant-..."
+    ```
+  </Tab>
+  <Tab title="Switch to Gemini">
+    ```python
+    from crewai import LLM
+
+    # Before (LiteLLM):
+    # llm = LLM(model="mistral/mistral-large-latest")
+
+    # After (Native):
+    llm = LLM(model="gemini/gemini-3.7-flash")
+    ```
+
+    ```bash
+    # Install
+    uv add "crewai[gemini]"
+
+    # Set your API key
+    export GEMINI_API_KEY="..."
+    ```
+  </Tab>
+  <Tab title="Switch to Azure OpenAI">
+    ```python
+    from crewai import LLM
+
+    # After (Native):
+    llm = LLM(
+        model="azure/your-deployment-name",
+        api_key="your-azure-api-key",
+        base_url="https://your-resource.openai.azure.com",
+        api_version="2024-06-01"
+    )
+    ```
+
+    ```bash
+    # Install
+    uv add "crewai[azure]"
+    ```
+  </Tab>
+  <Tab title="Switch to AWS Bedrock">
+    ```python
+    from crewai import LLM
+
+    # After (Native):
+    llm = LLM(
+        model="bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0",
+        aws_region_name="us-east-1"
+    )
+    ```
+
+    ```bash
+    # Install
+    uv add "crewai[bedrock]"
+
+    # Configure AWS credentials
+    export AWS_ACCESS_KEY_ID="..."
+    export AWS_SECRET_ACCESS_KEY="..."
+    export AWS_DEFAULT_REGION="us-east-1"
+    ```
+  </Tab>
+</Tabs>
+
+### 第 3 步：保留 Ollama 而不使用 LiteLLM
+
+如果您正在使用 Ollama 并想继续使用它，您可以通过 Ollama 的 OpenAI 兼容 API 进行连接：
+
+```python
+from crewai import LLM
+
+# Before (LiteLLM):
+# llm = LLM(model="ollama/llama3")
+
+# After (OpenAI-compatible mode, no LiteLLM needed):
+llm = LLM(
+    model="llama3",
+    custom_openai=True,
+    base_url="http://localhost:11434/v1",
+    api_key="ollama"  # Ollama doesn't require a real API key
+)
+```
+
+<Tip>
+许多本地推理服务器（Ollama、vLLM、LM Studio、llama.cpp）公开了 OpenAI 兼容的 API。您可以将 `custom_openai=True` 与自定义 `base_url` 一起使用以本机连接到其中任何一个，同时保留网关所需的模型 ID。
+</Tip>
+
+### 第 4 步：更新您的 YAML 配置
+
+```yaml
+# Before (LiteLLM providers):
+researcher:
+  role: Research Specialist
+  goal: Conduct research
+  backstory: A dedicated researcher
+  llm: groq/llama-3.1-70b          # ← LiteLLM
+  
+# After (Native provider):
+researcher:
+  role: Research Specialist
+  goal: Conduct research
+  backstory: A dedicated researcher
+  llm: openai/gpt-4o               # ← Native
+```
+
+### 第 5 步：删除 LiteLLM
+
+迁移所有模型引用后：
+
+```bash
+# Remove litellm from your project
+uv remove litellm
+
+# Or if using pip
+pip uninstall litellm
+
+# Update your pyproject.toml: change crewai[litellm] to your provider extra
+# e.g., crewai[openai], crewai[anthropic], crewai[gemini]
+```
+
+### 第 6 步：验证
+
+运行您的项目并确认一切正常：
+
+```bash
+# Run your crew
+crewai run
+
+# Or run your tests
+uv run pytest
+```
+
+## 自定义 OpenAI 兼容端点
+
+许多提供商和本地服务器（Ollama、vLLM、LM Studio、llama.cpp、LiteLLM 代理和托管网关）公开 **OpenAI 兼容** API。您可以通过设置 `custom_openai=True` 直接与 CrewAI 的本机 OpenAI 集成与它们对话，而不是通过 LiteLLM 路由它们。
+
+这是任何提供 OpenAI 兼容端点的 LiteLLM 提供商的推荐替代品。
+
+### 它是如何运作的
+
+- `custom_openai=True` 强制 CrewAI 使用本机 OpenAI SDK，无论模型名称如何。
+- 模型 ID 会传递到端点，而无需根据 OpenAI 的已知模型列表进行验证。这使您可以使用网关所需的任意模型 ID（例如，`anthropic/claude-sonnet-4-6` 在 OpenAI 兼容代理后面提供服务）。可选的前导 `openai/` 路由前缀被删除。
+- **需要**基本 URL。 CrewAI 按顺序解决该问题：
+  1. `base_url=...`
+  2. `api_base=...`
+  3. `OPENAI_BASE_URL`环境变量
+  4. `OPENAI_API_BASE` 环境变量（旧版）
+
+如果没有设置，CrewAI 会引发`ValueError`，因此错误配置会快速失败，而不是默默地点击`api.openai.com`。
+
+```python
+from crewai import LLM
+
+llm = LLM(
+    model="anthropic/claude-sonnet-4-6",  # passed through as-is
+    custom_openai=True,
+    base_url="https://your-gateway.example/v1",
+    api_key="your-key",
+)
+```
+
+### 连接到常用服务器
+
+<Tabs>
+  <Tab title="Ollama">
+    ```python
+    from crewai import LLM
+
+    llm = LLM(
+        model="llama3.2:latest",
+        custom_openai=True,
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",  # Ollama ignores it, but the client requires a value
+    )
+    ```
+  </Tab>
+  <Tab title="vLLM">
+    ```python
+    from crewai import LLM
+
+    llm = LLM(
+        model="meta-llama/Meta-Llama-3.1-8B-Instruct",
+        custom_openai=True,
+        base_url="http://localhost:8000/v1",
+        api_key="not-needed",
+    )
+    ```
+  </Tab>
+  <Tab title="LM Studio">
+    ```python
+    from crewai import LLM
+
+    llm = LLM(
+        model="your-loaded-model",
+        custom_openai=True,
+        base_url="http://localhost:1234/v1",
+        api_key="lm-studio",
+    )
+    ```
+  </Tab>
+  <Tab title="Env vars">
+    ```bash
+    export OPENAI_BASE_URL="https://your-gateway.example/v1"
+    export OPENAI_API_KEY="your-key"
+    ```
+    ```python
+    from crewai import LLM
+
+    # base_url is picked up from OPENAI_BASE_URL / OPENAI_API_BASE
+    llm = LLM(model="anthropic/claude-sonnet-4-6", custom_openai=True)
+    ```
+  </Tab>
+</Tabs>
+
+<Tip>
+如果您将 `openai/` 前缀与不是已知 OpenAI 模型的模型一起使用，并直接传递 `base_url` 或 `api_base`，CrewAI 会自动将其视为自定义 OpenAI 兼容端点。仅靠环境变量并不能实现未知模型的自动路由；通过`OPENAI_BASE_URL` 或`OPENAI_API_BASE` 配置端点时设置`custom_openai=True`。
+</Tip>
+
+## 快速参考：模型字符串映射
+
+以下是从依赖 LiteLLM 的提供商到本机提供商的常见迁移路径：
+
+```python
+from crewai import LLM
+
+# ─── LiteLLM providers → Native alternatives ────────────────────
+
+# Groq → OpenAI or Anthropic
+# llm = LLM(model="groq/llama-3.1-70b")
+llm = LLM(model="openai/gpt-4o-mini")           # Fast & affordable
+llm = LLM(model="anthropic/claude-haiku-3-5")    # Fast & affordable
+
+# Together AI → OpenAI or Gemini
+# llm = LLM(model="together_ai/meta-llama/Meta-Llama-3.1-70B")
+llm = LLM(model="openai/gpt-4o")                 # High quality
+llm = LLM(model="gemini/gemini-3.7-flash")       # Fast & capable
+
+# Mistral → Anthropic or OpenAI
+# llm = LLM(model="mistral/mistral-large-latest")
+llm = LLM(model="anthropic/claude-sonnet-4-20250514")  # High quality
+
+# Ollama → OpenAI-compatible (keep using local models)
+# llm = LLM(model="ollama/llama3")
+llm = LLM(
+    model="llama3",
+    custom_openai=True,
+    base_url="http://localhost:11434/v1",
+    api_key="ollama"
+)
+```
+
+## 常问问题
+
+<AccordionGroup>
+  <Accordion title="Do I lose any functionality by removing LiteLLM?">
+不需要，如果您使用五个本机支持的提供程序之一（OpenAI、Anthropic、Gemini、Azure、Bedrock）。这些本机集成支持所有 CrewAI 功能，包括流式传输、工具调用、结构化输出等。您只会失去对 LiteLLM 独家提供的提供商的访问权限（例如 Groq、Together AI、Mistral 等一流提供商）。
+  </Accordion>
+  <Accordion title="Can I use multiple native providers at the same time?">
+是的。安装多个附加组件并为不同的代理使用不同的提供程序：
+    ```bash
+    uv add "crewai[openai,anthropic,gemini]"
+    ```
+    ```python
+    researcher = Agent(llm="openai/gpt-4o", ...)
+    writer = Agent(llm="anthropic/claude-sonnet-4-20250514", ...)
+    ```
+  </Accordion>
+  <Accordion title="Is LiteLLM safe to use now?">
+无论隔离状态如何，减少依赖面都是良好的安全实践。如果您只需要 CrewAI 本身支持的提供程序，则没有理由保留 LiteLLM 安装。
+  </Accordion>
+  <Accordion title="What about environment variables like OPENAI_API_KEY?">
+本机提供程序使用您已经熟悉的相同环境变量。 `OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GEMINI_API_KEY` 等无需更改。
+  </Accordion>
+  <Accordion title="How do I connect to Groq, Together AI, or other OpenAI-compatible providers without LiteLLM?">
+这些提供商中的大多数都公开了 OpenAI 兼容的 API。使用 `custom_openai=True` 及其基本 URL 和 API 密钥 — 请参阅[自定义 OpenAI 兼容端点](#custom-openai-compatible-endpoints)。例如，Groq：`LLM(model="llama-3.1-70b-versatile", custom_openai=True, base_url="https://api.groq.com/openai/v1", api_key="...")`。模型 ID 不受影响地传递，因此请使用提供者期望的任何 ID。
+  </Accordion>
+</AccordionGroup>
+
+## 相关资源
+
+- [LLM 连接](/zh-CN/learn/llm-connections) — 将 CrewAI 与任何 LLM 连接的完整指南
+- [LLM 概念](/zh-CN/concepts/llms) — 了解 CrewAI 中的 LLM
+- [LLM 选择指南](/zh-CN/learn/llm-selection-guide) — 为您的用例选择正确的模型

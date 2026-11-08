@@ -1,0 +1,155 @@
+---
+title: "在crew.py中使用注释"
+description: "了解如何使用经典的 Python 注释在 CrewAI 中构建代理、任务和组件"
+icon: "at"
+mode: "wide"
+---
+
+本指南说明如何使用注释来正确引用经典`crew.py` 文件中的 **代理**、**任务** 和其他组件。
+
+<Note>
+使用 `crewai create crew <name>` 创建的新船员项目是 JSON-first 并使用 `crew.jsonc` 加 `agents/*.jsonc`。当您使用 `crewai create crew <name> --classic` 创建的经典项目、迁移现有的 Python/YAML 项目或需要基于装饰器的 Python 控制时，请使用此注释指南。
+</Note>
+
+## 介绍
+
+CrewAI 框架中的注释用于装饰类和方法，为船员的各个组件提供元数据和功能。在经典的Python/YAML项目中，这些注释有助于组织加载`config/agents.yaml`、`config/tasks.yaml`并返回`Crew`对象的代码。
+
+## 可用注释
+
+CrewAI框架提供了以下注释：
+
+- `@CrewBase`：用于装饰主船员舱。
+- `@agent`：装饰定义并返回 Agent 对象的方法。
+- `@task`：装饰定义和返回 Task 对象的方法。
+- `@crew`：装饰创建并返回Crew对象的方法。
+- `@llm`：装饰初始化和返回语言模型对象的方法。
+- `@tool`：装饰初始化并返回 Tool 对象的方法。
+- `@callback`：用于定义回调方法。
+- `@output_json`：用于输出JSON数据的方法。
+- `@output_pydantic`：用于输出 Pydantic 模型的方法。
+- `@cache_handler`：用于定义缓存处理方法。
+
+## 使用示例
+
+让我们通过示例来了解如何使用这些注释：
+
+### 1. 船员基础舱
+
+```python
+@CrewBase
+class LinkedinProfileCrew():
+    """LinkedinProfile crew"""
+    agents_config = 'config/agents.yaml'
+    tasks_config = 'config/tasks.yaml'
+```
+
+`@CrewBase`注解用于修饰主crew类。此类通常包含用于创建代理、任务和工作人员本身的配置和方法。
+
+<Tip>
+`@CrewBase` 的作用不仅仅是注册课程：
+
+- **配置引导：**在类文件旁边查找`agents_config`和`tasks_config`（默认为`config/agents.yaml`和`config/tasks.yaml`），在实例化时加载它们，如果文件丢失，则安全地返回到空字典。
+- **装饰器编排：**保留对标有 `@agent`、`@task`、`@before_kickoff` 或 `@after_kickoff` 的每个方法的记忆引用，以便每个组实例化一次并按声明顺序执行它们。
+- **挂钩连接：**自动将保留的启动挂钩附加到`@crew`方法返回的`Crew`对象，使它们在`.kickoff()`之前和之后运行。
+- **MCP 集成：** 当类定义 `mcp_server_params` 时，`get_mcp_tools()` 延迟启动 MCP 服务器适配器，水合声明的工具，并且内部启动后挂钩停止适配器。请参阅 [MCP 概述](/zh-CN/mcp/overview) 了解适配器配置详细信息。
+</Tip>
+
+### 2. 工具定义
+
+```python
+@tool
+def myLinkedInProfileTool(self):
+    return LinkedInProfileTool()
+```
+
+`@tool` 注释用于修饰返回工具对象的方法。代理可以使用这些工具来执行特定任务。
+
+### 3. LLM定义
+
+```python
+@llm
+def groq_llm(self):
+    api_key = os.getenv('api_key')
+    return ChatGroq(api_key=api_key, temperature=0, model_name="mixtral-8x7b-32768")
+```
+
+`@llm` 注释用于修饰初始化和返回语言模型对象的方法。这些 LLM 被代理用于自然语言处理任务。
+
+### 4. 代理定义
+
+```python
+@agent
+def researcher(self) -> Agent:
+    return Agent(
+        config=self.agents_config['researcher']
+    )
+```
+
+`@agent` 注释用于修饰定义和返回 Agent 对象的方法。
+
+### 5. 任务定义
+
+```python
+@task
+def research_task(self) -> Task:
+    return Task(
+        config=self.tasks_config['research_linkedin_task'],
+        agent=self.researcher()
+    )
+```
+
+`@task` 注释用于修饰定义和返回 Task 对象的方法。这些方法指定任务配置和负责任务的代理。
+
+### 6. 团队创建
+
+```python
+@crew
+def crew(self) -> Crew:
+    """Creates the LinkedinProfile crew"""
+    return Crew(
+        agents=self.agents,
+        tasks=self.tasks,
+        process=Process.sequential,
+        verbose=True
+    )
+```
+
+`@crew` 注释用于修饰创建并返回`Crew` 对象的方法。此方法将所有组件（代理和任务）组装成一个功能团队。
+
+## 经典 YAML 配置
+
+在经典项目中，代理配置通常存储在 YAML 文件中。以下是 `agents.yaml` 文件如何查找研究人员代理的示例：
+
+```yaml
+researcher:
+    role: >
+        LinkedIn Profile Senior Data Researcher
+    goal: >
+        Uncover detailed LinkedIn profiles based on provided name {name} and domain {domain}
+        Generate a Dall-E image based on domain {domain}
+    backstory: >
+        You're a seasoned researcher with a knack for uncovering the most relevant LinkedIn profiles.
+        Known for your ability to navigate LinkedIn efficiently, you excel at gathering and presenting
+        professional information clearly and concisely.
+    allow_delegation: False
+    verbose: True
+    llm: groq_llm
+    tools:
+        - myLinkedInProfileTool
+        - mySerperDevTool
+        - myDallETool
+```
+
+此 YAML 配置对应于 `LinkedinProfileCrew` 类中定义的研究人员代理。配置指定代理的角色、目标、背景故事和其他属性，例如 LLM 及其使用的工具。
+
+请注意 YAML 文件中的`llm` 和`tools` 与Python 类中`@llm` 和`@tool` 修饰的方法的对应关系。
+
+## 最佳实践
+
+- **一致的命名**：为您的方法使用清晰且一致的命名约定。例如，代理方法可以根据其角色命名（例如研究员、报告分析员）。
+- **环境变量**：使用环境变量来存储 API 密钥等敏感信息。
+- **灵活性**：通过允许轻松添加或删除代理和任务来设计灵活的团队。
+- **YAML 代码对应**：在经典项目中，确保 YAML 文件中的名称和结构与 Python 代码中的修饰方法正确对应。
+
+通过遵循这些准则并正确使用注释，您可以干净地维护经典的 Python/YAML 工作人员。对于新工作人员，更喜欢 [Crews](/zh-CN/concepts/crews) 中介绍的 JSON-first 结构。

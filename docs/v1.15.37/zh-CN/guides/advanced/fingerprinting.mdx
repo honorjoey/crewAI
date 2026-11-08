@@ -1,0 +1,134 @@
+---
+title: 指纹识别
+description: 了解如何使用 CrewAI 的指纹系统在组件的整个生命周期中唯一标识和追踪组件。
+icon: fingerprint
+mode: "wide"
+---
+
+## 概述
+
+CrewAI 中的指纹（Fingerprint）提供了一种在组件整个生命周期中唯一标识和追踪组件的方式。每个 `Agent`、`Crew` 和 `Task` 在创建时都会自动获得一个唯一的指纹，且无法手动覆盖。
+
+这些指纹可用于：
+- 审计和追踪组件的使用情况
+- 确保组件身份的完整性
+- 为组件附加元数据
+- 创建可追溯的操作链
+
+## 指纹的工作原理
+
+指纹是来自 `crewai.security` 模块的 `Fingerprint` 类的实例。每个指纹包含：
+
+- 一个 UUID 字符串：组件的唯一标识符，自动生成且无法手动设置
+- 一个创建时间戳：指纹的生成时间，自动设置且无法手动修改
+- 元数据：一个可自定义的附加信息字典
+
+指纹在组件创建时自动生成并分配。每个组件通过只读属性公开其指纹。
+
+## 基本用法
+
+### 访问指纹
+
+```python
+from crewai import Agent, Crew, Task
+
+# Create components - fingerprints are automatically generated
+agent = Agent(
+    role="Data Scientist",
+    goal="Analyze data",
+    backstory="Expert in data analysis"
+)
+
+crew = Crew(
+    agents=[agent],
+    tasks=[]
+)
+
+task = Task(
+    description="Analyze customer data",
+    expected_output="Insights from data analysis",
+    agent=agent
+)
+
+# Access the fingerprints
+agent_fingerprint = agent.fingerprint
+crew_fingerprint = crew.fingerprint
+task_fingerprint = task.fingerprint
+
+# Print the UUID strings
+print(f"Agent fingerprint: {agent_fingerprint.uuid_str}")
+print(f"Crew fingerprint: {crew_fingerprint.uuid_str}")
+print(f"Task fingerprint: {task_fingerprint.uuid_str}")
+```
+
+### 使用指纹元数据
+
+您可以为指纹添加元数据以提供额外的上下文：
+
+```python
+# Add metadata to the agent's fingerprint
+agent.security_config.fingerprint.metadata = {
+    "version": "1.0",
+    "department": "Data Science",
+    "project": "Customer Analysis"
+}
+
+# Access the metadata
+print(f"Agent metadata: {agent.fingerprint.metadata}")
+```
+
+## 指纹的持久性
+
+指纹被设计为在组件的整个生命周期中保持不变。如果您修改组件，指纹仍保持相同：
+
+```python
+original_fingerprint = agent.fingerprint.uuid_str
+
+# Modify the agent
+agent.goal = "New goal for analysis"
+
+# The fingerprint remains unchanged
+assert agent.fingerprint.uuid_str == original_fingerprint
+```
+
+## 确定性指纹
+
+虽然您无法直接设置 UUID 和创建时间戳，但可以使用带有种子（seed）的 `generate` 方法创建确定性指纹：
+
+```python
+from crewai.security import Fingerprint
+
+# Create a deterministic fingerprint using a seed string
+deterministic_fingerprint = Fingerprint.generate(seed="my-agent-id")
+
+# The same seed always produces the same fingerprint
+same_fingerprint = Fingerprint.generate(seed="my-agent-id")
+assert deterministic_fingerprint.uuid_str == same_fingerprint.uuid_str
+
+# You can also set metadata
+custom_fingerprint = Fingerprint.generate(
+    seed="my-agent-id",
+    metadata={"version": "1.0"}
+)
+```
+
+## 高级用法
+
+### 指纹结构
+
+每个指纹具有以下结构：
+
+```python
+from crewai.security import Fingerprint
+
+fingerprint = agent.fingerprint
+
+# UUID string - the unique identifier (auto-generated)
+uuid_str = fingerprint.uuid_str  # e.g., "123e4567-e89b-12d3-a456-426614174000"
+
+# Creation timestamp (auto-generated)
+created_at = fingerprint.created_at  # A datetime object
+
+# Metadata - for additional information (can be customized)
+metadata = fingerprint.metadata  # A dictionary, defaults to {}
+```

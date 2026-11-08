@@ -1,0 +1,101 @@
+---
+title: "塞尔珀Scrape网站"
+description: "塞尔珀Scrape网站 工具文档。"
+icon: globe
+mode: "wide"
+---
+
+# `SerperScrapeWebsiteTool`
+
+## 说明
+
+这个工具旨在刮去网站内容,并从任何网站URL中提取干净,可读的文本. 它利用"0"刮掉API来获取和处理网页,可选包括降标格式,以改善结构和可读性.
+
+## 安装
+
+有效利用`SerperScrapeWebsiteTool`,遵循这些步骤:
+
+1. **软件包安装**:确认:`crewai[tools]` 软件包安装在您的 Python 环境中。
+2. 获得`serper.dev` API 密钥注册账户`serper.dev`.
+3. \ 0 : 将您获得的 API 密钥存储在一个名为 的 环境变量中`SERPER_API_KEY` 便利工具使用。
+
+为将这一工具纳入您的项目,请遵循以下安装指令:
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 示例
+
+以下例子说明如何初始化该工具并刮掉一个网站:
+
+```python Code
+from crewai_tools import SerperScrapeWebsiteTool
+
+# Initialize the tool for website scraping capabilities
+tool = SerperScrapeWebsiteTool()
+
+# Scrape a website with markdown formatting
+result = tool.run(url="https://example.com", include_markdown=True)
+```
+
+## 参数
+
+那个`SerperScrapeWebsiteTool` 接受以下论点:
+
+- 需要吗? 要刮掉的网站的 URL 。
+- 零:可选。 是否在已删除的内容中包含下标格式 。 默认为`True`.
+
+## 有参数的示例
+
+以下是一个实例,说明如何使用具有不同参数的工具:
+
+```python Code
+from crewai_tools import SerperScrapeWebsiteTool
+
+tool = SerperScrapeWebsiteTool()
+
+# Scrape with markdown formatting (default)
+markdown_result = tool.run(
+    url="https://docs.crewai.com",
+    include_markdown=True
+)
+
+# Scrape without markdown formatting for plain text
+plain_result = tool.run(
+    url="https://docs.crewai.com",
+    include_markdown=False
+)
+
+print("Markdown formatted content:")
+print(markdown_result)
+
+print("\nPlain text content:")
+print(plain_result)
+```
+
+## 使用大小写
+
+那个`SerperScrapeWebsiteTool` 特别有益于:
+
+- "0":为研究目的摘录和分析网站内容.
+- "0":从网页上收集结构化信息.
+- "0":将网络文档转换为可读格式
+- **竞争性分析**:为市场研究而拼凑的竞争者网站
+- "0":从现有网站提取内容,用于迁移目的.
+
+## 处理错误
+
+该工具包括以下方面的全面错误处理:
+
+- \0\:处理连接超时和网络错误
+- "0":为API相关问题提供详细的错误信息.
+- ^0: 校验和报告的URL错误问题
+- \\0\: 清除丢失或无效的 API 密钥的错误消息
+
+## 安全考虑
+
+- 总是存储您的`SERPER_API_KEY` 在环境变量中,永远不要在源代码中硬化
+- 注意Serper API规定的费率限制
+- 在删除内容时尊重机器人.txt和网站服务条款
+- 考虑在大规模报废作业的请求之间执行延误

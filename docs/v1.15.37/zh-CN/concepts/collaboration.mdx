@@ -1,0 +1,354 @@
+---
+title: 协作
+description: 如何让 agent 在 CrewAI 团队中协同工作、委派任务并进行有效沟通。
+icon: screen-users
+mode: "wide"
+---
+
+## 概述
+
+CrewAI 中的协作能力让 agent 能够以团队形式工作，通过委派任务和互相提问来利用彼此的专长。当设置 `allow_delegation=True` 时，agent 会自动获得强大的协作工具。
+
+## 快速开始：启用协作
+
+```python
+from crewai import Agent, Crew, Task
+
+# Enable collaboration for agents
+researcher = Agent(
+    role="Research Specialist",
+    goal="Conduct thorough research on any topic",
+    backstory="Expert researcher with access to various sources",
+    allow_delegation=True,  # 🔑 Key setting for collaboration
+    verbose=True
+)
+
+writer = Agent(
+    role="Content Writer", 
+    goal="Create engaging content based on research",
+    backstory="Skilled writer who transforms research into compelling content",
+    allow_delegation=True,  # 🔑 Enables asking questions to other agents
+    verbose=True
+)
+
+# Agents can now collaborate automatically
+crew = Crew(
+    agents=[researcher, writer],
+    tasks=[...],
+    verbose=True
+)
+```
+
+## Agent 协作的工作原理
+
+当 `allow_delegation=True` 时，CrewAI 会自动为 agent 提供两个强大的工具：
+
+### 1.**委派工作工具（Delegate Work Tool）**允许 agent 将任务分配给具备特定专长的队友。
+
+```python
+# Agent automatically gets this tool:
+# Delegate work to coworker(task: str, context: str, coworker: str)
+```
+
+### 2.**提问工具（Ask Question Tool）**让 agent 能够向同事提出具体问题以收集信息。
+
+```python
+# Agent automatically gets this tool:
+# Ask question to coworker(question: str, context: str, coworker: str)
+```
+
+## 协作实战
+
+下面是一个完整示例，展示多个 agent 在内容创作任务中的协作：
+
+```python
+from crewai import Agent, Crew, Task, Process
+
+# Create collaborative agents
+researcher = Agent(
+    role="Research Specialist",
+    goal="Find accurate, up-to-date information on any topic",
+    backstory="""You're a meticulous researcher with expertise in finding 
+    reliable sources and fact-checking information across various domains.""",
+    allow_delegation=True,
+    verbose=True
+)
+
+writer = Agent(
+    role="Content Writer",
+    goal="Create engaging, well-structured content",
+    backstory="""You're a skilled content writer who excels at transforming 
+    research into compelling, readable content for different audiences.""",
+    allow_delegation=True,
+    verbose=True
+)
+
+editor = Agent(
+    role="Content Editor",
+    goal="Ensure content quality and consistency",
+    backstory="""You're an experienced editor with an eye for detail, 
+    ensuring content meets high standards for clarity and accuracy.""",
+    allow_delegation=True,
+    verbose=True
+)
+
+# Create a task that encourages collaboration
+article_task = Task(
+    description="""Write a comprehensive 1000-word article about 'The Future of AI in Healthcare'.
+    
+    The article should include:
+    - Current AI applications in healthcare
+    - Emerging trends and technologies  
+    - Potential challenges and ethical considerations
+    - Expert predictions for the next 5 years
+    
+    Collaborate with your teammates to ensure accuracy and quality.""",
+    expected_output="A well-researched, engaging 1000-word article with proper structure and citations",
+    agent=writer  # Writer leads, but can delegate research to researcher
+)
+
+# Create collaborative crew
+crew = Crew(
+    agents=[researcher, writer, editor],
+    tasks=[article_task],
+    process=Process.sequential,
+    verbose=True
+)
+
+result = crew.kickoff()
+```
+
+## 协作模式
+
+### 模式一：研究 → 写作 → 编辑
+```python
+research_task = Task(
+    description="Research the latest developments in quantum computing",
+    expected_output="Comprehensive research summary with key findings and sources",
+    agent=researcher
+)
+
+writing_task = Task(
+    description="Write an article based on the research findings",
+    expected_output="Engaging 800-word article about quantum computing",
+    agent=writer,
+    context=[research_task]  # Gets research output as context
+)
+
+editing_task = Task(
+    description="Edit and polish the article for publication",
+    expected_output="Publication-ready article with improved clarity and flow",
+    agent=editor,
+    context=[writing_task]  # Gets article draft as context
+)
+```
+
+### 模式二：协作完成单个任务
+```python
+collaborative_task = Task(
+    description="""Create a marketing strategy for a new AI product.
+    
+    Writer: Focus on messaging and content strategy
+    Researcher: Provide market analysis and competitor insights
+    
+    Work together to create a comprehensive strategy.""",
+    expected_output="Complete marketing strategy with research backing",
+    agent=writer  # Lead agent, but can delegate to researcher
+)
+```
+
+## 层级式协作
+
+对于复杂项目，可以使用带有管理者 agent 的层级流程：
+
+```python
+from crewai import Agent, Crew, Task, Process
+
+# Manager agent coordinates the team
+manager = Agent(
+    role="Project Manager",
+    goal="Coordinate team efforts and ensure project success",
+    backstory="Experienced project manager skilled at delegation and quality control",
+    allow_delegation=True,
+    verbose=True
+)
+
+# Specialist agents
+researcher = Agent(
+    role="Researcher",
+    goal="Provide accurate research and analysis",
+    backstory="Expert researcher with deep analytical skills",
+    allow_delegation=False,  # Specialists focus on their expertise
+    verbose=True
+)
+
+writer = Agent(
+    role="Writer", 
+    goal="Create compelling content",
+    backstory="Skilled writer who creates engaging content",
+    allow_delegation=False,
+    verbose=True
+)
+
+# Manager-led task
+project_task = Task(
+    description="Create a comprehensive market analysis report with recommendations",
+    expected_output="Executive summary, detailed analysis, and strategic recommendations",
+    agent=manager  # Manager will delegate to specialists
+)
+
+# Hierarchical crew
+crew = Crew(
+    agents=[manager, researcher, writer],
+    tasks=[project_task],
+    process=Process.hierarchical,  # Manager coordinates everything
+    manager_llm="gpt-4o",  # Specify LLM for manager
+    verbose=True
+)
+```
+
+## 协作最佳实践
+
+### 1.**清晰的角色定义**```python
+# ✅ Good: Specific, complementary roles
+researcher = Agent(role="Market Research Analyst", ...)
+writer = Agent(role="Technical Content Writer", ...)
+
+# ❌ Avoid: Overlapping or vague roles  
+agent1 = Agent(role="General Assistant", ...)
+agent2 = Agent(role="Helper", ...)
+```
+
+### 2.**有策略地启用委派**```python
+# ✅ Enable delegation for coordinators and generalists
+lead_agent = Agent(
+    role="Content Lead",
+    allow_delegation=True,  # Can delegate to specialists
+    ...
+)
+
+# ✅ Disable for focused specialists (optional)
+specialist_agent = Agent(
+    role="Data Analyst", 
+    allow_delegation=False,  # Focuses on core expertise
+    ...
+)
+```
+
+### 3.**上下文共享**```python
+# ✅ Use context parameter for task dependencies
+writing_task = Task(
+    description="Write article based on research",
+    agent=writer,
+    context=[research_task],  # Shares research results
+    ...
+)
+```
+
+### 4.**清晰的任务描述**```python
+# ✅ Specific, actionable descriptions
+Task(
+    description="""Research competitors in the AI chatbot space.
+    Focus on: pricing models, key features, target markets.
+    Provide data in a structured format.""",
+    ...
+)
+
+# ❌ Vague descriptions that don't guide collaboration
+Task(description="Do some research about chatbots", ...)
+```
+
+## 协作问题排查
+
+### 问题：Agent 之间不协作**症状：**agent 各自孤立工作，没有发生任何委派
+```python
+# ✅ Solution: Ensure delegation is enabled
+agent = Agent(
+    role="...",
+    allow_delegation=True,  # This is required!
+    ...
+)
+```
+
+### 问题：来回沟通过多**症状：**agent 提出过多问题，进展缓慢
+```python
+# ✅ Solution: Provide better context and specific roles
+Task(
+    description="""Write a technical blog post about machine learning.
+    
+    Context: Target audience is software developers with basic ML knowledge.
+    Length: 1200 words
+    Include: code examples, practical applications, best practices
+    
+    If you need specific technical details, delegate research to the researcher.""",
+    ...
+)
+```
+
+### 问题：委派循环**症状：**agent 之间无休止地来回委派
+```python
+# ✅ Solution: Clear hierarchy and responsibilities
+manager = Agent(role="Manager", allow_delegation=True)
+specialist1 = Agent(role="Specialist A", allow_delegation=False)  # No re-delegation
+specialist2 = Agent(role="Specialist B", allow_delegation=False)
+```
+
+## 高级协作特性
+
+### 自定义协作规则
+```python
+# Set specific collaboration guidelines in agent backstory
+agent = Agent(
+    role="Senior Developer",
+    backstory="""You lead development projects and coordinate with team members.
+    
+    Collaboration guidelines:
+    - Delegate research tasks to the Research Analyst
+    - Ask the Designer for UI/UX guidance  
+    - Consult the QA Engineer for testing strategies
+    - Only escalate blocking issues to the Project Manager""",
+    allow_delegation=True
+)
+```
+
+### 监控协作过程
+```python
+def track_collaboration(output):
+    """Track collaboration patterns"""
+    if "Delegate work to coworker" in output.raw:
+        print("🤝 Delegation occurred")
+    if "Ask question to coworker" in output.raw:
+        print("❓ Question asked")
+
+crew = Crew(
+    agents=[...],
+    tasks=[...],
+    step_callback=track_collaboration,  # Monitor collaboration
+    verbose=True
+)
+```
+
+## 记忆与学习
+
+让 agent 能够记住过去的协作：
+
+```python
+agent = Agent(
+    role="Content Lead",
+    memory=True,  # Remembers past interactions
+    allow_delegation=True,
+    verbose=True
+)
+```
+
+启用记忆后，agent 会从之前的协作中学习，并随着时间推移不断改进其委派决策。
+
+## 下一步
+
+- **尝试示例**：从基础协作示例开始
+- **试验不同角色**：测试不同的 agent 角色组合
+- **监控交互过程**：使用 `verbose=True` 观察协作的实际过程
+- **优化任务描述**：清晰的任务会带来更好的协作
+- **逐步扩展**：针对复杂项目尝试层级流程
+
+协作将单个 AI agent 转变为强大的团队，能够共同应对复杂、多层面的挑战。

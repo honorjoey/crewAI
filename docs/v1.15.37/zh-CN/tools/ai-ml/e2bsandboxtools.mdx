@@ -1,0 +1,196 @@
+---
+title: E2B沙盒工具
+description: “E2BExecTool”、“E2BPythonTool”和“E2BFileTool”为 CrewAI 代理提供 shell、Python 和文件系统访问权限，可访问隔离的临时 E2B 远程沙箱。
+icon: box
+mode: "wide"
+---
+
+# E2B沙盒工具
+
+## 描述
+
+E2B 沙箱工具允许 CrewAI 代理在由 [E2B](https://e2b.dev) 托管的隔离的临时虚拟机中运行代码。三个工具共享一个公共基类和连接模型：
+
+- `E2BExecTool` — 执行 shell 命令。
+- `E2BPythonTool` — 在 Jupyter 风格的代码解释器中执行 Python（返回 stdout、stderr 和丰富的结果，例如图表、数据帧、HTML、SVG 和 PNG）。
+- `E2BFileTool` — 执行文件系统操作（读、写、追加、列表、删除、mkdir、信息、存在），包括通过 base64 的二进制内容。
+
+当您想要让代理能够运行任意代码或执行文件操作而不暴露主机环境时，请使用这些工具。
+
+## 安装
+
+安装`e2b` 额外的`crewai-tools` 并设置您的 E2B API 密钥：
+
+```shell
+uv add "crewai-tools[e2b]"
+```
+
+```shell
+export E2B_API_KEY="e2b_..."
+```
+
+## 工具
+
+### `E2BExecTool`
+
+通过在沙箱内运行 shell 命令`sandbox.commands.run`.
+
+**论点**
+
+- `command: str` - 必需的。要执行的 shell 命令。
+- `cwd: str | None` - 选修的。命令的工作目录。
+- `envs: dict[str, str] | None` - 选修的。每次调用的环境变量。
+- `timeout: float | None` - 选修的。超时（以秒为单位）。
+
+**退货**
+
+```json
+{
+  "exit_code": 0,
+  "stdout": "...",
+  "stderr": "...",
+  "error": null
+}
+```
+
+### `E2BPythonTool`
+
+Runs Python code in a Jupyter-style code interpreter using the `e2b_code_interpreter` SDK。
+
+**论点**
+
+- `code: str` - 必需的。要执行的代码。
+- `language: str | None` - 选修的。语言标识符（默认为 Python）。
+- `envs: dict[str, str] | None` - 选修的。每次调用的环境变量。
+- `timeout: float | None` - 选修的。超时（以秒为单位）。
+
+**退货**
+
+```json
+{
+  "text": "...",
+  "stdout": "...",
+  "stderr": "...",
+  "error": null,
+  "results": [],
+  "execution_count": 1
+}
+```
+
+`results` 可以包括单元格生成的图表、数据框、HTML、SVG 和 PNG 输出。
+
+### `E2BFileTool`
+
+在沙箱内执行文件系统操作。在写入时自动创建父目录并通过 base64 处理二进制内容。
+
+**论点**
+
+- `action: "read" | “写”| “附加”| “列表”| “删除”| “mkdir”| “信息”| "exists"` — Required.
+- `path: str` - 必需的。沙箱内的目标路径。
+- `content: str | None` - 选修的。内容为`write` / `append`。 Base64 编码时`binary=True`.
+- `binary: bool` - 选修的。对待`content` 作为二进制（base64）。默认`False`.
+- `depth: int` - 选修的。递归深度为`list`.
+
+## 共享参数（`E2BBaseTool`)
+
+所有三个工具都接受相同的连接/生命周期参数：
+
+- `api_key: SecretStr | None` — 跌回到`E2B_API_KEY` 环境变量。
+- `domain: str | None` — 跌回到`E2B_DOMAIN` 环境变量。
+- `template: str | None` — 自定义沙箱模板或快照。
+- `persistent: bool` - 默认`False`。参见[沙盒模式](#sandbox-modes)。
+- `sandbox_id: str | None` — 连接到现有的沙箱。
+- `sandbox_timeout: int` — 空闲超时（以秒为单位）。默认`300`.
+- `envs: dict[str, str] | None` — 在创建沙箱时注入的环境变量。
+- `metadata: dict[str, str] | None` — 沙箱创建时附加的元数据。
+
+## 沙盒模式
+
+| 模式| 如何激活| 沙盒寿命|
+| --- | --- | --- |
+| 短暂（默认）| `持久=假`| 每个“_run”调用都会创建并终止一个新的沙箱。|
+| 执着的| `持久=真`| 沙箱是在第一次调用时延迟创建的，并在进程退出时通过“atexit”终止。|
+| 附| `sandbox_id="sbx_..."`| 该工具附加到现有的沙箱并且永远不会杀死它。|
+
+使用短暂模式执行一次性任务——它可以最大限度地减少爆炸半径。当代理需要在多个工具调用之间保持状态（例如，shell 会话加上同一文件上的文件系统操作）时，请使用持久模式。当外部系统管理沙箱生命周期时，请使用附加模式。
+
+## 示例
+
+### 一次性 Python（短暂）
+
+```python Code
+from crewai_tools import E2BPythonTool
+
+tool = E2BPythonTool()
+result = tool.run(code="print(sum(range(10)))")
+```
+
+### 持久 shell + 文件系统会话
+
+```python Code
+from crewai_tools import E2BExecTool, E2BFileTool
+
+exec_tool = E2BExecTool(persistent=True)
+file_tool = E2BFileTool(persistent=True)
+```
+
+当进程退出时，这两个工具都会通过以下方式清理沙箱：`atexit`.
+
+### 附加到现有沙箱
+
+```python Code
+from crewai_tools import E2BExecTool
+
+tool = E2BExecTool(sandbox_id="sbx_...")
+```
+
+该工具不会杀死它所附加的沙箱。
+
+### 自定义模板、超时、环境变量和元数据
+
+```python Code
+from crewai_tools import E2BExecTool
+
+tool = E2BExecTool(
+    persistent=True,
+    template="my-custom-template",
+    sandbox_timeout=600,
+    envs={"MY_FLAG": "1"},
+    metadata={"owner": "crewai-agent"},
+)
+```
+
+### 全代理示例
+
+```python Code
+from crewai import Agent, Crew, Process, Task
+from crewai_tools import E2BPythonTool
+
+python_tool = E2BPythonTool()
+
+analyst = Agent(
+    role="Data Analyst",
+    goal="Run Python in a sandbox to answer analytical questions",
+    backstory="An analyst who delegates computation to an isolated E2B sandbox.",
+    tools=[python_tool],
+    verbose=True,
+)
+
+task = Task(
+    description="Compute the mean of [1, 2, 3, 4, 5] and return the result.",
+    expected_output="The numerical mean.",
+    agent=analyst,
+)
+
+crew = Crew(agents=[analyst], tasks=[task], process=Process.sequential)
+result = crew.kickoff()
+```
+
+## 安全考虑
+
+这些工具使代理能够访问沙箱内的任意 shell、Python 和文件系统。沙箱将执行与主机隔离，但您仍应将工具输出视为不可信，并在设计时考虑提示注入：
+
+- 短暂模式是主要的爆炸半径控制 - 每个`_run` 调用获得一个新的虚拟机。除非需要持久状态，否则首选它。
+- 持久沙箱和附加沙箱会在调用之间累积状态。每次后续工具调用都可以访问植入其中的任何内容（凭证、令牌、文件），包括那些输入受到不受信任内容影响的工具。
+- 避免将秘密注入到代理可以读取或泄露的长期沙箱中。使用短期凭证和必要的最小范围。
+- `sandbox_timeout` 限制空闲时间，但不限制总执行时间。将其设置为适合您的工作负载的最小值。

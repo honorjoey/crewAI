@@ -1,0 +1,82 @@
+---
+title: "目录 RAG 搜索"
+description: "目录 RAG 搜索 工具文档。"
+icon: address-book
+mode: "wide"
+---
+
+# `DirectorySearchTool`
+
+<Note>
+    "0":目录SearchTool正在持续开发中. 特性和功能可能会演化,在我们完善工具时可能会出现出乎意料的行为.
+</Note>
+
+## 说明
+
+DirectorySearchTool在指定目录内容范围内允许语义搜索,利用检索-增强生成(RAG)方法通过文件高效导航. 为灵活设计,它允许用户在运行时动态指定搜索目录或在初始设置时设置固定目录.
+
+## 安装
+
+要使用 DirectorySearchTools ,请首先安装 coperai tools 软件包 。 在终端中执行以下命令 :
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 初始化和使用
+
+从中导入目录搜索工具`crewai_tools` 要开始的软件包。 您可以在不指定目录的情况下初始化工具, 允许在运行时设置搜索目录 。 或者,工具可以用预先定义的目录初始化.
+
+```python Code
+from crewai_tools import DirectorySearchTool
+
+# For dynamic directory specification at runtime
+tool = DirectorySearchTool()
+
+# For fixed directory searches
+tool = DirectorySearchTool(directory='/path/to/directory')
+```
+
+## 参数
+
+- `directory`: 指定搜索目录的字符串参数。 这在初始化期间是可选的,但如果最初没有设定,则需要进行搜索。
+
+## 自定义模型和嵌入
+
+DirectorySearchTool默认使用OpenAI进行嵌入和归纳. 这些设置的自定义选项包括改变模型提供者和配置,增强高级用户的灵活性.
+
+```python Code
+from chromadb.config import Settings
+
+tool = DirectorySearchTool(
+    config={
+        "embedding_model": {
+            "provider": "openai",
+            "config": {
+                "model": "text-embedding-3-small",
+                # "api_key": "sk-...",
+            },
+        },
+        "vectordb": {
+            "provider": "chromadb",  # or "qdrant"
+            "config": {
+                # "settings": Settings(persist_directory="/content/chroma", allow_reset=True, is_persistent=True),
+                # from qdrant_client.models import VectorParams, Distance
+                # "vectors_config": VectorParams(size=384, distance=Distance.COSINE),
+            }
+        },
+    }
+)
+
+## Security
+
+### Path Validation
+
+Directory paths provided to this tool are validated against the current working directory. Paths that resolve outside the working directory are rejected with a `ValueError`.
+
+To allow paths outside the working directory (for example, in tests or trusted pipelines), set the environment variable:
+
+```shell
+CREWAI_TOOLS_ALLOW_UNSAFE_PATHS=true
+```
+```

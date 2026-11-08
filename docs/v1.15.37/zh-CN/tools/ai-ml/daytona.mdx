@@ -1,0 +1,230 @@
+---
+title: 代托纳沙箱工具
+description: 运行 shell 命令、执行 Python 并管理隔离的 [Daytona](https://www.daytona.io/) 沙箱内的文件。
+icon: box
+mode: "wide"
+---
+
+# 代托纳沙箱工具
+
+## 描述
+
+Daytona 沙盒工具使 CrewAI 代理能够访问由 [代托纳](https://www.daytona.io/) 提供支持的隔离的临时计算环境。提供了三种工具，因此您可以为代理提供其所需的功能：
+
+- **`DaytonaExecTool`** — 在沙箱内运行任何 shell 命令。
+- **`DaytonaPythonTool`** — 在沙箱内执行 Python 源代码块。
+- **`DaytonaFileTool`** — 读取、写入、追加、列出、删除和检查沙箱内的文件；也支持`move`, `find` （内容 grep），`search` （文件名全局），`chmod` （权限），`replace` （批量查找和替换），以及`exists`.
+
+所有这三个工具共享相同的沙箱生命周期控件，因此您可以混合和匹配它们，同时将状态保留在单个持久沙箱中。
+
+## 安装
+
+```shell
+uv add "crewai-tools[daytona]"
+# or
+pip install "crewai-tools[daytona]"
+```
+
+设置您的 API 密钥：
+
+```shell
+export DAYTONA_API_KEY="your-api-key"
+```
+
+`DAYTONA_API_URL` 和`DAYTONA_TARGET` 如果设置也受到尊重。
+
+## 沙盒生命周期
+
+所有三个工具都继承了生命周期控制`DaytonaBaseTool`:
+
+| 模式| 如何启用| 沙盒已创建| 沙箱已删除|
+|------|--------------|-----------------|-----------------|
+| **短暂的**（默认）| `persistent=False`（默认）| 在每次“_run”调用时| 在同一通话结束时|
+| **执着的** | `持久=真`| 第一次使用时懒惰| 在进程退出时（通过 `atexit`），或通过 `tool.close()` 手动退出|
+| **附** | `sandbox_id="<id>"`| 从不 — 附加到现有沙箱| 从不 - 该工具不会删除不是它创建的沙箱|
+
+短暂模式是安全的默认模式：如果代理忘记清理，则不会发生任何泄漏。当您希望文件系统状态或已安装的软件包跨多个工具调用进行时，请使用持久模式 - 这在配对时很常见`DaytonaFileTool` 和`DaytonaExecTool`.
+
+## 示例
+
+### 一次性 Python 执行（短暂）
+
+```python Code
+from crewai_tools import DaytonaPythonTool
+
+tool = DaytonaPythonTool()
+result = tool.run(code="print(sum(range(10)))")
+print(result)
+# {"exit_code": 0, "result": "45\n", "artifacts": ExecutionArtifacts(stdout="45\n", charts=[])}
+```
+
+### 多步骤 shell 会话（持久）
+
+```python Code
+from crewai_tools import DaytonaExecTool, DaytonaFileTool
+
+# Create the persistent sandbox via the first tool, then attach the second
+# tool to it so both share state (installed packages, files, env vars).
+exec_tool = DaytonaExecTool(persistent=True)
+exec_tool.run(command="pip install httpx -q")
+file_tool = DaytonaFileTool(sandbox_id=exec_tool.active_sandbox_id)
+
+file_tool.run(
+    action="write",
+    path="workspace/script.py",
+    content="import httpx; print(f'httpx loaded, version {httpx.__version__}')",
+)
+exec_tool.run(command="python workspace/script.py")
+```
+
+<Note>
+默认情况下，每个工具都带有`persistent=True` 首次使用时会延迟创建其**自己的**沙箱。上面的模式通过读取第一个工具的`active_sandbox_id` 经过一个`.run()` 调用并将其传递给其他人`sandbox_id=...`。和`persistent=False` （默认），每个`.run()` 调用会获得一个新的沙箱，该沙箱会在调用结束时被删除。
+</Note>
+
+### 附加到现有沙箱
+
+```python Code
+from crewai_tools import DaytonaExecTool
+
+tool = DaytonaExecTool(sandbox_id="my-long-lived-sandbox")
+result = tool.run(command="ls workspace")
+```
+
+### 自定义沙箱参数
+
+通过代托纳`CreateSandboxFromSnapshotParams` 夸格斯通过`create_params`:
+
+```python Code
+from crewai_tools import DaytonaExecTool
+
+tool = DaytonaExecTool(
+    persistent=True,
+    create_params={
+        "language": "python",
+        "env_vars": {"MY_FLAG": "1"},
+        "labels": {"owner": "crewai-agent"},
+    },
+)
+```
+
+### 搜索、移动和修改文件
+
+```python Code
+from crewai_tools import DaytonaFileTool
+
+file_tool = DaytonaFileTool(persistent=True)
+
+# Find every TODO in the source tree (grep file contents recursively)
+file_tool.run(action="find", path="workspace/src", pattern="TODO:")
+
+# Find all Python files (glob match on filenames)
+file_tool.run(action="search", path="workspace", pattern="*.py")
+
+# Make a script executable
+file_tool.run(action="chmod", path="workspace/run.sh", mode="755")
+
+# Rename or move a file
+file_tool.run(
+    action="move",
+    path="workspace/draft.md",
+    destination="workspace/final.md",
+)
+
+# Bulk find-and-replace across multiple files
+file_tool.run(
+    action="replace",
+    paths=["workspace/src/a.py", "workspace/src/b.py"],
+    pattern="old_function",
+    replacement="new_function",
+)
+
+# Quick existence check before a destructive op
+file_tool.run(action="exists", path="workspace/cache.db")
+```
+
+### 代理整合
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import DaytonaExecTool, DaytonaPythonTool, DaytonaFileTool
+
+exec_tool = DaytonaExecTool(persistent=True)
+python_tool = DaytonaPythonTool(persistent=True)
+file_tool = DaytonaFileTool(persistent=True)
+
+coder = Agent(
+    role="Sandbox Engineer",
+    goal="Write and run code in an isolated environment",
+    backstory="An engineer who uses Daytona sandboxes to safely execute code and manage files.",
+    tools=[exec_tool, python_tool, file_tool],
+    verbose=True,
+)
+
+task = Task(
+    description="Write a Python script that prints the first 10 Fibonacci numbers, save it to workspace/fib.py, and run it.",
+    expected_output="The first 10 Fibonacci numbers printed to stdout.",
+    agent=coder,
+)
+
+crew = Crew(agents=[coder], tasks=[task])
+result = crew.kickoff()
+```
+
+## 参数
+
+### 共享（`DaytonaBaseTool`)
+
+所有三个工具在初始化时都接受这些参数：
+
+| 范围| 类型| 默认| 描述|
+|-----------|------|---------|-------------|
+| `api_key`| `str \| 无`| `$DAYTONA_API_KEY`| 代托纳 API 密钥。回退到“DAYTONA_API_KEY”环境变量。|
+| `api_url`| `str \| 无`| `$DAYTONA_API_URL`| Daytona API URL 覆盖。|
+| `目标`| `str \| 无`| `$DAYTONA_TARGET`| 代托纳目标地区。|
+| ‘持久’| `布尔`| ‘假’| 在所有调用中重复使用一个沙箱，并在进程退出时将其删除。|
+| `sandbox_id`| `str \| 无`| `无`| 通过 ID 或名称附加到现有沙箱。|
+| `创建参数`| `字典\| 无`| `无`| 额外的 kwargs 转发到“CreateSandboxFromSnapshotParams”（例如“language”、“env_vars”、“labels”）。|
+| `沙盒超时`| `浮动`| `60.0` | 沙箱创建/删除操作的超时（以秒为单位）。|
+
+### `DaytonaExecTool`
+
+| 范围| 类型| 必需的| 描述|
+|-----------|------|----------|-------------|
+| `命令`| `str`| ✓ | 要执行的 shell 命令。|
+| `cwd`| `str \| 无`| | 沙箱内的工作目录。|
+| `env`| `字典[str, str] \| 无`| | 此命令的额外环境变量。|
+| `超时`| `int \| 无`| | 等待命令的最大秒数。|
+
+### `DaytonaPythonTool`
+
+| 范围| 类型| 必需的| 描述|
+|-----------|------|----------|-------------|
+| `代码`| `str`| ✓ | 要执行的Python源代码。|
+| `argv`| `列表[str] \| 无`| | 通过“CodeRunParams”转发的参数向量。|
+| `env`| `字典[str, str] \| 无`| | 通过“CodeRunParams”转发的环境变量。|
+| `超时`| `int \| 无`| | 等待执行的最大秒数。|
+
+### `DaytonaFileTool`
+
+| 范围| 类型| 必需的| 描述|
+|-----------|------|----------|-------------|
+| `行动`| `str`| ✓ | 以下之一：“读取”、“写入”、“追加”、“列表”、“删除”、“mkdir”、“信息”、“存在”、“移动”、“查找”、“搜索”、“chmod”、“替换”。|
+| `路径`| `str \| 无`| ✓ 适用于除“替换”之外的所有操作| 沙箱内的绝对路径。|
+| `内容`| `str \| 无`| ✓ 用于“追加”| 要写入或附加的内容。|
+| `二进制`| `布尔`| | 如果“True”，则“content”在写入时为 base64；读取时返回 base64。|
+| `递归`| `布尔`| | 对于“删除”：递归删除目录。|
+| `模式`| `str \| 无`| | 对于“mkdir”：新目录的八进制权限（默认为“0755”）。对于“chmod”：应用于目标的八进制权限。|
+| `目的地`| `str \| 无`| ✓ 用于“移动”| “移动”的目标路径。|
+| `模式`| `str \| 无`| ✓ 用于“查找”、“搜索”、“替换”| 对于“查找”：与文件内容匹配的子字符串。对于“搜索”：glob 与文件名匹配（例如“*.py”）。对于“替换”：替换文件内部的文本。|
+| `替换`| `str \| 无`| ✓ 用于“替换”| “模式”的替换文本。|
+| `路径`| `列表[str] \| 无`| ✓ 用于“替换”| 要替换文本的文件路径列表。|
+| `所有者`| `str \| 无`| | 对于“chmod”：新文件所有者。|
+| `组`| `str \| 无`| | 对于“chmod”：新文件组。|
+
+<Note>
+为了`chmod`, 至少通过其中一项`mode`, `owner`， 或者`group` — 任何字段保留为`None` 目标上保持不变。
+</Note>
+
+<Tip>
+对于大于几 KB 的文件，请先使用以下命令创建文件`action="write"` 和空内容，然后通过多个发送正文`action="append"` 每次调用约为 4 KB，以保持在工具调用负载限制之内。
+</Tip>

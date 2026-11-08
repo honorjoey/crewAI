@@ -1,0 +1,724 @@
+---
+title: "MCP 服务器作为 CrewAI 中的工具"
+description: "了解如何使用 `crewai-tools` 库将 MCP 服务器作为工具集成到 CrewAI 代理中。"
+icon: plug
+mode: "wide"
+---
+
+## 概述
+
+[模型上下文协议](https://modelcontextprotocol.io/introduction) (MCP) 为 AI 代理提供了一种标准化方法，通过与外部服务（称为 MCP 服务器）通信来向 LLM 提供上下文。
+
+CrewAI 为 MCP 集成提供**两种方法**：
+
+### 🚀 **简单的 DSL 集成**（推荐）
+
+直接在代理上使用 `mcps` 字段以实现无缝 MCP 工具集成。 DSL 支持**字符串引用**（用于快速设置）和**结构化配置**（用于完全控制）。
+
+#### 基于字符串的参考（快速设置）
+
+非常适合远程 HTTPS 服务器和 CrewAI 目录中连接的 MCP 集成：
+
+```python
+from crewai import Agent
+
+agent = Agent(
+    role="Research Analyst",
+    goal="Research and analyze information",
+    backstory="Expert researcher with access to external tools",
+    mcps=[
+        "https://mcp.exa.ai/mcp?api_key=your_key",           # External MCP server
+        "https://api.weather.com/mcp#get_forecast",          # Specific tool from server
+        "snowflake",                                         # Connected MCP from catalog
+        "stripe#list_invoices"                               # Specific tool from connected MCP
+    ]
+)
+# MCP tools are now automatically available to your agent!
+```
+
+#### 结构化配置（完全控制）
+
+要完全控制连接设置、工具过滤和所有传输类型：
+
+```python
+from crewai import Agent
+from crewai.mcp import MCPServerStdio, MCPServerHTTP, MCPServerSSE
+from crewai.mcp.filters import create_static_tool_filter
+
+agent = Agent(
+    role="Advanced Research Analyst",
+    goal="Research with full control over MCP connections",
+    backstory="Expert researcher with advanced tool access",
+    mcps=[
+        # Stdio transport for local servers
+        MCPServerStdio(
+            command="npx",
+            args=["-y", "@modelcontextprotocol/server-filesystem"],
+            env={"API_KEY": "your_key"},
+            tool_filter=create_static_tool_filter(
+                allowed_tool_names=["read_file", "list_directory"]
+            ),
+            cache_tools_list=True,
+        ),
+        # HTTP/Streamable HTTP transport for remote servers
+        MCPServerHTTP(
+            url="https://api.example.com/mcp",
+            headers={"Authorization": "Bearer your_token"},
+            streamable=True,
+            cache_tools_list=True,
+        ),
+        # SSE transport for real-time streaming
+        MCPServerSSE(
+            url="https://stream.example.com/mcp/sse",
+            headers={"Authorization": "Bearer your_token"},
+        ),
+    ]
+)
+```
+
+### 🔧 **高级：MCPServerAdapter**（适用于复杂场景）
+
+对于需要手动连接管理的高级用例，`crewai-tools` 库提供了 `MCPServerAdapter` 类。
+
+我们目前支持以下传输机制：
+
+- **Stdio**：用于本地服务器（同一台机器上的进程之间通过标准输入/输出进行通信）
+- **服务器发送事件 (SSE)**：用于远程服务器（通过 HTTP 从服务器到客户端的单向实时数据流）
+- **可流式 HTTPS**：用于远程服务器（通过 HTTPS 进行灵活、潜在的双向通信，通常利用 SSE 进行服务器到客户端的流）
+
+## 视频教程
+
+观看此视频教程，了解有关 MCP 与 CrewAI 集成的综合指南：
+
+<iframe
+className =“w-全方面视频圆形-xl”
+src =“https://www.youtube.com/embed/TpQ45lAZh48"
+title="CrewAI MCP 集成指南"
+框架边框=“0”
+允许=“加速度计；自动播放；剪贴板写入；加密媒体；陀螺仪；画中画”
+允许全屏
+></iframe>
+
+## 安装
+
+CrewAI MCP 集成需要 `mcp` 库：
+
+```shell
+# For Simple DSL Integration (Recommended)
+uv add mcp
+
+# For Advanced MCPServerAdapter usage
+uv pip install 'crewai-tools[mcp]'
+```
+
+## 快速入门：简单的 DSL 集成
+
+集成 MCP 服务器的最简单方法是在代理上使用 `mcps` 字段。您可以使用字符串引用或结构化配置。
+
+### 字符串引用快速入门
+
+```python
+from crewai import Agent, Task, Crew
+
+# Create agent with MCP tools using string references
+research_agent = Agent(
+    role="Research Analyst",
+    goal="Find and analyze information using advanced search tools",
+    backstory="Expert researcher with access to multiple data sources",
+    mcps=[
+        "https://mcp.exa.ai/mcp?api_key=your_key&profile=your_profile",
+        "snowflake#run_query"
+    ]
+)
+
+# Create task
+research_task = Task(
+    description="Research the latest developments in AI agent frameworks",
+    expected_output="Comprehensive research report with citations",
+    agent=research_agent
+)
+
+# Create and run crew
+crew = Crew(agents=[research_agent], tasks=[research_task])
+result = crew.kickoff()
+```
+
+### 结构化配置快速入门
+
+```python
+from crewai import Agent, Task, Crew
+from crewai.mcp import MCPServerStdio, MCPServerHTTP, MCPServerSSE
+
+# Create agent with structured MCP configurations
+research_agent = Agent(
+    role="Research Analyst",
+    goal="Find and analyze information using advanced search tools",
+    backstory="Expert researcher with access to multiple data sources",
+    mcps=[
+        # Local stdio server
+        MCPServerStdio(
+            command="python",
+            args=["local_server.py"],
+            env={"API_KEY": "your_key"},
+        ),
+        # Remote HTTP server
+        MCPServerHTTP(
+            url="https://api.research.com/mcp",
+            headers={"Authorization": "Bearer your_token"},
+        ),
+    ]
+)
+
+# Create task
+research_task = Task(
+    description="Research the latest developments in AI agent frameworks",
+    expected_output="Comprehensive research report with citations",
+    agent=research_agent
+)
+
+# Create and run crew
+crew = Crew(agents=[research_agent], tasks=[research_task])
+result = crew.kickoff()
+```
+
+就是这样！ MCP 工具会自动发现并可供您的代理使用。
+
+## MCP 参考格式
+
+`mcps` 字段支持**字符串引用**（用于快速设置）和**结构化配置**（用于完全控制）。您可以在同一列表中混合使用两种格式。
+
+### 基于字符串的引用
+
+#### 外部 MCP 服务器
+
+```python
+mcps=[
+    # Full server - get all available tools
+    "https://mcp.example.com/api",
+
+    # Specific tool from server using # syntax
+    "https://api.weather.com/mcp#get_current_weather",
+
+    # Server with authentication parameters
+    "https://mcp.exa.ai/mcp?api_key=your_key&profile=your_profile"
+]
+```
+
+#### 连接的 MCP 集成
+
+从 CrewAI 目录连接 MCP 服务器或自带。连接到您的帐户后，通过 slug 引用它们：
+
+```python
+mcps=[
+    # Connected MCP - get all available tools
+    "snowflake",
+
+    # Specific tool from a connected MCP using # syntax
+    "stripe#list_invoices",
+
+    # Multiple connected MCPs
+    "snowflake",
+    "stripe",
+    "github"
+]
+```
+
+### 结构化配置
+
+#### Stdio 传输（本地服务器）
+
+非常适合作为进程运行的本地 MCP 服务器：
+
+```python
+from crewai.mcp import MCPServerStdio
+from crewai.mcp.filters import create_static_tool_filter
+
+mcps=[
+    MCPServerStdio(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-filesystem"],
+        env={"API_KEY": "your_key"},
+        tool_filter=create_static_tool_filter(
+            allowed_tool_names=["read_file", "write_file"]
+        ),
+        cache_tools_list=True,
+    ),
+    # Python-based server
+    MCPServerStdio(
+        command="python",
+        args=["path/to/server.py"],
+        env={"UV_PYTHON": "3.12", "API_KEY": "your_key"},
+    ),
+]
+```
+
+#### HTTP/流式 HTTP 传输（远程服务器）
+
+对于通过 HTTP/HTTPS 的远程 MCP 服务器：
+
+```python
+from crewai.mcp import MCPServerHTTP
+
+mcps=[
+    # Streamable HTTP (default)
+    MCPServerHTTP(
+        url="https://api.example.com/mcp",
+        headers={"Authorization": "Bearer your_token"},
+        streamable=True,
+        cache_tools_list=True,
+    ),
+    # Standard HTTP
+    MCPServerHTTP(
+        url="https://api.example.com/mcp",
+        headers={"Authorization": "Bearer your_token"},
+        streamable=False,
+    ),
+]
+```
+
+#### SSE 传输（实时流）
+
+对于使用服务器发送事件的远程服务器：
+
+```python
+from crewai.mcp import MCPServerSSE
+
+mcps=[
+    MCPServerSSE(
+        url="https://stream.example.com/mcp/sse",
+        headers={"Authorization": "Bearer your_token"},
+        cache_tools_list=True,
+    ),
+]
+```
+
+### 混合参考文献
+
+您可以组合字符串引用和结构化配置：
+
+```python
+from crewai.mcp import MCPServerStdio, MCPServerHTTP
+
+mcps=[
+    # String references
+    "https://external-api.com/mcp",              # External server
+    "snowflake",                                 # Connected MCP from catalog
+
+    # Structured configurations
+    MCPServerStdio(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-filesystem"],
+    ),
+    MCPServerHTTP(
+        url="https://api.example.com/mcp",
+        headers={"Authorization": "Bearer token"},
+    ),
+]
+```
+
+### 工具过滤
+
+结构化配置支持高级工具过滤：
+
+```python
+from crewai.mcp import MCPServerStdio
+from crewai.mcp.filters import create_static_tool_filter, create_dynamic_tool_filter, ToolFilterContext
+
+# Static filtering (allow/block lists)
+static_filter = create_static_tool_filter(
+    allowed_tool_names=["read_file", "write_file"],
+    blocked_tool_names=["delete_file"],
+)
+
+# Dynamic filtering (context-aware)
+def dynamic_filter(context: ToolFilterContext, tool: dict) -> bool:
+    # Block dangerous tools for certain agent roles
+    if context.agent.role == "Code Reviewer":
+        if "delete" in tool.get("name", "").lower():
+            return False
+    return True
+
+mcps=[
+    MCPServerStdio(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-filesystem"],
+        tool_filter=static_filter,  # or dynamic_filter
+    ),
+]
+```
+
+## 配置参数
+
+每种传输类型都支持特定的配置选项：
+
+### MCPServerStdio 参数
+
+- **`command`**（必需）：要执行的命令（例如，`"python"`、`"node"`、`"npx"`、`"uvx"`）
+- **`args`**（可选）：命令参数列表（例如`["server.py"]` 或`["-y", "@mcp/server"]`）
+- **`env`** （可选）：传递给进程的环境变量字典
+- **`tool_filter`**（可选）：工具过滤功能，用于过滤可用的工具
+- **`cache_tools_list`**（可选）：是否缓存工具列表以便后续更快访问（默认：`False`）
+
+### MCPServerHTTP 参数
+
+- **`url`**（必需）：服务器 URL（例如，`"https://api.example.com/mcp"`）
+- **`headers`** （可选）：用于身份验证或其他目的的 HTTP 标头字典
+- **`streamable`**（可选）：是否使用可流式 HTTP 传输（默认值：`True`）
+- **`tool_filter`**（可选）：工具过滤功能，用于过滤可用的工具
+- **`cache_tools_list`**（可选）：是否缓存工具列表以便后续更快访问（默认：`False`）
+
+### MCPServerSSE 参数
+
+- **`url`**（必需）：服务器 URL（例如，`"https://api.example.com/mcp/sse"`）
+- **`headers`** （可选）：用于身份验证或其他目的的 HTTP 标头字典
+- **`tool_filter`**（可选）：工具过滤功能，用于过滤可用的工具
+- **`cache_tools_list`**（可选）：是否缓存工具列表以便后续更快访问（默认：`False`）
+
+### 常用参数
+
+所有传输类型都支持：
+
+- **`tool_filter`**：过滤功能来控制哪些工具可用。可以是：
+  - `None`（默认）：所有工具均可用
+  - 静态过滤器：使用 `create_static_tool_filter()` 创建用于允许/阻止列表
+  - 动态过滤器：使用 `create_dynamic_tool_filter()` 创建用于上下文感知过滤
+- **`cache_tools_list`**：当`True`时，在第一次发现后缓存工具列表，以提高后续连接的性能
+
+## 主要特点
+
+- 🔄 **自动工具发现**：自动发现并集成工具
+- 🏷️ **名称冲突预防**：服务器名称以工具名称为前缀
+- ⚡ **性能优化**：具有模式缓存的按需连接
+- 🛡️ **错误弹性**：优雅地处理不可用的服务器
+- ⏱️ **超时保护**：内置超时可防止挂起连接
+- 📊 **透明集成**：与现有的 CrewAI 功能无缝协作
+- 🔧 **完整传输支持**：Stdio、HTTP/Streamable HTTP 和 SSE 传输
+- 🎯 **高级过滤**：静态和动态工具过滤功能
+- 🔐 **灵活的身份验证**：支持标头、环境变量和查询参数
+
+## 错误处理
+
+MCP DSL 集成的设计具有弹性，可以优雅地处理故障：
+
+```python
+from crewai import Agent
+from crewai.mcp import MCPServerStdio, MCPServerHTTP
+
+agent = Agent(
+    role="Resilient Agent",
+    goal="Continue working despite server issues",
+    backstory="Agent that handles failures gracefully",
+    mcps=[
+        # String references
+        "https://reliable-server.com/mcp",        # Will work
+        "https://unreachable-server.com/mcp",     # Will be skipped gracefully
+        "snowflake",                              # Connected MCP from catalog
+
+        # Structured configs
+        MCPServerStdio(
+            command="python",
+            args=["reliable_server.py"],          # Will work
+        ),
+        MCPServerHTTP(
+            url="https://slow-server.com/mcp",     # Will timeout gracefully
+        ),
+    ]
+)
+# Agent will use tools from working servers and log warnings for failing ones
+```
+
+所有连接错误都会得到妥善处理：
+
+- **连接失败**：记录为警告，代理继续使用可用工具
+- **超时错误**：30 秒后连接超时（可配置）
+- **身份验证错误**：清晰记录以供调试
+- **无效配置**：在代理创建时引发验证错误
+
+## 高级：MCP服务器适配器
+
+对于需要手动连接管理的复杂场景，请使用`crewai-tools` 中的`MCPServerAdapter` 类。建议使用 Python 上下文管理器（`with` 语句），因为它会自动处理启动和停止与 MCP 服务器的连接。
+
+## 连接配置
+
+`MCPServerAdapter` 支持多种配置选项来自定义连接行为：
+
+- **`connect_timeout`**（可选）：等待与 MCP 服务器建立连接的最长时间（以秒为单位）。如果未指定，则默认为 30 秒。这对于可能具有可变响应时间的远程服务器特别有用。
+
+```python
+# Example with custom connection timeout
+with MCPServerAdapter(server_params, connect_timeout=60) as tools:
+    # Connection will timeout after 60 seconds if not established
+    pass
+```
+
+```python
+from crewai import Agent
+from crewai_tools import MCPServerAdapter
+from mcp import StdioServerParameters # For Stdio Server
+
+# Example server_params (choose one based on your server type):
+# 1. Stdio Server:
+server_params=StdioServerParameters(
+    command="python3",
+    args=["servers/your_server.py"],
+    env={"UV_PYTHON": "3.12", **os.environ},
+)
+
+# 2. SSE Server:
+server_params = {
+    "url": "http://localhost:8000/sse",
+    "transport": "sse"
+}
+
+# 3. Streamable HTTP Server:
+server_params = {
+    "url": "http://localhost:8001/mcp",
+    "transport": "streamable-http"
+}
+
+# Example usage (uncomment and adapt once server_params is set):
+with MCPServerAdapter(server_params, connect_timeout=60) as mcp_tools:
+    print(f"Available tools: {[tool.name for tool in mcp_tools]}")
+
+    my_agent = Agent(
+        role="MCP Tool User",
+        goal="Utilize tools from an MCP server.",
+        backstory="I can connect to MCP servers and use their tools.",
+        tools=mcp_tools, # Pass the loaded tools to your agent
+        reasoning=True,
+        verbose=True
+    )
+    # ... rest of your crew setup ...
+```
+
+这个一般模式展示了如何集成工具。有关针对每种传输方式定制的具体示例，请参阅下面的详细指南。
+
+## 过滤工具
+
+过滤工具有两种方法：
+
+1. 使用字典式索引访问特定工具。
+2. 将工具名称列表传递给`MCPServerAdapter` 构造函数。
+
+### 使用字典式索引访问特定工具。
+
+```python
+with MCPServerAdapter(server_params, connect_timeout=60) as mcp_tools:
+    print(f"Available tools: {[tool.name for tool in mcp_tools]}")
+
+    my_agent = Agent(
+        role="MCP Tool User",
+        goal="Utilize tools from an MCP server.",
+        backstory="I can connect to MCP servers and use their tools.",
+        tools=[mcp_tools["tool_name"]], # Pass the loaded tools to your agent
+        reasoning=True,
+        verbose=True
+    )
+    # ... rest of your crew setup ...
+```
+
+### 将工具名称列表传递给`MCPServerAdapter` 构造函数。
+
+```python
+with MCPServerAdapter(server_params, "tool_name", connect_timeout=60) as mcp_tools:
+    print(f"Available tools: {[tool.name for tool in mcp_tools]}")
+
+    my_agent = Agent(
+        role="MCP Tool User",
+        goal="Utilize tools from an MCP server.",
+        backstory="I can connect to MCP servers and use their tools.",
+        tools=mcp_tools, # Pass the loaded tools to your agent
+        reasoning=True,
+        verbose=True
+    )
+    # ... rest of your crew setup ...
+```
+
+## 与 CrewBase 一起使用
+
+要在 CrewBase 类中使用 MCPServer 工具，请使用 `get_mcp_tools` 方法。服务器配置应通过 `mcp_server_params` 属性提供。您可以传递单个配置或多个服务器配置的列表。
+
+```python
+@CrewBase
+class CrewWithMCP:
+  # ... define your agents and tasks config file ...
+
+  mcp_server_params = [
+    # Streamable HTTP Server
+    {
+        "url": "http://localhost:8001/mcp",
+        "transport": "streamable-http"
+    },
+    # SSE Server
+    {
+        "url": "http://localhost:8000/sse",
+        "transport": "sse"
+    },
+    # StdIO Server
+    StdioServerParameters(
+        command="python3",
+        args=["servers/your_stdio_server.py"],
+        env={"UV_PYTHON": "3.12", **os.environ},
+    )
+  ]
+
+  @agent
+  def your_agent(self):
+      return Agent(config=self.agents_config["your_agent"], tools=self.get_mcp_tools()) # get all available tools
+
+    # ... rest of your crew setup ...
+```
+
+<Tip>
+当船员类用 `@CrewBase` 修饰时，适配器生命周期将为您管理：
+
+- 对 `get_mcp_tools()` 的第一次调用会懒惰地创建一个共享的 `MCPServerAdapter`，该共享的 `MCPServerAdapter` 可以被工作人员中的每个代理重用。
+- 由于 `@CrewBase` 注入了隐式的启动后钩子，适配器会在 `.kickoff()` 完成后自动关闭，因此不需要手动清理。
+- 如果未定义`mcp_server_params`，则`get_mcp_tools()` 仅返回一个空列表，允许相同的代码路径在配置或不配置MCP 的情况下运行。
+
+这使得从多个代理方法调用 `get_mcp_tools()` 或针对每个环境有选择地启用 MCP 变得安全。
+
+</Tip>
+
+### 连接超时配置
+
+您可以通过设置 `mcp_connect_timeout` 类属性来配置 MCP 服务器的连接超时。如果未指定超时，则默认为 30 秒。
+
+```python
+@CrewBase
+class CrewWithMCP:
+  mcp_server_params = [...]
+  mcp_connect_timeout = 60  # 60 seconds timeout for all MCP connections
+
+  @agent
+  def your_agent(self):
+      return Agent(config=self.agents_config["your_agent"], tools=self.get_mcp_tools())
+```
+
+```python
+@CrewBase
+class CrewWithDefaultTimeout:
+  mcp_server_params = [...]
+  # No mcp_connect_timeout specified - uses default 30 seconds
+
+  @agent
+  def your_agent(self):
+      return Agent(config=self.agents_config["your_agent"], tools=self.get_mcp_tools())
+```
+
+### 过滤工具
+
+您可以通过将工具名称列表传递给 `get_mcp_tools` 方法来过滤代理可用的工具。
+
+```python
+@agent
+def another_agent(self):
+    return Agent(
+      config=self.agents_config["your_agent"],
+      tools=self.get_mcp_tools("tool_1", "tool_2") # get specific tools
+    )
+```
+
+超时配置适用于组内的所有 MCP 工具调用：
+
+```python
+@CrewBase
+class CrewWithCustomTimeout:
+  mcp_server_params = [...]
+  mcp_connect_timeout = 90  # 90 seconds timeout for all MCP connections
+
+  @agent
+  def filtered_agent(self):
+      return Agent(
+        config=self.agents_config["your_agent"],
+        tools=self.get_mcp_tools("tool_1", "tool_2") # specific tools with custom timeout
+      )
+```
+
+## 探索 MCP 集成
+
+<CardGroup cols={2}>
+<卡片
+title="简单 DSL 集成"
+图标=“代码”
+href="/zh-CN/mcp/dsl-integration"
+颜色=“#3B82F6”
+  >
+**推荐**：使用简单的 `mcps=[]` 字段语法轻松实现 MCP
+一体化。
+  </Card>
+<卡片
+title="Stdio 传输"
+图标=“服务器”
+href="/zh-CN/mcp/stdio"
+颜色=“#10B981”
+  >
+通过标准输入/输出连接到本地 MCP 服务器。非常适合脚本
+和本地可执行文件。
+  </Card>
+  <Card title="SSE Transport" icon="wifi" href="/zh-CN/mcp/sse" color="#F59E0B">
+使用服务器发送事件与远程 MCP 服务器实时集成
+数据流。
+  </Card>
+<卡片
+title="流式 HTTP 传输"
+图标=“地球”
+href="/zh-CN/mcp/streamable-http"
+颜色=“#8B5CF6”
+  >
+利用灵活的 Streamable HTTP 与远程 MCP 进行可靠的通信
+服务器。
+  </Card>
+<卡片
+title="连接到多个服务器"
+图标=“图层组”
+href="/zh-CN/mcp/multiple-servers"
+颜色=“#EF4444”
+  >
+使用单个 MCP 服务器同时聚合工具
+适配器。
+  </Card>
+<卡片
+标题=“安全考虑”
+图标=“锁定”
+href="/zh-CN/mcp/security"
+颜色=“#DC2626”
+  >
+查看 MCP 集成的重要安全最佳实践，以确保您的
+代理安全。
+  </Card>
+</CardGroup>
+
+查看此存储库，了解 MCP 与 CrewAI 集成的完整演示和示例！ 👇
+
+<卡片
+标题=“GitHub 存储库”
+图标=“github”
+href="https://github.com/tonykipkemboi/crewai-mcp-demo"
+目标=“_空白”
+>
+CrewAI MCP 演示
+</Card>
+
+## 通过 MCP 确保安全
+
+<Warning>Always ensure that you trust an MCP Server before using it.</Warning>
+
+#### 安全警告：DNS 重新绑定攻击
+
+如果没有适当保护，SSE 传输可能容易受到 DNS 重新绑定攻击。
+为了防止这种情况：
+
+1. **始终验证传入 SSE 连接上的 Origin 标头**，以确保它们来自预期来源
+2. **本地运行时，避免将服务器绑定到所有网络接口** (0.0.0.0) - 仅绑定到本地主机 (127.0.0.1)
+3. **对所有 SSE 连接实施正确的身份验证**
+
+如果没有这些保护，攻击者可以使用 DNS 重新绑定从远程网站与本地 MCP 服务器进行交互。
+
+有关更多详细信息，请参阅 [Anthropic 的 MCP 传输安全文档](https://modelcontextprotocol.io/docs/concepts/transports#security-considerations)。
+
+### 局限性
+
+- **支持的基元**：目前`MCPServerAdapter`主要支持适配MCP `tools`。
+其他 MCP 原语（例如 `prompts` 或 `resources`）目前并未通过此适配器直接集成为 CrewAI 组件。
+- **输出处理**：适配器通常处理来自 MCP 工具的主要文本输出（例如，`.content[0].text`）。如果不符合此模式，复杂或多模式输出可能需要自定义处理。

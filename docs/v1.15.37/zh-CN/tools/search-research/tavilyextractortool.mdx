@@ -1,0 +1,140 @@
+---
+title: "Tavily 提取工具"
+description: "使用 Tavily API 从网页中提取结构化内容"
+icon: square-poll-horizontal
+mode: "wide"
+---
+
+那个`TavilyExtractorTool` 允许CrewAI代理使用Tavily API从网页中提取结构化内容. 它可以处理单个URL或URL列表,并提供控制提取深度和包含图像的选项.
+
+## 安装
+
+用来使用`TavilyExtractorTool`时,需要安装`tavily-python` 库 :
+
+```shell
+uv add 'crewai[tools]' tavily-python
+```
+
+您还需要将您的 Tavily API 密钥设置为环境变量 :
+
+```bash
+export TAVILY_API_KEY='your-tavily-api-key'
+```
+
+## 示例使用
+
+这是如何初始化和使用`TavilyExtractorTool` 在CrewAI特工内部:
+
+```python
+import os
+from crewai import Agent, Task, Crew
+from crewai_tools import TavilyExtractorTool
+
+# Ensure TAVILY_API_KEY is set in your environment
+# os.environ["TAVILY_API_KEY"] = "YOUR_API_KEY"
+
+# Initialize the tool
+tavily_tool = TavilyExtractorTool()
+
+# Create an agent that uses the tool
+extractor_agent = Agent(
+    role='Web Content Extractor',
+    goal='Extract key information from specified web pages',
+    backstory='You are an expert at extracting relevant content from websites using the Tavily API.',
+    tools=[tavily_tool],
+    verbose=True
+)
+
+# Define a task for the agent
+extract_task = Task(
+    description='Extract the main content from the URL https://example.com using basic extraction depth.',
+    expected_output='A JSON string containing the extracted content from the URL.',
+    agent=extractor_agent
+)
+
+# Create and run the crew
+crew = Crew(
+    agents=[extractor_agent],
+    tasks=[extract_task],
+    verbose=2
+)
+
+result = crew.kickoff()
+print(result)
+```
+
+## 配置选项
+
+那个`TavilyExtractorTool` 接受以下论点:
+
+- `urls` (联合[列表], str]):**要求数**. 单一的 URL 字符串或 URL 字符串列表来提取数据 。
+- `include_images` (可选[bool]): 是否在提取结果中包含图像 。 默认为`False`.
+- `extract_depth` (语言["基本","先进"): 提取深度. 使用`"basic"` 用于更快的地表级提取或`"advanced"` 更全面的提取。 默认为`"basic"`.
+- `timeout` (int):等待提取请求完成的最大时间(秒). 默认为`60`.
+
+## 高级使用
+
+### 带有高级提取器的多个 URL
+
+```python
+# Example with multiple URLs and advanced extraction
+multi_extract_task = Task(
+    description='Extract content from https://example.com and https://anotherexample.org using advanced extraction.',
+    expected_output='A JSON string containing the extracted content from both URLs.',
+    agent=extractor_agent
+)
+
+# Configure the tool with custom parameters
+custom_extractor = TavilyExtractorTool(
+    extract_depth='advanced',
+    include_images=True,
+    timeout=120
+)
+
+agent_with_custom_tool = Agent(
+    role="Advanced Content Extractor",
+    goal="Extract comprehensive content with images",
+    tools=[custom_extractor]
+)
+```
+
+### 工具参数
+
+您可以在初始化过程中设置参数, 从而自定义工具的行为 :
+
+```python
+# Initialize with custom configuration
+extractor_tool = TavilyExtractorTool(
+    extract_depth='advanced',  # More comprehensive extraction
+    include_images=True,       # Include image results
+    timeout=90                 # Custom timeout
+)
+```
+
+## 特征
+
+- #% 0 : 从一个 URL 中提取内容或在一个请求中处理多个 URL
+- ¤0:在基本(快速)和高级(综合)提取模式之间选择
+- "0":在提取结果中可选择包含图像
+- ^0: 返回含有提取内容的精密JSON
+- ¤0:有力处理网络超时和提取错误
+
+## 响应格式
+
+该工具返回一个 JSON 字符串,代表从提供的 URL 中提取的结构化数据 。 确切的结构取决于网页的内容和`extract_depth` 已使用。
+
+共同反应要素包括:
+- "0":页标题
+- “0”:该页的主要文本内容
+- \0\:图像 URL 和元数据( 当`include_images=True`)
+- "0":作者,描述等补充页面信息.
+
+## 使用大小写
+
+- **内容分析**:从竞争者网站上提取和分析内容
+- ¤0:从多个来源收集结构化数据进行分析
+- "0":从现有网站摘取迁移内容.
+- "0":定期提取内容用于检测变化.
+- ○:系统地从网络来源提取信息
+
+关于反应结构和现有备选办法的详细资料,请参见“0”。

@@ -1,0 +1,97 @@
+---
+title: "概览"
+description: "使用 CrewAI 的文档处理工具通过各种文件格式读、写和搜索"
+icon: "face-smile"
+mode: "wide"
+---
+
+这些工具使您的代理商能够使用各种文件格式和文档类型。 从读取 PDF 数据到处理 JSON 数据,这些工具可以处理所有文档处理需要.
+
+## **可用工具**
+
+<CardGroup cols={2}>
+  <Card title="文件读取工具" icon="folders" href="/zh-CN/tools/file-document/filereadtool">
+    从任何文件类型读取内容, 包括文本、 减记等 。
+  </Card>
+
+  <Card title="文件写入工具" icon="file-pen" href="/zh-CN/tools/file-document/filewritetool">
+    将内容写入文件,创建新文档,并保存已处理的数据.
+  </Card>
+
+  <Card title="PDF 搜索工具" icon="file-pdf" href="/zh-CN/tools/file-document/pdfsearchtool">
+    从 PDF 文档中有效搜索和提取文本内容。
+  </Card>
+
+  <Card title="DOCX 搜索工具" icon="file-word" href="/zh-CN/tools/file-document/docxsearchtool">
+    通过Microsoft Word文档搜索并提取相关内容.
+  </Card>
+
+  <Card title="JSON 搜索工具" icon="brackets-curly" href="/zh-CN/tools/file-document/jsonsearchtool">
+    通过具有高级查询能力的JSON文件进行解析和搜索.
+  </Card>
+
+  <Card title="CSV 搜索工具" icon="table" href="/zh-CN/tools/file-document/csvsearchtool">
+    通过CSV文件进行处理和搜索,提取特定的行和列.
+  </Card>
+
+  <Card title="XML 搜索工具" icon="code" href="/zh-CN/tools/file-document/xmlsearchtool">
+    解析 XML 文件并搜索特定元素和属性.
+  </Card>
+
+  <Card title="MDX 搜索工具" icon="markdown" href="/zh-CN/tools/file-document/mdxsearchtool">
+    通过MDX文件搜索并从文档中提取内容.
+  </Card>
+
+  <Card title="TXT 搜索工具" icon="file-lines" href="/zh-CN/tools/file-document/txtsearchtool">
+    通过具有模式匹配能力的纯文本文件搜索 。
+  </Card>
+
+  <Card title="目录搜索工具" icon="folder-open" href="/zh-CN/tools/file-document/directorysearchtool">
+    搜索目录结构内的文件和文件夹 。
+  </Card>
+
+  <Card title="目录读取工具" icon="folder" href="/zh-CN/tools/file-document/directoryreadtool">
+    读取并列出目录内容,文件结构,以及元数据.
+  </Card>
+
+  <Card title="OCR 工具" icon="image" href="/zh-CN/tools/file-document/ocrtool">
+    使用可视化LLM从图像(本地文件或URL)中提取文本 。
+  </Card>
+
+  <Card title="PDF 文本写入工具" icon="file-pdf" href="/zh-CN/tools/file-document/pdf-text-writing-tool">
+    在 PDF 中以特定的坐标写文字,并带有可选的自定义字体.
+  </Card>
+</CardGroup>
+
+## **常见使用案例**
+
+- "0":从各种文件格式摘录和分析内容
+- "0":从CSV,JSON,和XML文件中读取结构化数据
+- "0":在大型文件收藏中查找具体信息.
+- "0":组织和操纵文件和目录
+- "0":将已处理的结果保存到各种文件格式
+
+## **快速启动示例**
+
+```python
+from crewai_tools import FileReadTool, PDFSearchTool, JSONSearchTool
+
+# Create tools
+file_reader = FileReadTool()
+pdf_searcher = PDFSearchTool()
+json_processor = JSONSearchTool()
+
+# Add to your agent
+agent = Agent(
+    role="Document Analyst",
+    tools=[file_reader, pdf_searcher, json_processor],
+    goal="Process and analyze various document types"
+)
+```
+
+## **文件处理提示**
+
+- {0}:确保您的代理商有正确的读写权限
+- **大型文件**:考虑对非常大的文件进行拆分
+- "%0":检查支持文件格式的工具文档
+- "%0":对损坏或无法访问的文件执行适当的错误处理

@@ -1,0 +1,127 @@
+---
+title: 多点工具
+description: “MultiOnTool”使 CrewAI 代理能够通过自然语言指令导航并与网络交互。
+icon: globe
+mode: "wide"
+---
+
+## 概述
+
+这`MultiOnTool` 旨在包装[多开的](https://docs.multion.ai/welcome)网页浏览功能，使CrewAI代理能够使用自然语言指令控制网页浏览器。该工具可促进无缝 Web 浏览，使其成为需要动态 Web 数据交互和基于 Web 的任务自动化的项目的重要资产。
+
+## 安装
+
+要使用此工具，您需要安装 MultiOn 软件包：
+
+```shell
+uv add multion
+```
+
+您还需要安装 MultiOn 浏览器扩展并启用 API 使用。
+
+## 开始步骤
+
+为了有效地利用`MultiOnTool`，请按照下列步骤操作：
+
+1. **安装 CrewAI**：确保`crewai[tools]` 软件包已安装在您的 Python 环境中。
+2. **安装和使用MultiOn**：按照[MultiOn 文档](https://docs.multion.ai/learn/browser-extension)安装 MultiOn 浏览器扩展。
+3. **启用 API 使用**：单击浏览器扩展文件夹中的 MultiOn 扩展（不是网页上悬停的 MultiOn 图标）以打开扩展配置。单击 API 启用开关以启用 API。
+
+## 例子
+
+以下示例演示了如何初始化该工具并执行网页浏览任务：
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import MultiOnTool
+
+# Initialize the tool
+multion_tool = MultiOnTool(api_key="YOUR_MULTION_API_KEY", local=False)
+
+# Define an agent that uses the tool
+browser_agent = Agent(
+    role="Browser Agent",
+    goal="Control web browsers using natural language",
+    backstory="An expert browsing agent.",
+    tools=[multion_tool],
+    verbose=True,
+)
+
+# Example task to search and summarize news
+browse_task = Task(
+    description="Summarize the top 3 trending AI News headlines",
+    expected_output="A summary of the top 3 trending AI News headlines",
+    agent=browser_agent,
+)
+
+# Create and run the crew
+crew = Crew(agents=[browser_agent], tasks=[browse_task])
+result = crew.kickoff()
+```
+
+## 参数
+
+这`MultiOnTool` 初始化期间接受以下参数：
+
+- **api_key**：可选。指定 MultiOn API 密钥。如果没有提供，它将寻找`MULTION_API_KEY` 环境变量。
+- **当地的**：可选。设置为`True` 在浏览器上本地运行代理。确保已安装 MultiOn 浏览器扩展并选中“启用 API”。默认为`False`.
+- **最大步数**：可选。设置 MultiOn 代理可以对命令执行的最大步骤数。默认为`3`.
+
+## 用法
+
+当使用`MultiOnTool`，代理将提供自然语言指令，该工具将其转换为网页浏览操作。该工具返回浏览会话的结果以及状态。
+
+```python Code
+# Example of using the tool with an agent
+browser_agent = Agent(
+    role="Web Browser Agent",
+    goal="Search for and summarize information from the web",
+    backstory="An expert at finding and extracting information from websites.",
+    tools=[multion_tool],
+    verbose=True,
+)
+
+# Create a task for the agent
+search_task = Task(
+    description="Search for the latest AI news on TechCrunch and summarize the top 3 headlines",
+    expected_output="A summary of the top 3 AI news headlines from TechCrunch",
+    agent=browser_agent,
+)
+
+# Run the task
+crew = Crew(agents=[browser_agent], tasks=[search_task])
+result = crew.kickoff()
+```
+
+如果返回的状态是`CONTINUE`，应指示代理重新发出相同的指令以继续执行。
+
+## 实施细节
+
+这`MultiOnTool` 是作为子类实现的`BaseTool` 来自 CrewAI。它包装了 MultiOn 客户端以提供网页浏览功能：
+
+```python Code
+class MultiOnTool(BaseTool):
+    """Tool to wrap MultiOn Browse Capabilities."""
+
+    name: str = "Multion Browse Tool"
+    description: str = """Multion gives the ability for LLMs to control web browsers using natural language instructions.
+            If the status is 'CONTINUE', reissue the same instruction to continue execution
+        """
+    
+    # Implementation details...
+    
+    def _run(self, cmd: str, *args: Any, **kwargs: Any) -> str:
+        """
+        Run the Multion client with the given command.
+        
+        Args:
+            cmd (str): The detailed and specific natural language instruction for web browsing
+            *args (Any): Additional arguments to pass to the Multion client
+            **kwargs (Any): Additional keyword arguments to pass to the Multion client
+        """
+        # Implementation details...
+```
+
+## 结论
+
+这`MultiOnTool` 提供了一种将 Web 浏览功能集成到 CrewAI 代理中的强大方法。通过使代理能够通过自然语言指令与网站交互，它为基于网络的任务提供了广泛的可能性，从数据收集和研究到与网络服务的自动交互。

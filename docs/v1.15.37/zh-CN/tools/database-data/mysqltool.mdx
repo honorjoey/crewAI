@@ -1,0 +1,70 @@
+---
+title: "MySQL RAG 搜索"
+description: "MySQL RAG 搜索 工具文档。"
+icon: database
+mode: "wide"
+---
+
+## 概述
+
+该工具旨在促进 MySQL 数据库表中的语义搜索。利用 RAG（检索和生成）技术，
+MySQLSearchTool为用户提供了一种查询数据库表内容的高效方法，专为MySQL数据库量身定制。
+它简化了通过语义搜索查询查找相关数据的过程，使其成为需要的用户的宝贵资源
+对 MySQL 数据库中的大量数据集执行高级查询。
+
+## 安装
+
+要安装`crewai_tools` 打包并使用 MySQLSearchTool，在终端中执行以下命令：
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 例子
+
+下面的示例展示了如何使用 MySQLSearchTool 对 MySQL 数据库中的表进行语义搜索：
+
+```python Code
+from crewai_tools import MySQLSearchTool
+
+# Initialize the tool with the database URI and the target table name
+tool = MySQLSearchTool(
+    db_uri='mysql://user:password@localhost:3306/mydatabase',
+    table_name='employees'
+)
+```
+
+## 论点
+
+MySQLSearchTool 的操作需要以下参数：
+
+- `db_uri`：字符串，表示要查询的MySQL数据库的URI。此参数是强制性的，并且必须包含必要的身份验证详细信息和数据库的位置。
+- `table_name`：一个字符串，指定将在其上执行语义搜索的数据库中的表的名称。这个论点是强制性的。
+
+## 自定义模型和嵌入
+
+默认情况下，该工具使用 OpenAI 进行嵌入和摘要。要自定义模型，您可以使用配置字典，如下所示：
+
+```python Code
+tool = MySQLSearchTool(
+    config=dict(
+        llm=dict(
+            provider="ollama", # or google, openai, anthropic, llama2, ...
+            config=dict(
+                model="llama2",
+                # temperature=0.5,
+                # top_p=1,
+                # stream=true,
+            ),
+        ),
+        embedder=dict(
+            provider="google-generativeai",
+            config=dict(
+                model_name="gemini-embedding-001",
+                task_type="RETRIEVAL_DOCUMENT",
+                # title="Embeddings",
+            ),
+        ),
+    )
+)
+```

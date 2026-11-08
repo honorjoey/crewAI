@@ -1,0 +1,42 @@
+---
+title: "Firecrawl 搜索"
+description: "Firecrawl 搜索 工具文档。"
+icon: fire-flame
+mode: "wide"
+---
+
+# `FirecrawlSearchTool`
+
+## 说明
+
+用于爬行和转换任何网站的平台,
+
+## 安装
+
+- 从“ 0” 获取一个 API 密钥, 并将其设置在环境变量中( Name`FIRECRAWL_API_KEY`).
+- 随“ 0” 一起安装`crewai[tools]` 软件包 :
+
+```shell
+pip install firecrawl-py 'crewai[tools]'
+```
+
+## 示例
+
+使用 FirecrawlSearch Tool 如下, 允许您的代理服务器装入网站 :
+
+```python Code
+from crewai_tools import FirecrawlSearchTool
+
+tool = FirecrawlSearchTool(query='what is firecrawl?')
+```
+
+## 参数
+
+- `api_key`: 可选。 指定 Firecrawl API 密钥。 默认是`FIRECRAWL_API_KEY` 环境变量。
+- `query`: 用于搜索的搜索查询字符串。
+- `page_options`: 可选。 成果格式化的选项。
+  - `onlyMainContent`: 可选。 只返回页面中不包括标题,导航,页脚等主要内容.
+  - `includeHtml`: 可选。 包括页面的原始 HTML 内容。 会在响应中输出一个 html 密钥 。
+  - `fetchPageContent`: 可选。 获取页面的全部内容 。
+- `search_options`: 可选。 控制爬行行为的选项 。
+  - `limit`: 可选。 要爬行的最大页数 。

@@ -1,0 +1,83 @@
+---
+title: "PG RAG 搜索"
+description: "PG RAG 搜索 工具文档。"
+icon: elephant
+mode: "wide"
+---
+
+## 概述
+
+<Note>
+    PGSearchTool 目前正在开发中。本文档概述了预期的功能和界面。
+    随着开发的进展，请注意，某些功能可能不可用或可能发生变化。
+</Note>
+
+## 描述
+
+PGSearchTool 被设想为一个强大的工具，用于促进 PostgreSQL 数据库表中的语义搜索。通过利用先进的检索和生成 (RAG) 技术，
+它旨在提供一种查询数据库表内容的有效方法，专为 PostgreSQL 数据库量身定制。
+该工具的目标是简化通过语义搜索查询查找相关数据的过程，为需要进行高级查询的用户提供宝贵的资源。
+PostgreSQL 环境中的广泛数据集。
+
+## 安装
+
+这`crewai_tools` 软件包在发布时将包含 PGSearchTool，可以使用以下命令进行安装：
+
+```shell
+pip install 'crewai[tools]'
+```
+
+<Note>
+    PGSearchTool 在当前版本中尚不可用`crewai_tools` 包裹。该安装命令将在该工具发布后更新。
+</Note>
+
+## 用法示例
+
+下面是一个建议的示例，展示如何使用 PGSearchTool 对 PostgreSQL 数据库中的表进行语义搜索：
+
+```python Code
+from crewai_tools import PGSearchTool
+
+# Initialize the tool with the database URI and the target table name
+tool = PGSearchTool(
+    db_uri='postgresql://user:password@localhost:5432/mydatabase', 
+    table_name='employees'
+)
+```
+
+## 论点
+
+PGSearchTool 的设计要求其操作需要以下参数：
+
+| 争论| 类型| 描述|
+|:---------------|:---------|:-------------------------------------------------------------------------------------------------------------------------------------|
+| **db_uri**     | `字符串`| **强制的**.表示要查询的 PostgreSQL 数据库的 URI 的字符串。该参数是强制性的，并且必须包含必要的身份验证详细信息和数据库的位置。|
+| **表名** | `字符串`| **强制的**.一个字符串，指定将在其上执行语义搜索的数据库中的表的名称。这个论点也将是强制性的。|
+
+## 自定义模型和嵌入
+
+该工具默认使用 OpenAI 进行嵌入和摘要。用户可以选择使用配置字典自定义模型，如下所示：
+
+```python Code
+tool = PGSearchTool(
+    config=dict(
+        llm=dict(
+            provider="ollama", # or google, openai, anthropic, llama2, ...
+            config=dict(
+                model="llama2",
+                # temperature=0.5,
+                # top_p=1,
+                # stream=true,
+            ),
+        ),
+        embedder=dict(
+            provider="google-generativeai", # or openai, ollama, ...
+            config=dict(
+                model_name="gemini-embedding-001",
+                task_type="RETRIEVAL_DOCUMENT",
+                # title="Embeddings",
+            ),
+        ),
+    )
+)
+```

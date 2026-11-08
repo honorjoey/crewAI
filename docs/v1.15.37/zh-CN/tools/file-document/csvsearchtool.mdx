@@ -1,0 +1,94 @@
+---
+title: "CSV RAG 搜索"
+description: "CSV RAG 搜索 工具文档。"
+icon: file-csv
+mode: "wide"
+---
+
+# `CSVSearchTool`
+
+<Note>
+    我们仍在努力改进工具,
+</Note>
+
+## 说明
+
+此工具用于在 CSV 文件内容内执行RAG( Retrival-Augmented Generation)搜索. 它允许用户在指定的CSV文件内容中进行聚合搜索查询.
+这一功能对于从大型CSV数据集中提取信息特别有用,因为传统的搜索方法可能效率低下. 包括CSVSearchToole,
+用于搜索不同数据源的RAG工具。
+
+## 安装
+
+安装船员工具包
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 示例
+
+```python Code
+from crewai_tools import CSVSearchTool
+
+# Initialize the tool with a specific CSV file. 
+# This setup allows the agent to only search the given CSV file.
+tool = CSVSearchTool(csv='path/to/your/csvfile.csv')
+
+# OR
+
+# Initialize the tool without a specific CSV file. 
+# Agent will need to provide the CSV path at runtime.
+tool = CSVSearchTool()
+```
+
+## 参数
+
+下列参数可用于自定义`CSVSearchTool`'行为 :
+
+| 参数| 类型| 说明|
+|:---------------|:---------|:-------------------------------------------------------------------------------------------------------------------------------------|
+| **页:1**        | `弦 '|  可选 . 您想要搜索的 CSV 文件的路径 。 如果工具初始化时没有特定的CSV文件,这是强制性的参数;否则,它是可选的.|
+
+## 自定义模式和嵌入
+
+默认情况下,该工具同时使用OpenAI进行嵌入和概括. 要自定义模型,可以使用配置词典如下:
+
+```python Code
+from chromadb.config import Settings
+
+tool = CSVSearchTool(
+    config={
+        "embedding_model": {
+            "provider": "openai",
+            "config": {
+                "model": "text-embedding-3-small",
+                # "api_key": "sk-...",
+            },
+        },
+        "vectordb": {
+            "provider": "chromadb",  # or "qdrant"
+            "config": {
+                # "settings": Settings(persist_directory="/content/chroma", allow_reset=True, is_persistent=True),
+                # from qdrant_client.models import VectorParams, Distance
+                # "vectors_config": VectorParams(size=384, distance=Distance.COSINE),
+            }
+        },
+    }
+)
+
+## Security
+
+### Path Validation
+
+File paths provided to this tool are validated against the current working directory. Paths that resolve outside the working directory are rejected with a `ValueError`.
+
+To allow paths outside the working directory (for example, in tests or trusted pipelines), set the environment variable:
+
+```shell
+CREWAI_TOOLS_ALLOW_UNSAFE_PATHS=true
+```
+
+### URL Validation
+
+URL inputs are validated: `file://` URIs and requests targeting private or reserved IP ranges are blocked to prevent server-side request forgery (SSRF) attacks.
+```

@@ -1,0 +1,841 @@
+---
+title: 精通 Flow 状态管理
+description: 全面讲解如何在 CrewAI Flows 中管理、持久化与利用状态，构建稳健的 AI 应用。
+icon: diagram-project
+mode: "wide"
+---
+
+## 理解 Flow 中状态的力量
+
+状态管理是任何复杂 AI 工作流的核心。在 CrewAI Flows 中，状态系统让你能够维护上下文、在步骤间共享数据，并构建复杂的应用逻辑。掌握状态管理，是创建可靠、可维护且强大 AI 应用的关键。
+
+本指南将带你系统掌握 CrewAI Flows 中的状态管理：从基础概念到高级技巧，并配合实用代码示例。
+
+### 为什么状态管理很重要
+
+有效的状态管理可以让你：
+
+1. **在执行步骤间保持上下文**- 在工作流不同阶段顺畅传递信息
+2. **构建复杂条件逻辑**- 基于累积数据进行决策
+3. **创建可持久化应用**- 保存并恢复工作流进度
+4. **优雅处理错误**- 通过恢复模式提升应用健壮性
+5. **扩展应用能力**- 通过合理的数据组织支持复杂工作流
+6. **支持对话式应用**- 存储并访问会话历史，实现上下文感知的 AI 交互
+
+对于多轮聊天（每条用户消息一次 `kickoff`、`ChatState`、意图路由、延迟追踪和 `ChatSession`），参见 [Conversational Flows](/zh-CN/guides/flows/conversational-flows)。
+
+接下来，我们来看看如何高效利用这些能力。
+
+## 状态管理基础
+
+### Flow 状态生命周期
+
+在 CrewAI Flows 中，状态遵循可预测的生命周期：
+
+1. **初始化**- 创建 flow 时会初始化状态（空字典或 Pydantic 模型实例）
+2. **修改**- flow 方法在执行时访问并修改状态
+3. **传递**- 状态会在 flow 方法间自动传递
+4. **持久化**（可选）- 状态可保存到存储并在后续取回
+5. **完成**- 最终状态反映所有已执行方法的累计变更
+
+理解这个生命周期，是设计高效 flow 的基础。
+
+### 两种状态管理方式
+
+CrewAI 提供两种管理 flow 状态的方式：
+
+1. **非结构化状态**- 使用类似字典的对象，灵活性高
+2. **结构化状态**- 使用 Pydantic 模型，类型安全并可校验
+
+下面分别展开说明。
+
+## 非结构化状态管理
+
+非结构化状态采用类似字典的方式，适合简单直接的应用场景，灵活且易上手。
+
+### 工作方式
+
+使用非结构化状态时：
+- 通过 `self.state` 访问状态（行为类似字典）
+- 可以随时自由新增、修改或删除键
+- 所有状态对所有 flow 方法自动可见
+
+### 基础示例
+
+下面是一个非结构化状态管理示例：
+
+```python
+from crewai.flow.flow import Flow, listen, start
+
+class UnstructuredStateFlow(Flow):
+    @start()
+    def initialize_data(self):
+        print("Initializing flow data")
+        # Add key-value pairs to state
+        self.state["user_name"] = "Alex"
+        self.state["preferences"] = {
+            "theme": "dark",
+            "language": "English"
+        }
+        self.state["items"] = []
+
+        # The flow state automatically gets a unique ID
+        print(f"Flow ID: {self.state['id']}")
+
+        return "Initialized"
+
+    @listen(initialize_data)
+    def process_data(self, previous_result):
+        print(f"Previous step returned: {previous_result}")
+
+        # Access and modify state
+        user = self.state["user_name"]
+        print(f"Processing data for {user}")
+
+        # Add items to a list in state
+        self.state["items"].append("item1")
+        self.state["items"].append("item2")
+
+        # Add a new key-value pair
+        self.state["processed"] = True
+
+        return "Processed"
+
+    @listen(process_data)
+    def generate_summary(self, previous_result):
+        # Access multiple state values
+        user = self.state["user_name"]
+        theme = self.state["preferences"]["theme"]
+        items = self.state["items"]
+        processed = self.state.get("processed", False)
+
+        summary = f"User {user} has {len(items)} items with {theme} theme. "
+        summary += "Data is processed." if processed else "Data is not processed."
+
+        return summary
+
+# Run the flow
+flow = UnstructuredStateFlow()
+result = flow.kickoff()
+print(f"Final result: {result}")
+print(f"Final state: {flow.state}")
+```
+
+### 何时使用非结构化状态
+
+非结构化状态适合：
+- 快速原型和简单 flow
+- 状态需求会动态演进的场景
+- 结构在前期尚不明确的场景
+- 状态要求较简单的 flow
+
+它虽灵活，但缺乏类型检查和 schema 校验，在复杂应用中更容易引发错误。
+
+## 结构化状态管理
+
+结构化状态使用 Pydantic 模型定义 flow 状态 schema，提供类型安全、数据校验和更好的开发体验。
+
+### 工作方式
+
+使用结构化状态时：
+- 先定义一个表示状态结构的 Pydantic 模型
+- 将该模型类型作为类型参数传给 Flow 类
+- 通过 `self.state` 访问状态（行为类似 Pydantic 模型实例）
+- 所有字段都会按定义类型进行校验
+- 可获得 IDE 自动补全和类型检查支持
+
+### 基础示例
+
+下面展示如何实现结构化状态管理：
+
+```python
+from crewai.flow.flow import Flow, listen, start
+from pydantic import BaseModel, Field
+from typing import List, Dict, Optional
+
+# Define your state model
+class UserPreferences(BaseModel):
+    theme: str = "light"
+    language: str = "English"
+
+class AppState(BaseModel):
+    user_name: str = ""
+    preferences: UserPreferences = UserPreferences()
+    items: List[str] = []
+    processed: bool = False
+    completion_percentage: float = 0.0
+
+# Create a flow with typed state
+class StructuredStateFlow(Flow[AppState]):
+    @start()
+    def initialize_data(self):
+        print("Initializing flow data")
+        # Set state values (type-checked)
+        self.state.user_name = "Taylor"
+        self.state.preferences.theme = "dark"
+
+        # The ID field is automatically available
+        print(f"Flow ID: {self.state.id}")
+
+        return "Initialized"
+
+    @listen(initialize_data)
+    def process_data(self, previous_result):
+        print(f"Processing data for {self.state.user_name}")
+
+        # Modify state (with type checking)
+        self.state.items.append("item1")
+        self.state.items.append("item2")
+        self.state.processed = True
+        self.state.completion_percentage = 50.0
+
+        return "Processed"
+
+    @listen(process_data)
+    def generate_summary(self, previous_result):
+        # Access state (with autocompletion)
+        summary = f"User {self.state.user_name} has {len(self.state.items)} items "
+        summary += f"with {self.state.preferences.theme} theme. "
+        summary += "Data is processed." if self.state.processed else "Data is not processed."
+        summary += f" Completion: {self.state.completion_percentage}%"
+
+        return summary
+
+# Run the flow
+flow = StructuredStateFlow()
+result = flow.kickoff()
+print(f"Final result: {result}")
+print(f"Final state: {flow.state}")
+```
+
+### 结构化状态的优势
+
+使用结构化状态有以下好处：
+
+1. **类型安全**- 在开发阶段发现类型错误
+2. **自文档化**- 状态模型清晰说明可用数据
+3. **数据校验**- 自动校验数据类型与约束
+4. **IDE 支持**- 自动补全与内联文档更完善
+5. **默认值**- 可轻松定义缺失数据的兜底值
+
+### 何时使用结构化状态
+
+推荐在以下场景使用结构化状态：
+- 具有明确数据 schema 的复杂 flow
+- 多名开发者协作的团队项目
+- 对数据校验要求较高的应用
+- 需要强制特定数据类型和约束的 flow
+
+## 自动状态 ID
+
+无论是非结构化状态还是结构化状态，系统都会自动分配唯一标识符（UUID），便于跟踪和管理状态实例。
+
+### 工作方式
+
+- 对于非结构化状态，ID 通过 `self.state["id"]` 访问
+- 对于结构化状态，ID 通过 `self.state.id` 访问
+- 该 ID 在 flow 创建时自动生成
+- 在整个 flow 生命周期内保持不变
+- 可用于跟踪、日志记录和持久化状态检索
+
+在实现状态持久化或跟踪多次 flow 执行时，这个 UUID 尤其有价值。
+
+## 动态状态更新
+
+无论使用结构化还是非结构化状态，都可以在 flow 执行过程中动态更新状态。
+
+### 在步骤之间传递数据
+
+flow 方法可以返回值，随后这些值会作为参数传入监听方法：
+
+```python
+from crewai.flow.flow import Flow, listen, start
+
+class DataPassingFlow(Flow):
+    @start()
+    def generate_data(self):
+        # This return value will be passed to listening methods
+        return "Generated data"
+
+    @listen(generate_data)
+    def process_data(self, data_from_previous_step):
+        print(f"Received: {data_from_previous_step}")
+        # You can modify the data and pass it along
+        processed_data = f"{data_from_previous_step} - processed"
+        # Also update state
+        self.state["last_processed"] = processed_data
+        return processed_data
+
+    @listen(process_data)
+    def finalize_data(self, processed_data):
+        print(f"Received processed data: {processed_data}")
+        # Access both the passed data and state
+        last_processed = self.state.get("last_processed", "")
+        return f"Final: {processed_data} (from state: {last_processed})"
+```
+
+这种模式将“直接数据传递”和“状态更新”结合起来，兼顾灵活性与可维护性。
+
+## 持久化 Flow 状态
+
+CrewAI 最强大的能力之一，就是跨执行持久化 flow 状态。这使得工作流可以暂停、恢复，甚至在失败后继续运行。
+
+### `@persist()` 装饰器
+
+`@persist()` 装饰器可自动完成状态持久化，在执行关键节点保存 flow 状态。
+
+#### 类级持久化
+
+当在类级别应用时，`@persist()` 会在每个方法执行后保存状态：
+
+```python
+from crewai.flow.flow import Flow, listen, start
+from crewai.flow.persistence import persist
+from pydantic import BaseModel
+
+class CounterState(BaseModel):
+    value: int = 0
+
+@persist()  # Apply to the entire flow class
+class PersistentCounterFlow(Flow[CounterState]):
+    @start()
+    def increment(self):
+        self.state.value += 1
+        print(f"Incremented to {self.state.value}")
+        return self.state.value
+
+    @listen(increment)
+    def double(self, value):
+        self.state.value = value * 2
+        print(f"Doubled to {self.state.value}")
+        return self.state.value
+
+# First run
+flow1 = PersistentCounterFlow()
+result1 = flow1.kickoff()
+print(f"First run result: {result1}")
+
+# Second run - pass the ID to load the persisted state
+flow2 = PersistentCounterFlow()
+result2 = flow2.kickoff(inputs={"id": flow1.state.id})
+print(f"Second run result: {result2}")  # Will be higher due to persisted state
+```
+
+#### 方法级持久化
+
+如果需要更细粒度控制，可以只在特定方法上使用 `@persist()`：
+
+```python
+from crewai.flow.flow import Flow, listen, start
+from crewai.flow.persistence import persist
+
+class SelectivePersistFlow(Flow):
+    @start()
+    def first_step(self):
+        self.state["count"] = 1
+        return "First step"
+
+    @persist()  # Only persist after this method
+    @listen(first_step)
+    def important_step(self, prev_result):
+        self.state["count"] += 1
+        self.state["important_data"] = "This will be persisted"
+        return "Important step completed"
+
+    @listen(important_step)
+    def final_step(self, prev_result):
+        self.state["count"] += 1
+        return f"Complete with count {self.state['count']}"
+```
+
+#### 分叉持久化状态
+
+`@persist` 在 `kickoff` / `kickoff_async` 中支持两种不同的状态恢复模式。使用 **resume**（`inputs["id"]`）可延续同一 lineage；使用**fork**（`restore_from_state_id`）可从某个快照启动新 lineage：
+
+| | `state.id` after kickoff | `@persist` writes land under |
+|---|---|---|
+| `inputs["id"]` (resume) | supplied id | supplied id (extends history) |
+| `restore_from_state_id` (fork) | fresh id, or `inputs["id"]` if pinned | new id (source preserved) |
+
+```python
+from crewai.flow.flow import Flow, start
+from crewai.flow.persistence import persist
+from pydantic import BaseModel
+
+class CounterState(BaseModel):
+    id: str = ""
+    counter: int = 0
+
+@persist
+class CounterFlow(Flow[CounterState]):
+    @start()
+    def step(self):
+        self.state.counter += 1
+
+# Run 1: fresh state, counter 0 -> 1
+flow_1 = CounterFlow()
+flow_1.kickoff()
+
+# Fork: hydrate from flow_1's latest snapshot, but write under a NEW state.id
+flow_2 = CounterFlow()
+flow_2.kickoff(restore_from_state_id=flow_1.state.id)
+# flow_2 starts with counter=1 (hydrated), then step() bumps it to 2.
+# flow_1's flow_uuid history is unchanged.
+```
+
+行为说明：
+
+- 当持久化中找不到 `restore_from_state_id` 时，kickoff 会静默回退到默认行为（与现有 `inputs["id"]` 的 resume 未命中行为一致），不会抛出异常。
+- 同时使用 `restore_from_state_id` 与 `from_checkpoint` 会抛出 `ValueError` —— 二者对应不同状态系统（`@persist` 与 Checkpointing），不能组合使用。
+- `restore_from_state_id=None`（默认）与不传该参数的 kickoff 在字节级行为完全一致。
+- 在 fork 时固定 `inputs["id"]`，意味着新运行会与其他 flow 共享同一持久化键；通常只使用 `restore_from_state_id` 更合适。
+
+
+## 高级状态模式
+
+### 条件起点与可恢复执行
+
+Flows 支持条件 `@start()`，并可在 HITL/循环场景下恢复执行：
+
+```python
+from crewai.flow.flow import Flow, start, listen, and_, or_
+
+class ResumableFlow(Flow):
+    @start()  # unconditional start
+    def init(self):
+        ...
+
+    # Conditional start: run after "init" or external trigger name
+    @start("init")
+    def maybe_begin(self):
+        ...
+
+    @listen(and_(init, maybe_begin))
+    def proceed(self):
+        ...
+```
+
+- 条件 `@start()` 可接受方法名、路由标签或可调用条件。
+- 在恢复执行时，监听器会从先前检查点继续；循环/路由分支会遵循恢复标志。
+
+### 基于状态的条件逻辑
+
+你可以使用状态在 flow 中实现复杂条件逻辑：
+
+```python
+from crewai.flow.flow import Flow, listen, router, start
+from pydantic import BaseModel
+
+class PaymentState(BaseModel):
+    amount: float = 0.0
+    is_approved: bool = False
+    retry_count: int = 0
+
+class PaymentFlow(Flow[PaymentState]):
+    @start()
+    def process_payment(self):
+        # Simulate payment processing
+        self.state.amount = 100.0
+        self.state.is_approved = self.state.amount < 1000
+        return "Payment processed"
+
+    @router(process_payment)
+    def check_approval(self, previous_result):
+        if self.state.is_approved:
+            return "approved"
+        elif self.state.retry_count < 3:
+            return "retry"
+        else:
+            return "rejected"
+
+    @listen("approved")
+    def handle_approval(self):
+        return f"Payment of ${self.state.amount} approved!"
+
+    @listen("retry")
+    def handle_retry(self):
+        self.state.retry_count += 1
+        print(f"Retrying payment (attempt {self.state.retry_count})...")
+        # Could implement retry logic here
+        return "Retry initiated"
+
+    @listen("rejected")
+    def handle_rejection(self):
+        return f"Payment of ${self.state.amount} rejected after {self.state.retry_count} retries."
+```
+
+### 处理复杂状态转换
+
+对于复杂状态转换，可以将逻辑封装为专门方法：
+
+```python
+from crewai.flow.flow import Flow, listen, start
+from pydantic import BaseModel
+from typing import List, Dict
+
+class UserData(BaseModel):
+    name: str
+    active: bool = True
+    login_count: int = 0
+
+class ComplexState(BaseModel):
+    users: Dict[str, UserData] = {}
+    active_user_count: int = 0
+
+class TransformationFlow(Flow[ComplexState]):
+    @start()
+    def initialize(self):
+        # Add some users
+        self.add_user("alice", "Alice")
+        self.add_user("bob", "Bob")
+        self.add_user("charlie", "Charlie")
+        return "Initialized"
+
+    @listen(initialize)
+    def process_users(self, _):
+        # Increment login counts
+        for user_id in self.state.users:
+            self.increment_login(user_id)
+
+        # Deactivate one user
+        self.deactivate_user("bob")
+
+        # Update active count
+        self.update_active_count()
+
+        return f"Processed {len(self.state.users)} users"
+
+    # Helper methods for state transformations
+    def add_user(self, user_id: str, name: str):
+        self.state.users[user_id] = UserData(name=name)
+        self.update_active_count()
+
+    def increment_login(self, user_id: str):
+        if user_id in self.state.users:
+            self.state.users[user_id].login_count += 1
+
+    def deactivate_user(self, user_id: str):
+        if user_id in self.state.users:
+            self.state.users[user_id].active = False
+            self.update_active_count()
+
+    def update_active_count(self):
+        self.state.active_user_count = sum(
+            1 for user in self.state.users.values() if user.active
+        )
+```
+
+将状态转换逻辑拆分为辅助方法，有助于保持 flow 方法简洁，并支持更复杂的数据操作。
+
+## 在 Crews 中管理状态
+
+CrewAI 中最强大的模式之一，是将 flow 状态管理与 crew 执行结合起来。
+
+### 向 Crews 传递状态
+
+你可以用 flow 状态来参数化 crews：
+
+```python
+from crewai.flow.flow import Flow, listen, start
+from crewai import Agent, Crew, Process, Task
+from pydantic import BaseModel
+
+class ResearchState(BaseModel):
+    topic: str = ""
+    depth: str = "medium"
+    results: str = ""
+
+class ResearchFlow(Flow[ResearchState]):
+    @start()
+    def get_parameters(self):
+        # In a real app, this might come from user input
+        self.state.topic = "Artificial Intelligence Ethics"
+        self.state.depth = "deep"
+        return "Parameters set"
+
+    @listen(get_parameters)
+    def execute_research(self, _):
+        # Create agents
+        researcher = Agent(
+            role="Research Specialist",
+            goal=f"Research {self.state.topic} in {self.state.depth} detail",
+            backstory="You are an expert researcher with a talent for finding accurate information."
+        )
+
+        writer = Agent(
+            role="Content Writer",
+            goal="Transform research into clear, engaging content",
+            backstory="You excel at communicating complex ideas clearly and concisely."
+        )
+
+        # Create tasks
+        research_task = Task(
+            description=f"Research {self.state.topic} with {self.state.depth} analysis",
+            expected_output="Comprehensive research notes in markdown format",
+            agent=researcher
+        )
+
+        writing_task = Task(
+            description=f"Create a summary on {self.state.topic} based on the research",
+            expected_output="Well-written article in markdown format",
+            agent=writer,
+            context=[research_task]
+        )
+
+        # Create and run crew
+        research_crew = Crew(
+            agents=[researcher, writer],
+            tasks=[research_task, writing_task],
+            process=Process.sequential,
+            verbose=True
+        )
+
+        # Run crew and store result in state
+        result = research_crew.kickoff()
+        self.state.results = result.raw
+
+        return "Research completed"
+
+    @listen(execute_research)
+    def summarize_results(self, _):
+        # Access the stored results
+        result_length = len(self.state.results)
+        return f"Research on {self.state.topic} completed with {result_length} characters of results."
+```
+
+### 在状态中处理 Crew 输出
+
+当 crew 完成后，你可以处理其输出并保存到 flow 状态：
+
+```python
+@listen(execute_crew)
+def process_crew_results(self, _):
+    # Parse the raw results (assuming JSON output)
+    import json
+    try:
+        results_dict = json.loads(self.state.raw_results)
+        self.state.processed_results = {
+            "title": results_dict.get("title", ""),
+            "main_points": results_dict.get("main_points", []),
+            "conclusion": results_dict.get("conclusion", "")
+        }
+        return "Results processed successfully"
+    except json.JSONDecodeError:
+        self.state.error = "Failed to parse crew results as JSON"
+        return "Error processing results"
+```
+
+## 状态管理最佳实践
+
+### 1. 让状态保持聚焦
+
+状态只保留必要信息：
+
+```python
+# Too broad
+class BloatedState(BaseModel):
+    user_data: Dict = {}
+    system_settings: Dict = {}
+    temporary_calculations: List = []
+    debug_info: Dict = {}
+    # ...many more fields
+
+# Better: Focused state
+class FocusedState(BaseModel):
+    user_id: str
+    preferences: Dict[str, str]
+    completion_status: Dict[str, bool]
+```
+
+### 2. 在复杂 Flow 中使用结构化状态
+
+随着 flow 复杂度上升，结构化状态的价值会愈发明显：
+
+```python
+# Simple flow can use unstructured state
+class SimpleGreetingFlow(Flow):
+    @start()
+    def greet(self):
+        self.state["name"] = "World"
+        return f"Hello, {self.state['name']}!"
+
+# Complex flow benefits from structured state
+class UserRegistrationState(BaseModel):
+    username: str
+    email: str
+    verification_status: bool = False
+    registration_date: datetime = Field(default_factory=datetime.now)
+    last_login: Optional[datetime] = None
+
+class RegistrationFlow(Flow[UserRegistrationState]):
+    # Methods with strongly-typed state access
+```
+
+### 3. 记录状态转换
+
+对于复杂 flow，请记录执行过程中状态如何变化：
+
+```python
+@start()
+def initialize_order(self):
+    """
+    Initialize order state with empty values.
+
+    State before: {}
+    State after: {order_id: str, items: [], status: 'new'}
+    """
+    self.state.order_id = str(uuid.uuid4())
+    self.state.items = []
+    self.state.status = "new"
+    return "Order initialized"
+```
+
+### 4. 优雅处理状态错误
+
+为状态访问添加错误处理：
+
+```python
+@listen(previous_step)
+def process_data(self, _):
+    try:
+        # Try to access a value that might not exist
+        user_preference = self.state.preferences.get("theme", "default")
+    except (AttributeError, KeyError):
+        # Handle the error gracefully
+        self.state.errors = self.state.get("errors", [])
+        self.state.errors.append("Failed to access preferences")
+        user_preference = "default"
+
+    return f"Used preference: {user_preference}"
+```
+
+### 5. 用状态跟踪进度
+
+在长流程中可利用状态记录进度：
+
+```python
+class ProgressTrackingFlow(Flow):
+    @start()
+    def initialize(self):
+        self.state["total_steps"] = 3
+        self.state["current_step"] = 0
+        self.state["progress"] = 0.0
+        self.update_progress()
+        return "Initialized"
+
+    def update_progress(self):
+        """Helper method to calculate and update progress"""
+        if self.state.get("total_steps", 0) > 0:
+            self.state["progress"] = (self.state.get("current_step", 0) /
+                                    self.state["total_steps"]) * 100
+            print(f"Progress: {self.state['progress']:.1f}%")
+
+    @listen(initialize)
+    def step_one(self, _):
+        # Do work...
+        self.state["current_step"] = 1
+        self.update_progress()
+        return "Step 1 complete"
+
+    # Additional steps...
+```
+
+### 6. 尽可能使用不可变操作
+
+尤其在结构化状态中，优先使用不可变操作可提升可读性：
+
+```python
+# Instead of modifying lists in place:
+self.state.items.append(new_item)  # Mutable operation
+
+# Consider creating new state:
+from pydantic import BaseModel
+from typing import List
+
+class ItemState(BaseModel):
+    items: List[str] = []
+
+class ImmutableFlow(Flow[ItemState]):
+    @start()
+    def add_item(self):
+        # Create new list with the added item
+        self.state.items = [*self.state.items, "new item"]
+        return "Item added"
+```
+
+## 调试 Flow 状态
+
+### 记录状态变化
+
+开发过程中可以添加日志来跟踪状态变化：
+
+```python
+import logging
+logging.basicConfig(level=logging.INFO)
+
+class LoggingFlow(Flow):
+    def log_state(self, step_name):
+        logging.info(f"State after {step_name}: {self.state}")
+
+    @start()
+    def initialize(self):
+        self.state["counter"] = 0
+        self.log_state("initialize")
+        return "Initialized"
+
+    @listen(initialize)
+    def increment(self, _):
+        self.state["counter"] += 1
+        self.log_state("increment")
+        return f"Incremented to {self.state['counter']}"
+```
+
+### 状态可视化
+
+你可以添加方法来可视化状态，便于调试：
+
+```python
+def visualize_state(self):
+    """Create a simple visualization of the current state"""
+    import json
+    from rich.console import Console
+    from rich.panel import Panel
+
+    console = Console()
+
+    if hasattr(self.state, "model_dump"):
+        # Pydantic v2
+        state_dict = self.state.model_dump()
+    elif hasattr(self.state, "dict"):
+        # Pydantic v1
+        state_dict = self.state.dict()
+    else:
+        # Unstructured state
+        state_dict = dict(self.state)
+
+    # Remove id for cleaner output
+    if "id" in state_dict:
+        state_dict.pop("id")
+
+    state_json = json.dumps(state_dict, indent=2, default=str)
+    console.print(Panel(state_json, title="Current Flow State"))
+```
+
+## 结语
+
+掌握 CrewAI Flows 的状态管理，你就能构建更复杂、更稳健的 AI 应用：它们能持续维护上下文、做出复杂决策，并稳定输出一致结果。
+
+无论选择非结构化状态还是结构化状态，只要落实正确的状态管理实践，都能帮助你构建可维护、可扩展、且真正解决现实问题的 flow。
+
+当你开始开发更复杂的 flow 时，请记住：优秀的状态管理，关键在于在灵活性与结构化之间找到平衡，让代码既强大又易于理解。
+
+<Check>
+你已经掌握 CrewAI Flows 的状态管理核心概念与实践！借助这些知识，你可以构建稳健的 AI 工作流，在步骤间有效维护上下文、共享数据，并实现复杂应用逻辑。
+</Check>
+
+## 下一步
+
+- 在你的 flow 中同时实践结构化状态与非结构化状态
+- 尝试为长流程实现状态持久化
+- 探索[构建你的第一个 crew](/zh-CN/guides/crews/first-crew)，了解 crew 与 flow 的协作方式
+- 查阅 [Flow 参考文档](/zh-CN/concepts/flows) 了解更多高级特性

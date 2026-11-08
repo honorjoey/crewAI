@@ -1,0 +1,76 @@
+---
+title: "概览"
+description: "用外部自动化连接CrewAI代理并管理AI服务"
+icon: "face-smile"
+mode: "wide"
+---
+
+整合工具让你的代理将工作交给其他自动化平台,并管理AI服务. 当一个工作流程需要引用现有的 CrewAI 部署或将专门任务委托给 Amazon Bedrock 等提供商时使用它们.
+
+## **可用工具**
+
+<CardGroup cols={2}>
+  <Card title="合并代理处理工具" icon="diagram-project" href="/zh-CN/tools/integration/mergeagenthandlertool">
+    安全地访问上百个第三方工具,如Linear,GitHub,Slack,并通过Merge的统一API获取更多.
+  </Card>
+
+  <Card title="CrewAI 运行自动化工具" icon="robot" href="/zh-CN/tools/integration/crewaiautomationtool">
+    Invoke live CrewAI平台自动化,通过自定义输入,以及直接从您的代理商获取结果的民意调查.
+  </Card>
+
+  <Card title="Bedrock Invoke 代理工具" icon="aws" href="/zh-CN/tools/integration/bedrockinvokeagenttool">
+    呼叫亚马逊贝德罗克特工 重复使用AWS的护栏 和流回回工作流程
+  </Card>
+</CardGroup>
+
+## **常见使用案例**
+
+- **链式自动化**:从另一机组人员或流动人员中驱逐现有机组人员
+- =0: 已经封装公司逻辑和护栏的贝德洛克特工的路线任务
+- "0":将CrewAI推理与暴露自己代理API的下游系统相结合.
+- ^0: 输入外部自动化并合并最终结果回到当前运行中
+
+## **快速启动示例**
+
+```python
+from crewai import Agent, Task, Crew
+from crewai_tools import InvokeCrewAIAutomationTool
+from crewai_tools.aws.bedrock.agents.invoke_agent_tool import BedrockInvokeAgentTool
+
+# External automation
+analysis_automation = InvokeCrewAIAutomationTool(
+    crew_api_url="https://analysis-crew.acme.crewai.com",
+    crew_bearer_token="YOUR_BEARER_TOKEN",
+    crew_name="Analysis Automation",
+    crew_description="Runs the production-grade analysis pipeline",
+)
+
+# Managed agent on Bedrock
+knowledge_router = BedrockInvokeAgentTool(
+    agent_id="bedrock-agent-id",
+    agent_alias_id="prod",
+)
+
+automation_strategist = Agent(
+    role="Automation Strategist",
+    goal="Orchestrate external automations and summarise their output",
+    backstory="You coordinate enterprise workflows and know when to delegate tasks to specialised services.",
+    tools=[analysis_automation, knowledge_router],
+    verbose=True,
+)
+
+execute_playbook = Task(
+    description="Run the analysis automation and ask the Bedrock agent for executive talking points.",
+    agent=automation_strategist,
+)
+
+Crew(agents=[automation_strategist], tasks=[execute_playbook]).kickoff()
+```
+
+## **最佳做法**
+
+- "0":将 API 密钥和无记名符号存储在环境变量或机密管理器中
+- ○ 外部自动化可能需要较长的适当的投票间隔和超时
+- =0: Bedrock Agents 支持会话 ID 这样您就可以通过多个工具调用来维护上下文
+- \0\: 将远程输出( JSON、 文本、 状态代码) 规范化, 然后再转发给下游任务 。
+- ○ :跟踪CrewAI平台或AWS云表的审计记录,以保持配额限制和失败

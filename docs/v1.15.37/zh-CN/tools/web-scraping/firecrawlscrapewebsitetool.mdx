@@ -1,0 +1,44 @@
+---
+title: "Firecrawl ScrapeWebsiteTool"
+description: "Firecrawl ScrapeWebsiteTool 工具文档。"
+icon: fire-flame
+mode: "wide"
+---
+
+# `FirecrawlScrapeWebsiteTool`
+
+## 说明
+
+用于爬行和转换任何网站的平台,
+
+## 安装
+
+- 从“ 0” 获取一个 API 密钥, 并将其设置在环境变量中( Name`FIRECRAWL_API_KEY`).
+- 随“ 0” 一起安装`crewai[tools]` 软件包 :
+
+```shell
+pip install firecrawl-py 'crewai[tools]'
+```
+
+## 示例
+
+使用 FirecrawlScrapeWebsite Tool 如下, 允许您的代理服务器加载网站 :
+
+```python Code
+from crewai_tools import FirecrawlScrapeWebsiteTool
+
+tool = FirecrawlScrapeWebsiteTool(url='firecrawl.dev')
+```
+
+## 参数
+
+- `api_key`: 可选。 指定 Firecrawl API 密钥。 默认是`FIRECRAWL_API_KEY` 环境变量。
+- `url`: 要刮的URL。
+- `page_options`: 可选。
+  - `onlyMainContent`: 可选。 只返回页面中不包括标题,导航,页脚等主要内容.
+  - `includeHtml`: 可选。 包括页面的原始 HTML 内容。 会在响应中输出一个 html 密钥 。
+- `extractor_options`: 可选。 基于 LLM 从页面内容中提取结构化信息的选项
+  - `mode`: 要使用的提取模式, 目前支持“ llm- 提取 ”
+  - `extractionPrompt`: 可选。 描述要从页面提取的信息的提示
+  - `extractionSchema`: 可选。 数据提取计划
+- `timeout`: 可选。 请求超时( 毫秒)

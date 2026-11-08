@@ -1,0 +1,145 @@
+---
+title: S3阅读器工具
+description: “S3ReaderTool”使 CrewAI 代理能够从 Amazon S3 存储桶读取文件。
+icon: aws
+mode: "wide"
+---
+
+# `S3ReaderTool`
+
+## 描述
+
+这`S3ReaderTool` 旨在从 Amazon S3 存储桶读取文件。该工具允许 CrewAI 代理访问和检索存储在 S3 中的内容，非常适合需要读取数据、配置文件或存储在 AWS S3 存储中的任何其他内容的工作流程。
+
+## 安装
+
+要使用该工具，您需要安装所需的依赖项：
+
+```shell
+uv add boto3
+```
+
+## 开始步骤
+
+为了有效地利用`S3ReaderTool`，请按照下列步骤操作：
+
+1. **安装依赖项**：使用上面的命令安装所需的软件包。
+2. **配置AWS凭证**：将您的 AWS 凭证设置为环境变量。
+3. **初始化工具**：创建工具的实例。
+4. **指定S3路径**：提供您要读取的文件的 S3 路径。
+
+## 例子
+
+下面的例子演示了如何使用`S3ReaderTool` 从 S3 存储桶读取文件：
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools.aws.s3 import S3ReaderTool
+
+# Initialize the tool
+s3_reader_tool = S3ReaderTool()
+
+# Define an agent that uses the tool
+file_reader_agent = Agent(
+    role="File Reader",
+    goal="Read files from S3 buckets",
+    backstory="An expert in retrieving and processing files from cloud storage.",
+    tools=[s3_reader_tool],
+    verbose=True,
+)
+
+# Example task to read a configuration file
+read_task = Task(
+    description="Read the configuration file from {my_bucket} and summarize its contents.",
+    expected_output="A summary of the configuration file contents.",
+    agent=file_reader_agent,
+)
+
+# Create and run the crew
+crew = Crew(agents=[file_reader_agent], tasks=[read_task])
+result = crew.kickoff(inputs={"my_bucket": "s3://my-bucket/config/app-config.json"})
+```
+
+## 参数
+
+这`S3ReaderTool` 代理使用时接受以下参数：
+
+- **文件路径**：必填。格式中的 S3 文件路径`s3://bucket-name/file-name`.
+
+## AWS 凭证
+
+该工具需要 AWS 凭证才能访问 S3 存储桶。您可以使用环境变量配置这些凭据：
+
+- **CREW_AWS_REGION**：您的 S3 存储桶所在的 AWS 区域。默认为`us-east-1`.
+- **CREW_AWS_ACCESS_KEY_ID**：您的 AWS 访问密钥 ID。
+- **CREW_AWS_SEC_ACCESS_KEY**：您的 AWS 秘密访问密钥。
+
+## 用法
+
+当使用`S3ReaderTool` 对于代理，代理将需要提供 S3 文件路径：
+
+```python Code
+# Example of using the tool with an agent
+file_reader_agent = Agent(
+    role="File Reader",
+    goal="Read files from S3 buckets",
+    backstory="An expert in retrieving and processing files from cloud storage.",
+    tools=[s3_reader_tool],
+    verbose=True,
+)
+
+# Create a task for the agent to read a specific file
+read_config_task = Task(
+    description="Read the application configuration file from {my_bucket} and extract the database connection settings.",
+    expected_output="The database connection settings from the configuration file.",
+    agent=file_reader_agent,
+)
+
+# Run the task
+crew = Crew(agents=[file_reader_agent], tasks=[read_config_task])
+result = crew.kickoff(inputs={"my_bucket": "s3://my-bucket/config/app-config.json"})
+```
+
+## 错误处理
+
+这`S3ReaderTool` 包括常见 S3 问题的错误处理：
+
+- S3 路径格式无效
+- 文件丢失或无法访问
+- 权限问题
+- AWS凭证问题
+
+发生错误时，该工具将返回一条错误消息，其中包含有关问题的详细信息。
+
+## 实施细节
+
+这`S3ReaderTool` 使用适用于 Python 的 AWS 开发工具包 (boto3) 与 S3 交互：
+
+```python Code
+class S3ReaderTool(BaseTool):
+    name: str = "S3 Reader Tool"
+    description: str = "Reads a file from Amazon S3 given an S3 file path"
+    
+    def _run(self, file_path: str) -> str:
+        try:
+            bucket_name, object_key = self._parse_s3_path(file_path)
+
+            s3 = boto3.client(
+                's3',
+                region_name=os.getenv('CREW_AWS_REGION', 'us-east-1'),
+                aws_access_key_id=os.getenv('CREW_AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=os.getenv('CREW_AWS_SEC_ACCESS_KEY')
+            )
+
+            # Read file content from S3
+            response = s3.get_object(Bucket=bucket_name, Key=object_key)
+            file_content = response['Body'].read().decode('utf-8')
+
+            return file_content
+        except ClientError as e:
+            return f"Error reading file from S3: {str(e)}"
+```
+
+## 结论
+
+这`S3ReaderTool` 提供了一种从 Amazon S3 存储桶读取文件的简单方法。通过使代理能够访问存储在 S3 中的内容，它简化了需要基于云的文件访问的工作流程。该工具对于数据处理、配置管理以及任何涉及从 AWS S3 存储检索信息的任务特别有用。

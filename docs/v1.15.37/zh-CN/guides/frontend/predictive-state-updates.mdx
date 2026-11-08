@@ -1,0 +1,142 @@
+---
+title: 预测性国家最新情况
+description: 将一个在建工具调用参数流到代理状态中, 所以当代理仍在生成时 UI 乐观地更新 。
+icon: gauge-high
+mode: "wide"
+---
+
+## 工作发生时显示
+
+通常一个工具调用从UI的角度来说是原子:代理决定写什么,而你的界面只有在调用完成后才能看到结果. 对于一个生成一个大文件的工具来说,它意味着一个长时间的停顿,然后一切立刻就位。
+
+预测状态更新删除等待 。 您将流线工具参数投射到代理状态的一个字段, 这样当模型以符号生成参数符时, 状态域会填充活字段 。 代理笔记中的文档会显示在编辑器中,因为它是打字的,而不是后面.
+
+<Note>
+预测状态依赖于带有自定义状态的流程( )`Flow[AgentState]`) (中文(简体) ). 它将一个流线工具参数投射到一个状态域,所以对于一个赤裸的船员来说没有等效.
+</Note>
+
+## 如何与共享国家相比
+
+两种模式都从前端读取了代理的状态,但它们解决了不同的问题:
+
+|图案|它会做什么|
+| --- | --- |
+|** 预测状态**|单向. 将一个进行中的工具参数流到状态字段,所以UI在调用完成前更新 *during * 生成 。|
+| **[共享状态](/edge/zh-CN/guides/frontend/shared-state)** |双向. UI读了*和写* 代理的坚定状态, 保持应用和代理 同步跨转。|
+
+到达预测状态 当你想要一个乐观的,飞行中预览 代理正在生产的东西。 到达[共享状态](/edge/zh-CN/guides/frontend/shared-state)当用户需要编辑该状态时。
+
+## 走过去
+
+假设你已经有AG -UI的机组人员 或Flow服务 和副驾驶Kit前端连接。 如果没有,请从[前端概览](/edge/zh-CN/guides/frontend/overview).
+
+<Steps>
+
+<Step title="Define a Flow with custom state">
+
+预测状态将工具参数投放到状态字段, 因此您的流程需要输入状态字段才能接收 。 添加要流到您的字段`CopilotKitState`子类。
+
+```python
+from typing import Optional
+from crewai.flow.flow import Flow, start, router, listen
+from litellm import acompletion
+from ag_ui_crewai.sdk import copilotkit_stream, copilotkit_predict_state, CopilotKitState
+
+WRITE_DOCUMENT_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "write_document",
+        "description": "Write the full document in markdown.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "document": {"type": "string", "description": "The document to write"},
+            },
+        },
+    },
+}
+
+class AgentState(CopilotKitState):
+    document: Optional[str] = None
+
+class DocumentFlow(Flow[AgentState]):
+    @start()
+    @listen("route_follow_up")
+    async def start_flow(self):
+        pass
+```
+
+</Step>
+
+<Step title="Map a state field to a tool argument">
+
+调用`copilotkit_predict_state`** 在**之前,你开始流畅的完成。 它告诉运行时间将命名的工具参数投射到命名的状态域:作为`write_document`调用其流`document`参数,`document`州域更新直播.
+
+```python
+    @router(start_flow)
+    async def chat(self):
+        # Map the `document` state field to the `document` argument of write_document.
+        # As the tool call streams, the state field updates live.
+        await copilotkit_predict_state({
+            "document": {"tool_name": "write_document", "tool_argument": "document"},
+        })
+
+        response = await copilotkit_stream(
+            await acompletion(
+                model="openai/gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Write and edit the document with write_document."},
+                    *self.state.messages,
+                ],
+                tools=[*self.state.copilotkit.actions, WRITE_DOCUMENT_TOOL],
+                parallel_tool_calls=False,
+                stream=True,
+            )
+        )
+        message = response.choices[0].message
+        self.state.messages.append(message)
+```
+
+关键是`copilotkit_predict_state({ "<state_field>": {"tool_name": ..., "tool_argument": ...} })`没有它,前端只会看到`document`一旦工具调用完成。 使用它, 部分参数流到字段, 而代理仍在生成 。
+
+服务于流动`add_crewai_flow_fastapi_endpoint(...)`显示于[前端概览](/edge/zh-CN/guides/frontend/overview).
+
+</Step>
+
+<Step title="Read the predicted state on the frontend">
+
+在前端,用`useAgent`并订阅状态更改。 因为后端将流线参数投影到`document`,此组件作为代理类型重报。
+
+```tsx
+"use client";
+import { useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
+
+function DocumentView() {
+  const { agent } = useAgent({
+    agentId: "document",
+    updates: [UseAgentUpdate.OnStateChanged],
+  });
+  const document = (agent?.state as { document?: string })?.document ?? "";
+  return <article>{document}</article>; // updates as the agent types
+}
+```
+
+那个`document`字段随着代理生成而逐步填充`write_document`因此编辑器可以实时更新, 而不是在结尾时快速更新。
+
+</Step>
+
+</Steps>
+
+## 相关
+
+<CardGroup cols={2}>
+  <Card title="Shared State" icon="arrows-rotate" href="/edge/zh-CN/guides/frontend/shared-state">
+读写代理的状态双向.
+  </Card>
+  <Card title="Agentic Generative UI" icon="list-check" href="/edge/zh-CN/guides/frontend/agentic-generative-ui">
+变换时的现场特工状态
+  </Card>
+  <Card title="Tool-Based Generative UI" icon="puzzle-piece" href="/edge/zh-CN/guides/frontend/tool-based-generative-ui">
+映射代理工具呼叫组件 。
+  </Card>
+</CardGroup>

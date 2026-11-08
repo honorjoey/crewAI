@@ -1,0 +1,182 @@
+---
+title: OpenLIT 集成
+description: 使用 OpenTelemetry 只需一行代码即可快速开始监控您的代理。
+icon: magnifying-glass-chart
+mode: "wide"
+---
+
+# OpenLIT 概述
+
+[开放式LIT](https://github.com/openlit/openlit?src=crewai-docs) 是一款开源工具，只需 **一行** 代码即可轻松监控 AI 代理、LLM、VectorDB 和 GPU 的性能。 
+
+它提供 OpenTelemetry 原生跟踪和指标来跟踪重要参数，例如成本、延迟、交互和任务序列。 
+此设置使您能够跟踪超参数并监控性能问题，帮助您找到随着时间的推移增强和微调代理的方法。
+
+<Frame caption="OpenLIT Dashboard">
+  <img src="/images/openlit1.png" alt="Overview Agent usage including cost and tokens" />
+  <img src="/images/openlit2.png" alt="Overview of agent otel traces and metrics" />
+  <img src="/images/openlit3.png" alt="Overview of agent traces in details" />
+</Frame>
+
+### 功能
+
+- **分析仪表板**：通过跟踪指标、成本和用户交互的详细仪表板来监控代理的运行状况和性能。
+- **OpenTelemetry 原生 Observability SDK**：供应商中立的 SDK，用于将跟踪和指标发送到您现有的可观察性工具，如 Grafana、DataDog 等。
+- **自定义和微调模型的成本跟踪**：使用自定义定价文件定制特定模型的成本估算，以实现精确预算。
+- **异常监控仪表板**：通过使用监控仪表板跟踪常见异常和错误来快速发现和解决问题。
+- **合规性和安全性：检测亵渎等潜在威胁
+- **提示注入检测**：识别潜在的代码注入和秘密泄露。
+- **API 密钥和秘密管理**：集中安全地处理您的 LLM API 密钥和秘密，避免不安全的做法。
+- **提示管理**：使用 PromptHub 管理和版本代理提示，以便跨代理进行一致且轻松的访问。
+- **模型Playground** 在部署之前测试并比较 CrewAI 代理的不同模型。
+
+## 设置说明
+
+<Steps>
+    <Step title="Deploy OpenLIT">
+      <Steps>
+        <Step title="Git Clone OpenLIT Repository">
+          ```shell
+          git clone git@github.com:openlit/openlit.git
+          ```
+        </Step>
+        <Step title="Start Docker Compose">
+ 从 [OpenLIT 存储库](https://github.com/openlit/openlit) 的根目录，运行以下命令：
+          ```shell
+          docker compose up -d
+          ```
+        </Step>
+      </Steps>
+    </Step>
+    <Step title="Install OpenLIT SDK">
+      ```shell
+      pip install openlit
+      ```
+    </Step>
+    <Step title="Initialize OpenLIT in Your Application">
+ 将以下两行添加到您的应用程序代码中：
+      <Tabs>
+        <Tab title="Setup using function arguments">
+          ```python
+          import openlit
+          openlit.init(otlp_endpoint="http://127.0.0.1:4318")
+          ```
+          
+ 用于监控 CrewAI 代理的示例用法：
+    
+          ```python
+          from crewai import Agent, Task, Crew, Process
+          import openlit
+
+          openlit.init(disable_metrics=True)
+          # Define your agents
+          researcher = Agent(
+              role="Researcher",
+              goal="Conduct thorough research and analysis on AI and AI agents",
+              backstory="You're an expert researcher, specialized in technology, software engineering, AI, and startups. You work as a freelancer and are currently researching for a new client.",
+              allow_delegation=False,
+              llm='command-r'
+          )
+
+
+          # Define your task
+          task = Task(
+              description="Generate a list of 5 interesting ideas for an article, then write one captivating paragraph for each idea that showcases the potential of a full article on this topic. Return the list of ideas with their paragraphs and your notes.",
+              expected_output="5 bullet points, each with a paragraph and accompanying notes.",
+          )
+
+          # Define the manager agent
+          manager = Agent(
+              role="Project Manager",
+              goal="Efficiently manage the crew and ensure high-quality task completion",
+              backstory="You're an experienced project manager, skilled in overseeing complex projects and guiding teams to success. Your role is to coordinate the efforts of the crew members, ensuring that each task is completed on time and to the highest standard.",
+              allow_delegation=True,
+              llm='command-r'
+          )
+
+          # Instantiate your crew with a custom manager
+          crew = Crew(
+              agents=[researcher],
+              tasks=[task],
+              manager_agent=manager,
+              process=Process.hierarchical,
+          )
+
+          # Start the crew's work
+          result = crew.kickoff()
+
+          print(result)
+          ```
+        </Tab>
+        <Tab title="Setup using Environment Variables">
+
+ 将以下两行添加到您的应用程序代码中：
+          ```python
+          import openlit
+
+          openlit.init()
+          ```
+
+运行以下命令来配置 OTEL 导出端点：
+          ```shell
+          export OTEL_EXPORTER_OTLP_ENDPOINT = "http://127.0.0.1:4318"
+          ```
+
+ 监控 CrewAI 异步代理的示例用法：
+
+          ```python
+          import asyncio
+          from crewai import Crew, Agent, Task
+          import openlit
+
+          openlit.init(otlp_endpoint="http://127.0.0.1:4318")
+
+          # Create an agent with code execution enabled
+          coding_agent = Agent(
+            role="Python Data Analyst",
+            goal="Analyze data and provide insights using Python",
+            backstory="You are an experienced data analyst with strong Python skills.",
+            allow_code_execution=True,
+            llm="command-r"
+          )
+
+          # Create a task that requires code execution
+          data_analysis_task = Task(
+            description="Analyze the given dataset and calculate the average age of participants. Ages: {ages}",
+            agent=coding_agent,
+            expected_output="5 bullet points, each with a paragraph and accompanying notes.",
+          )
+
+          # Create a crew and add the task
+          analysis_crew = Crew(
+            agents=[coding_agent],
+            tasks=[data_analysis_task]
+          )
+
+          # Async function to kickoff the crew asynchronously
+          async def async_crew_execution():
+              result = await analysis_crew.kickoff_async(inputs={"ages": [25, 30, 35, 40, 45]})
+              print("Crew Result:", result)
+
+          # Run the async function
+          asyncio.run(async_crew_execution())
+          ```
+        </Tab>
+      </Tabs>
+ 请参阅 OpenLIT [Python SDK 存储库](https://github.com/openlit/openlit/tree/main/sdk/python) 了解更多高级配置和用例。
+    </Step>
+    <Step title="Visualize and Analyze">
+ 现在正在收集代理可观测性数据并将其发送到 OpenLIT，下一步是可视化和分析此数据，以深入了解代理的性能、行为并识别代理区域改进。
+
+ 只需在浏览器上访问 OpenLIT（`127.0.0.1:3000`）即可开始探索。您可以使用默认凭据登录
+      - **电子邮件**：`user@openlit.io`
+      - **密码**：`openlituser`
+      
+      <Frame caption="OpenLIT Dashboard">
+        <img src="/images/openlit1.png" alt="Overview Agent usage including cost and tokens" />
+        <img src="/images/openlit2.png" alt="Overview of agent otel traces and metrics" />
+      </Frame>
+
+    </Step>
+</Steps> 
+

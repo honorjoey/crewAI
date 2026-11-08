@@ -1,0 +1,54 @@
+---
+title: 测试
+description: 了解如何测试您的 CrewAI Crew 并评估其性能。
+icon: vial
+mode: "wide"
+---
+
+## 概述
+
+测试是开发过程中至关重要的一环，确保您的 crew 按预期运行必不可少。借助 crewAI，您可以使用内置的测试功能轻松测试您的 crew 并评估其性能。
+
+### 使用测试功能
+
+我们添加了 CLI 命令 `crewai test`，让测试 crew 变得简单。该命令会按指定的迭代次数运行您的 crew，并提供详细的性能指标。参数为 `n_iterations` 和 `model`，均为可选参数，默认值分别为 2 和 `gpt-4o-mini`。目前唯一可用的提供商是 OpenAI。
+
+```bash
+crewai test
+```
+
+如果您想运行更多迭代或使用不同的模型，可以这样指定参数：
+
+```bash
+crewai test --n-iterations 5 --model gpt-4o
+```
+
+或使用简写形式：
+
+```bash
+crewai test -n 5 -m gpt-4o
+```
+
+<Note>
+  旧的 `--n_iterations` 标志仍然可用，但已被弃用并从 `--help` 中隐藏。请改用
+  `--n-iterations`（或 `-n`）。
+</Note>
+
+当您运行 `crewai test` 命令时，crew 将按指定的迭代次数执行，运行结束时会显示性能指标。
+
+结束时的得分表格将按以下指标展示 crew 的性能：
+
+<center>**Tasks 得分（1-10 分，越高越好）**</center>
+
+| Tasks/Crew/Agents  | Run 1 | Run 2 | Avg. Total | Agents                         | Additional Info                  |
+|:------------------|:-----:|:-----:|:----------:|:------------------------------:|:---------------------------------|
+| Task 1        |  9.0  |  9.5  |**9.2**| Professional Insights          |                                  |
+|                    |       |       |            | Researcher                     |                                  |
+| Task 2        |  9.0  | 10.0  |**9.5**| Company Profile Investigator   |                                  |
+| Task 3        |  9.0  |  9.0  |**9.0**| Automation Insights            |                                  |
+|                    |       |       |            | Specialist                     |                                  |
+| Task 4        |  9.0  |  9.0  |**9.0**| Final Report Compiler          | Automation Insights Specialist   |
+| Crew         | 9.00  | 9.38  |**9.2**|                                |                                  |
+| Execution Time (s) |  126  |  145  |**135**|                                |                                  |
+
+上面的示例展示了带有两个 task 的 crew 运行两次的测试结果，包括每个 task 以及整个 crew 的平均总分。

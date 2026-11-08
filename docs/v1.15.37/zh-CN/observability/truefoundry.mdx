@@ -1,0 +1,147 @@
+---
+title: TrueFoundry 集成
+icon: chart-line
+mode: "wide"
+---
+
+TrueFoundry 提供了企业级[人工智能网关](https://www.truefoundry.com/ai-gateway)，它可以与 CrewAI 等代理框架集成，并为您的 AI 应用程序提供治理和可观察性。 TrueFoundry AI Gateway 充当 LLM 访问的统一接口，提供：
+
+- **统一 API 访问**：通过一个 API 连接到 250 多个 LLM（OpenAI、Claude、Gemini、Groq、Mistral）
+- **低延迟**：低于 3 毫秒的内部延迟，具有智能路由和负载平衡 
+- **企业安全**：SOC 2、HIPAA、GDPR遵守 RBAC 和审核日志记录
+- **配额和成本管理**：基于令牌的配额、速率限制和全面使用跟踪
+- **可观察性**：具有可自定义保留的完整请求/响应日志记录、指标和跟踪
+
+## TrueFoundry 如何与 CrewAI 集成
+
+
+### 安装和设置
+
+<Steps>
+<Step title="Install CrewAI">
+```bash
+pip install crewai
+```
+</Step>
+
+<Step title="Get TrueFoundry Access Token">
+1. 注册[TrueFoundry帐户](https://www.truefoundry.com/register)
+2. 按照[快速启动](https://docs.truefoundry.com/gateway/quick-start)
+</Step>
+
+<Step title="Configure CrewAI with TrueFoundry">
+![TrueFoundry 代码配置](/images/new-code-snippet.png)
+
+```python
+from crewai import LLM
+
+# Create an LLM instance with TrueFoundry AI Gateway
+truefoundry_llm = LLM(
+    model="openai-main/gpt-4o",  # Similarly, you can call any model from any provider
+    base_url="your_truefoundry_gateway_base_url",
+    api_key="your_truefoundry_api_key"
+)
+
+# Use in your CrewAI agents
+from crewai import Agent
+
+@agent
+def researcher(self) -> Agent:
+    return Agent(
+        config=self.agents_config['researcher'],
+        llm=truefoundry_llm,
+        verbose=True
+    )
+```
+</Step>
+</Steps>
+
+### 完整的 CrewAI 示例
+
+```python
+from crewai import Agent, Task, Crew, LLM
+
+# Configure LLM with TrueFoundry
+llm = LLM(
+    model="openai-main/gpt-4o",
+    base_url="your_truefoundry_gateway_base_url", 
+    api_key="your_truefoundry_api_key"
+)
+
+# Create agents
+researcher = Agent(
+    role='Research Analyst',
+    goal='Conduct detailed market research',
+    backstory='Expert market analyst with attention to detail',
+    llm=llm,
+    verbose=True
+)
+
+writer = Agent(
+    role='Content Writer', 
+    goal='Create comprehensive reports',
+    backstory='Experienced technical writer',
+    llm=llm,
+    verbose=True
+)
+
+# Create tasks
+research_task = Task(
+    description='Research AI market trends for 2024',
+    agent=researcher,
+    expected_output='Comprehensive research summary'
+)
+
+writing_task = Task(
+    description='Create a market research report',
+    agent=writer,
+    expected_output='Well-structured report with insights',
+    context=[research_task]
+)
+
+# Create and execute crew
+crew = Crew(
+    agents=[researcher, writer],
+    tasks=[research_task, writing_task],
+    verbose=True
+)
+
+result = crew.kickoff()
+```
+
+### 可观察性和治理
+
+通过 TrueFoundry 的指标选项卡监控您的 CrewAI 代理：
+![TrueFoundry 指标](/images/gateway-metrics.png)
+
+借助 Truefoundry 的 AI 网关，您可以监控和管理您的 CrewAI 代理。分析：
+
+- **性能指标**：使用 P99、P90 和 P50 百分位数跟踪请求延迟、首次令牌时间 (TTFS) 和令牌间延迟 (ITL) 等关键延迟指标
+- **成本和令牌使用**：通过输入/输出令牌的详细细分以及每个模型的相关费用来了解应用程序的成本
+- **使用情况模式**：通过对用户活动、模型分布和基于团队的使用情况进行详细分析，了解您的应用程序的使用方式
+- **速率限制和负载平衡**：您可以为模型设置速率限制、负载平衡和回退
+
+## 跟踪
+
+有关跟踪的更详细了解，请参阅[开始追踪](https://docs.truefoundry.com/docs/tracing/tracing-getting-started)。对于跟踪，您可以添加 Traceloop SDK：
+对于跟踪，您可以添加 Traceloop SDK：
+
+```bash
+pip install traceloop-sdk
+```
+
+```python
+from traceloop.sdk import Traceloop
+
+# Initialize enhanced tracing
+Traceloop.init(
+    api_endpoint="https://your-truefoundry-endpoint/api/tracing",
+    headers={
+        "Authorization": f"Bearer {your_truefoundry_pat_token}",
+        "TFY-Tracing-Project": "your_project_name",
+    },
+)
+```
+
+这可以在整个 CrewAI 工作流程中提供额外的跟踪关联。
+![TrueFoundry CrewAI 追踪](/images/tracing_crewai.png)

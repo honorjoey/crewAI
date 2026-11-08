@@ -1,0 +1,54 @@
+---
+title: "目录已读"
+description: "目录已读 工具文档。"
+icon: folder-tree
+mode: "wide"
+---
+
+# `DirectoryReadTool`
+
+<Note>
+    我们仍然在努力改进工具,所以将来可能会有出乎意料的行为或变化.
+</Note>
+
+## 说明
+
+DirectoryRead Tool是一个强大的工具,旨在提供目录内容的全面列表.
+它可以通过指定的目录进行递归导航,为用户提供所有文件的详细目录,包括子目录内的文件.
+这一工具对于需要详细目录结构清单或验证目录内文件组织情况的任务至关重要。
+
+## 安装
+
+要在您的工程中使用目录读取工具, 请安装`crewai_tools` 软件包。 如果这个软件包还不是您环境的一部分, 您可以使用 pip 安装它, 命令如下 :
+
+```shell
+pip install 'crewai[tools]'
+```
+
+此命令安装最新版本`crewai_tools` 软件包,允许访问目录读取工具。
+
+## 示例
+
+使用目录读取工具是直截了当的。 以下代码片段演示了如何设置并使用工具列出指定目录的内容:
+
+```python Code
+from crewai_tools import DirectoryReadTool
+
+# Initialize the tool so the agent can read any directory's content 
+# it learns about during execution
+tool = DirectoryReadTool()
+
+# OR
+
+# Initialize the tool with a specific directory, 
+# so the agent can only read the content of the specified directory
+tool = DirectoryReadTool(directory='/path/to/your/directory')
+```
+
+## 参数
+
+下列参数可用于自定义`DirectoryReadTool`'行为 :
+
+| 参数| 类型| 说明|
+|:---------------|:---------|:-------------------------------------------------------------------------------------------------------------------------------------|
+| **目录**  | `弦 '|  可选 . 您想要列出目录内容的路径。 它既接受绝对路径,也接受相对路径,将工具引导到理想的内容目录.|

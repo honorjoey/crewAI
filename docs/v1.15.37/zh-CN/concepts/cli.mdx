@@ -1,0 +1,678 @@
+---
+title: 国 际
+description: 学习如何使用CrewAI CLI与CrewAI互动.
+icon: terminal
+mode: "wide"
+---
+
+<Warning>
+自发布0.140.0起,CrewAI AMP开始迁移他们的登录
+供养者。 因此,通过CLI的认证流量得到了更新. 使用的用户
+Google 要登录, 或者在2025年7月3日之后创建账户的将是
+无法登录旧版本`crewai`图书馆。
+</Warning>
+
+## 概览
+
+CrewAI CLI提供一套指令与CrewAI互动,允许您创建,训练,运行和管理船员和流量.
+
+## 安装
+
+要使用 CrewAI CLI, 请确保您安装 CrewAI :
+
+```shell Terminal
+pip install crewai
+```
+
+## 基本用途
+
+CrewAI CLI指令的基本结构是:
+
+```shell Terminal
+crewai [COMMAND] [OPTIONS] [ARGUMENTS]
+```
+
+## 可用命令
+
+### 1. 创建
+
+创建新的乘务员,流程,独立代理(实验),工具,技能,或模板项目.
+
+```shell Terminal
+crewai create [OPTIONS] TYPE NAME
+```
+
+- `TYPE`: `crew`, `flow`, `agent`(实验性),`tool`, `skill`,或`template`
+- `NAME`: 项目名称、工具把手、技能或模板
+
+#### 机组人员
+
+```shell Terminal
+crewai create crew my_new_crew
+crewai create crew my_new_crew --classic
+```
+
+默认`crewai create crew`创建 JSON 第一个机组项目`crew.jsonc`和`agents/*.jsonc`启用`crewai create crew my_new_crew --classic`只有当你想要更老的Python/YAML脚手架时`crew.py`, `config/agents.yaml`,以及`config/tasks.yaml`.
+
+#### 流动
+
+```shell Terminal
+crewai create flow my_new_flow
+crewai create flow my_new_flow --declarative
+```
+
+#### 现在运行它
+
+当你在航站楼里创建船员或流动时`crewai create`提议实施新项目:
+
+```text
+  Run it now? [Y/n]:
+```
+
+按 Enter 键开始`crewai run`在项目文件夹中。`crewai create`然后用运行的退出代码退出。 第一次运行还安装了项目的依赖性. 答复`n`以跳过运行,然后 CLI 打印命令用于后面 :
+
+```text
+  Run it later: cd my_new_crew && crewai run
+```
+
+`crewai create`不询问与`CREWAI_DMN=true`,或者当stdin或stdout不是终端时,比如当一个编码代理或CI任务运行时. 创建工具、技能或模板从不问。
+
+#### 代理( 经验)
+
+```shell Terminal
+crewai create agent support_agent
+crewai create agent json_support --format json
+crewai create agent python_support --format python
+```
+
+独立代理项目默认为`agent.yaml`启用`--format json`用于JSON中的配置,或`--format python`对于一个导出 Python 代理。 这个实验项目/加载合同可能会改变,需要匹配的预览CLI/SDK构建. 见[独立代理项目](/edge/zh-CN/guides/agents/standalone-agent-projects)用于设置、工具、运行时间输入和部署限制。
+
+#### 工具
+
+脚手架自定义工具仓库 :
+
+```shell Terminal
+crewai create tool my_tool
+```
+
+#### 技能
+
+脚手架 代理技能。 在船员项目内(在哪里)`pyproject.toml`),该技能是在`./skills/`:
+
+```shell Terminal
+crewai create skill my-skill
+crewai create skill my-skill --no-project
+```
+
+使用`--no-project`来创建当前目录中的技能,而不是`./skills/`.
+
+#### 模板
+
+在当前目录中添加远程工程模板 :
+
+```shell Terminal
+crewai create template my-template
+crewai create template my-template --output-dir custom_dir
+```
+
+使用`--output-dir`以覆盖输出文件夹名称(默认为模板名称)。
+
+#### 折旧的创建别名
+
+这些旧命令仍然有效,但打印出黄色的贬值警告. 喜欢`crewai create <type>`上方表格。
+
+|折旧|替换使用|
+| :--- | :--- |
+| `crewai tool create <handle>` | `crewai create tool <handle>` |
+| `crewai skill create <name>` | `crewai create skill <name>` |
+| `crewai template add <name>` | `crewai create template <name>` |
+
+生命周期命令保持不变——例如`crewai tool install`, `crewai skill publish`,以及`crewai template list`属于资源组。
+
+#### 折损旗别名
+
+这些更古老的蛇 案例旗仍然有效,但隐藏在`--help`。优先使用下面每个命令部分记录的kebab案表格。
+
+|折旧|替换使用|
+| :--- | :--- |
+| `--skip_provider`(关于`crewai create crew`) | `--skip-provider` |
+| `--n_iterations`(关于`crewai train`, `crewai test`) | `--n-iterations` |
+| `--task_id`(关于`crewai replay`) | `--task-id` |
+
+### 2. 版本内容
+
+显示已安装的 CrewAI 版本 。
+
+```shell Terminal
+crewai version [OPTIONS]
+```
+
+- `--tools`: (可选) 显示已安装的 CrewAI 工具版本
+
+示例
+
+```shell Terminal
+crewai version
+crewai version --tools
+```
+
+### 3. 火车
+
+为特定数量的迭代训练船员.
+
+```shell Terminal
+crewai train [OPTIONS]
+```
+
+- `-n, --n-iterations INTEGER`: 培训船员的重复次数( 默认: 5)
+- `-f, --filename TEXT`: 用于培训的自定义文件路径( 默认 : "trained  agents  data.pkl")
+
+示例
+
+```shell Terminal
+crewai train -n 10 -f my_training_data.pkl
+```
+
+### 4. 重播
+
+重放特定任务的船员执行.
+
+```shell Terminal
+crewai replay [OPTIONS]
+```
+
+- `-t, --task-id TEXT`: 从此任务ID重放船员, 包括所有后续任务
+
+示例
+
+```shell Terminal
+crewai replay -t task_123456
+```
+
+### 5. 日志任务产出
+
+获取您最新的乘员. kickoff () 任务输出 。
+
+```shell Terminal
+crewai log-tasks-outputs
+```
+
+### 6. 重设记忆
+
+重置机组记忆(长,短,实体,最新 crew kickoff outputs).
+
+```shell Terminal
+crewai reset-memories [OPTIONS]
+```
+
+- `-l, --long`: 重置 Long TERM 记忆
+- `-s, --short`重置 SHORT TERM 内存
+- `-e, --entities`: 重置 ENTITIES 内存
+- `-k, --kickoff-outputs`重置最晚的 KICKOF TASK 输出
+- `-kn, --knowledge`重置知识存储
+- `-akn, --agent-knowledge`重置 AGENT 知识存储
+- `-a, --all`: 重置全部记忆
+
+示例
+
+```shell Terminal
+crewai reset-memories --long --short
+crewai reset-memories --all
+```
+
+### 7. 测试
+
+测试机组人员并评定结果.
+
+```shell Terminal
+crewai test [OPTIONS]
+```
+
+- `-n, --n-iterations INTEGER`: 测试船员的重复次数( 默认: 3)
+- `-m, --model TEXT`: LLM 模型运行在乘务员身上的测试(默认:"gpt-4o-mini")
+
+示例
+
+```shell Terminal
+crewai test -n 5 -m gpt-3.5-turbo
+```
+
+### 8. 运行
+
+运行船员或流动。
+
+```shell Terminal
+crewai run
+```
+
+<Note>
+从0.103.0版本开始,`crewai run`命令可用于运行
+标准船员和流动。 对于流动,它自动检测类型
+从 pyproject.toml 运行相应的命令. 这是现在
+建议如何运行 船员和流量。
+</Note>
+
+在船员或Python流开始前`crewai run`检查每个模型所需的 API 是否在您环境中或`.env`乘员AI负载:项目属于自己,或者在母文件夹中距离最近的一个. 对于JSON的船员,它读到`llm`, `manager_llm`和`function_calling_llm`领域`crew.jsonc`及其列出的代理文件; 没有`llm`运行`MODEL`或者在机组人员的默认型号上`gpt-4.1-mini`,因此该模型也被检查。 对于Python机组或流体,它读作`MODEL`和任何`llm:`输入`config/agents.yaml`检查`gpt-4.1-mini`当两个模型都没有命名时。 一个空值或`YOUR_API_KEY`占位符计算为缺失。
+
+在一个终端,CLI要求每个缺失的密钥. 你粘的东西被藏起来 保存在项目上`.env`,然后用于下一个开始的运行。 按 Enter 键跳过密钥 。 没有终端,比如在编码代理或CI下,CLI会打印出要添加的行,反正也开始运行. 也可以打印行,而不是保存,当`.env`在父文件夹中或是一个符号链接 :
+
+```text
+OPENAI_API_KEY is not set. Add OPENAI_API_KEY=<your key> to /path/to/my_crew/.env, then run `crewai run` again.
+```
+
+检查覆盖了使用单一API密钥的提供者,如OpenAI,Anthropic,双子座和Groq. 它跳过Azure,Bedrock和Watsonx,Ollama等本地模型,以及声明流. 它不读`llm`设置在 Python 代码中,当一个项目的代码设置了一个时,它也不检查默认模式。 页:1`.env`这不是一个普通文件,例如一个给一个机密管理器服务的命名管道,它留待运行阅读而不检查。 在CLI保存一个键之前,它使`.env`只能由你读;当它不能读的时候,它只使用此运行的密钥,并说这样而不是保存它. 当项目`.env`通过您自己的环境没有设置向另一个主机发送请求, 例如`OPENAI_BASE_URL`, `OPENAI_API_BASE`或`HTTPS_PROXY`,或者JSON船员的文件设置`base_url`, `api_base`或`endpoint`任何地方,比如在`llm`,则`client_params`页:1`planning_llm`或嵌入器的`config`,每个主机在询问前的提示名称。 只有在您信任主机的情况下才会粘贴密钥 。
+
+如果JSON机组由于API密钥没有设置而仍然失败,例如这个检查跳过的一个模型的密钥,运行会用相同的线而不是回溯停止. 在终端上,CLI首先要求像上面那样的键,然后再次构建机组,并从第一个任务中再次运行,因此已经完成的任务再次运行;按Enter来代替.
+
+<Note>
+请从您的 CrewAI 项目的目录中运行这些命令
+已经设置。 一些命令可能需要在内部额外配置或设置
+您的项目结构。
+</Note>
+
+### 9. 聊天
+
+从版本开始`0.98.0`当你运行`crewai chat`命令中,您与您的船员开始交互会话。 AI助理将指导您,请求为执行船员提供必要的投入. 一旦提供了所有投入,船员将执行其任务。
+
+获得结果后,您可以继续与助手进行互动,以获得进一步的指示或提问.
+
+```shell Terminal
+crewai chat
+```
+
+<Note>
+确保您从您的 CrewAI 项目的根目录执行这些命令 。
+</Note>
+<Note>
+重要: 设置`chat_llm`属性在您的船员定义中启用此命令。
+
+对于JSON第一机组,加到`crew.jsonc`:
+
+```jsonc
+{
+  "name": "My Crew",
+  "agents": ["researcher"],
+  "tasks": [],
+  "chat_llm": "openai/gpt-4o"
+}
+```
+
+对于经典的Python/YAML机组,设置在`crew.py`:
+
+```python
+@crew
+def crew(self) -> Crew:
+    return Crew(
+        agents=self.agents,
+        tasks=self.tasks,
+        process=Process.sequential,
+        verbose=True,
+        chat_llm="gpt-4o",  # LLM for chat orchestration
+    )
+```
+
+</Note>
+
+### 10. 部署
+
+部署机组人员或前往[Crewahi AMP](https://app.crewai.com).
+
+- ** 核证**: 需要认证才能部署到CrewAI AMP
+您可以登录或创建账户 :
+
+  ```shell Terminal
+  crewai login
+  ```
+
+- ** 进行部署**: 一旦被认证,您就可以为您的船员创建部署,或者从您本地项目的根部流出.
+  ```shell Terminal
+  crewai deploy create
+  ```
+  - 读取您的本地工程配置 。
+  - 提示您确认环境变量( 如`OPENAI_API_KEY`, `SERPER_API_KEY`)在本地发现。 这些将在企业号平台部署后安全储存。 确保您的敏感密钥在本地正确配置( 例如, 在 a)`.env`在运行此文件之前 。
+  - `--zip`上传项目为 ZIP, 即使它有 git`origin`没有从中获取。
+  - 当项目是一个至少包含一个承诺的 git 存储器时, 每个 ZIP 上传, 在创建或推动时, 打印它创建于本地的承诺, 以及项目目录是否有未承诺的更改 。
+
+### 11. 组织管理
+
+管理您的CrewAI AMP组织.
+
+```shell Terminal
+crewai org [COMMAND] [OPTIONS]
+```
+
+#### 图标 :
+
+- `list`: 列出您所属的所有组织
+
+```shell Terminal
+crewai org list
+```
+
+- `current`: 显示当前活动的组织
+
+```shell Terminal
+crewai org current
+```
+
+- `switch`: 切换到特定组织
+
+```shell Terminal
+crewai org switch <organization_id>
+```
+
+<Note>
+您必须获得CrewAI AMP的认证 才能使用组织管理
+命令。
+</Note>
+
+- ** 进行部署**(续):
+
+  - 将部署链接到相应的远程 GitHub 寄存器( 它通常自动检测到此) 。
+
+- ** 部署机组人员**: 一旦你被认证,你可以部署你的船员 或者流向CrewAI AMP。
+
+  ```shell Terminal
+  crewai deploy push
+  ```
+
+  - 启动CrewAI AMP平台的部署进程.
+  - 一旦成功启动,它将成功输出所创建的部署! 信息与部署名称和独特的部署ID。
+  - Push 保留创建时使用的源 。 正在添加一个 git`origin`后来不将 ZIP 部署切换为 git 。
+
+- ** 部署情况**:可通过以下方式检查部署情况:
+
+  ```shell Terminal
+  crewai deploy status
+  ```
+
+这将获得你最近一次部署努力的最新部署状态(例如,`Building Images for Crew`, `Deploy Enqueued`, `Online`) (中文(简体) ). 如果部署失败,它也会打印出错误和建议的修补.
+
+- ** 部署日志**:您可以使用:
+
+  ```shell Terminal
+  crewai deploy logs
+  ```
+
+这个将部署日志流到您的终端 。
+
+- ** 清单部署**: 您可以列出您的所有部署:
+
+  ```shell Terminal
+  crewai deploy list
+  ```
+
+这上面列出了你所有的部署
+
+- ** 不再部署**: 您可以删除部署 :
+
+  ```shell Terminal
+  crewai deploy remove
+  ```
+
+此删除 CrewAI AMP 平台的部署 。
+
+- ** 帮助命令** : 您可以通过下列方式获得CLI的帮助:
+  ```shell Terminal
+  crewai deploy --help
+  ```
+这显示了 CrewAI 部署 CLI 的帮助信息 。
+
+观看此视频教程, 以逐步演示您的机组人员部署到 [CrewAI AMP](https://app.crewai.com)使用CLI.
+
+小范围
+className="w-full side-video rounded-xl" (中文(简体) ).
+弧度=" (中文(简体) ).https://www.youtube.com/embed/3EqSV-CYDZA"
+标题=“船员部署指南”
+边框="0"
+允许 =“ 加速计; 自动播放; 剪贴板- 写入; 加密- 介质; 陀螺仪; 图片映射 ”
+允许FullScreen 移动
+++/iframe >
+
+### 11. 登录
+
+使用安全设备代码流认证 CrewAI AMP (不需要电子邮件条目) 。
+
+```shell Terminal
+crewai login
+```
+
+发生什么了?
+
+- 在您的终端中显示一个校验 URL 和短码
+- 您的浏览器打开到校验 URL
+- 输入/ 确认代码以完成认证
+
+注释:
+
+- OAuth2 提供者和域名通过`crewai config`(默认使用)`login.crewai.com`)
+- 成功登录后, CLI 也尝试自动认证到工具仓库
+- 如果您重置配置, 请运行`crewai login`重新认证
+
+### 12. API 键
+
+当运行时`crewai create crew`命令, CLI 显示可用的 LLM 提供者列表,然后选择您所选择的提供者的模型。 选中的模型保存在生成中`.env`文件和每个生成的代理 JSONC 文件可以设置自己的文件`llm`.
+
+`crewai create flow`在终端中询问相同的问题,并将模型保存为`MODEL`在流动中`.env`,启动机组的特工使用。 与`--provider`,它跳过提供者和模型问题。 通过一个采摘者列表的提供者, 例如`anthropic`或`bedrock`,以使用其第一个列出的模型,或完整`provider/model`用于其他模型的字符串。 申报流动(`--declarative`)在接下来的步骤中不问任何问题,也不问任何密钥的名称,因为其启动者称没有模型.
+
+一旦您选择了 LLM 提供者和模型, 您将会被提示为 API 密钥 。 在终端中,您输入的密钥或密钥是隐藏的;其他值,如端点 URL,一个区域,或Azure部署名称,保持可见. 按 Enter 键跳过提示 。
+
+未保存跳过的密钥 。 除非密钥已经设置在您的环境中, 否则 CLI 打印出要添加到`.env`在此之前`crewai run`:
+
+```text
+  API key not saved. Add this line to my_new_crew/.env before `crewai run`:
+    OPENAI_API_KEY=<your key>
+```
+
+具有默认值的值,如AWS区域和Azure API版本,不列出.
+
+如果您的代理商使用来自多个提供者的模型, CLI 将询问每个提供者的密钥一次, 第一个代理商的模型保存为`MODEL`.
+
+生成的`pyproject.toml`也取决于您选择的模型需要的乘务员外加, 例如:`crewai[tools,anthropic]`安东尼,`crewai[tools,google-genai]`双子座,或`crewai[tools,litellm]`给通过LiteLLM(例如Groq)的用户的供应商。 ceopleAI也通过LiteLLM运行一些模型名称,而不是提供商的SDK,例如:`bedrock/claude-sonnet-4-5-20250929-v1:0`,这些添加`litellm`也一样。`crewai install`,或第一个`crewai run`,安装它们。 仅依赖于 OpenAI 项目`crewai[tools]`一个人 如果您稍后将代理切换到另一个模型, 请添加它需要的额外, 例如`uv add "crewai[anthropic]"`.
+
+与`--skip-provider`,或与`CREWAI_DMN=true`, CLI 要求没有钥匙,也没有写。`crewai create flow`当它不在终端运行时, 如当一个编码代理或一个 CI 任务运行时, 也不问任何问题 。 在默认的JSON机组中,特工使用`openai/gpt-6-luna`除非你通过`--provider`。流动将节省`--provider`模型为`MODEL`并运行在船员AI默认的OpenAI模型上. 下一个步骤为您环境中尚未设置的每个变量命名 :
+
+```text
+  Set OPENAI_API_KEY in .env before `crewai run`
+```
+
+#### 可用的 LLM 提供者
+
+以下是CLI建议最受欢迎的LLM提供商列表:
+
+- 开放AI
+- 格鲁克
+- 人类
+- 谷歌双子座
+- 桑巴诺瓦
+
+当您选择一个提供者时, CLI 会向您显示该提供者可用的模型, 并提示您输入您的 API 密钥 。
+
+#### 其他选项
+
+如果您选择了“ 其他 ” , 您可以从 LiteLLM 支持的提供者列表中选择 。
+
+选择提供者时, CLI 将提示您输入密钥名称和 API 密钥 。
+
+每个提供者的密钥名称见以下链接:
+
+- [LiteLLM提供商](中文(简体) ).https://docs.litellm.ai/docs/providers)
+
+### 13. 配置管理
+
+为 CrewAI 管理 CLI 配置设置 。
+
+```shell Terminal
+crewai config [COMMAND] [OPTIONS]
+```
+
+#### 图标 :
+
+- `list`: 显示所有 CLI 配置参数
+
+```shell Terminal
+crewai config list
+```
+
+- `set`: 设置 CLI 配置参数
+
+```shell Terminal
+crewai config set <key> <value>
+```
+
+- `reset`: 将所有 CLI 配置参数重置为默认值
+
+```shell Terminal
+crewai config reset
+```
+
+#### 可用的配置参数
+
+- `enterprise_base_url`: CrewAI AMP 实例的基础 URL
+- `oauth2_provider`: OAuth2 用于认证的提供者(例如 workos, okta, auth0)
+- `oauth2_audience`: OAuth2 受众值,通常用于识别目标 API 或资源
+- `oauth2_client_id`: 供应商签发的OAuth2客户端ID,在认证请求中使用
+- `oauth2_domain`: OAuth2 提供商的域名(如 your-org.auth0.com),用于发行令牌.
+
+#### 实例
+
+显示当前配置 :
+
+```shell Terminal
+crewai config list
+```
+
+示例输出 :
+|设置|数值|说明|
+| :------------------ | :----------------------- | :---------------------------------------------------------- |
+|企业 基地 url| https://app.crewai.com |CrewAI AMP 实例的基础 URL|
+|org 名称|未设置|目前活动的组织名称|
+|org uuid (中文(简体) ).|未设置|目前活动的组织的UUID|
+|oaut2 提供者|工作间|OAuth2 供应商(例如 workos, okta, auth0)|
+|观众|客户端  01YYY|确定目标API/资源的观众|
+|oaut2 客户端 id|客户端  01XXX|OAuth2 提供者签发的客户ID|
+|oaut2 域名|login.crevai.com (中文(简体) ).|提供商域(如:your-org.auth0.com)|
+
+设置企业基础 URL :
+
+```shell Terminal
+crewai config set enterprise_base_url https://my-enterprise.crewai.com
+```
+
+设置 OAuth2 提供者 :
+
+```shell Terminal
+crewai config set oauth2_provider auth0
+```
+
+设置 OAuth2 域 :
+
+```shell Terminal
+crewai config set oauth2_domain my-company.auth0.com
+```
+
+将所有配置重置为默认 :
+
+```shell Terminal
+crewai config reset
+```
+
+<Tip>
+重设置配置后, 重新运行`crewai login`重新认证。
+</Tip>
+
+### 14. 追踪管理
+
+管理您的机组和流体处决的追踪收集偏好。
+
+```shell Terminal
+crewai traces [COMMAND]
+```
+
+#### 图标 :
+
+- `enable`: 启用机组/流程处决跟踪收集
+
+```shell Terminal
+crewai traces enable
+```
+
+- `disable`: 禁止为机组/流量处决收集追踪
+
+```shell Terminal
+crewai traces disable
+```
+
+- `status`: 显示当前跟踪收藏状态
+
+```shell Terminal
+crewai traces status
+```
+
+#### 如何追踪工作
+
+追踪收集通过检查三个设置进行控制,按优先排序:
+
+1. ** 代码**中的明确旗帜(最高优先级 - 可以启用 OR 禁用):
+
+   ```python
+   crew = Crew(agents=[...], tasks=[...], tracing=True)   # Always enable
+   crew = Crew(agents=[...], tasks=[...], tracing=False)  # Always disable
+   crew = Crew(agents=[...], tasks=[...])                 # Check lower priorities (default)
+   ```
+
+   - `tracing=True`总是能够** 追踪(覆盖一切)
+   - `tracing=False`将** 永远禁用** 追踪(覆盖一切)
+   - `tracing=None`或省略将检查较低优先级设置
+
+2. ** 环境变量**(第二优先):
+
+   ```env
+   CREWAI_TRACING_ENABLED=true
+   ```
+
+   - 仅在`tracing`未明确设定为`True`或`False`代码
+   - 设定为`true`或`1`追踪
+
+3. ** 用户优先**(最低优先级):
+   ```shell Terminal
+   crewai traces enable
+   ```
+   - 仅在`tracing`未设置在代码和`CREWAI_TRACING_ENABLED`未设置为`true`
+   - 运行`crewai traces enable`足以自行追查
+   - 第一个运行的提示( E)`Would you like to view your execution traces?`) 也更新此偏好
+
+<Note>
+** 为了能够追踪**,使用其中任何一种方法:
+- 设定`tracing=True`在您的机组/机组代码中, OR
+- 添加`CREWAI_TRACING_ENABLED=true`给您的`.env`文档, OR
+- 运行`crewai traces enable`
+
+** 停止追踪**,使用其中任何一种方法:
+
+- 设定`tracing=False`在您的机组/机组代码中( 覆盖一切), OR
+- 删除或设置为`false`联合国`CREWAI_TRACING_ENABLED`(原始内容存档于2018-06-21) (英语). Env var, OR
+- 运行`crewai traces disable`
+
+高优先级设置凌驾于低优先级设置之上 。
+
+</Note>
+
+<Tip>
+关于追查的更多信息,见[追查
+(/可观察性/追踪性)。
+</Tip>
+
+<Tip>
+CrewAI CLI 处理工具仓库的认证, 当
+在您的工程中添加软件包 。 仅附加`crewai`在任何时间之前`uv`命令
+用来使用它。 举个例子`crewai uv add requests`。更多信息见 [工具
+仓库](https://docs-platform.crewai.com/platform/zh-CN/guides/tool-repository) 文档。
+</Tip>
+
+<Note>
+配置设置存储于`~/.config/crewai/settings.json`某些
+组织名称和UUID等设置只读,并通过管理
+认证和组织命令。 工具库相关设置
+隐藏且无法由用户直接设置 。
+</Note>

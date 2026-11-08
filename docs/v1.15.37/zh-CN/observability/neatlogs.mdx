@@ -1,0 +1,134 @@
+---
+title: Neatlogs 集成
+description: 了解、调试和共享您的 CrewAI 代理运行
+icon: magnifying-glass-chart
+mode: "wide"
+---
+
+# 简介
+
+Neatlogs 帮助您 **查看代理做了什么**、**为什么**，并 **分享它**。
+
+它捕获每一个步骤：想法、工具调用、响应、评估。没有原始日志。只是清晰、结构化的痕迹。非常适合调试和协作。
+
+## 为什么使用 Neatlogs？
+
+CrewAI 代理使用多种工具和推理步骤。当出现问题时，您需要上下文 - 而不仅仅是错误。
+
+Neatlogs 可以让您：
+
+- 遵循完整的决策路径
+- 直接在步骤上添加反馈
+- 使用 AI 助手与跟踪对话
+- 公开共享运行以获取反馈
+- 将见解转化为任务
+
+一切合而为一
+
+轻松管理您的踪迹
+
+![痕迹](/images/neatlogs-1.png)
+![跟踪响应](/images/neatlogs-2.png)
+
+查看 CrewAI 追踪的最佳用户体验。在您想要的任何地方发表评论。使用 AI 进行调试。
+
+![追踪详情](/images/neatlogs-3.png)
+![带有痕迹的 Ai 聊天机器人](/images/neatlogs-4.png)
+![评论抽屉](/images/neatlogs-5.png)
+
+## 核心功能
+
+- **跟踪查看器**：按顺序跟踪想法、工具和决策
+- **内联注释**：在任何跟踪步骤上标记队友
+- **反馈和评估**：将输出标记为正确或不正确
+- **错误突出显示**：自动标记 API/工具故障
+- **任务转换**：将评论转换为分配的任务
+- **询问跟踪 (AI)**：使用 Neatlogs AI 机器人与您的跟踪聊天
+- **公开共享**：将跟踪链接发布到您的社区
+
+## 使用 CrewAI 进行快速设置
+
+<Steps>
+  <Step title="Sign Up & Get API Key">
+访问 [整洁日志网站](https://neatlogs.com/?utm_source=crewAI-docs)，创建项目，复制 API 密钥。
+  </Step>
+  <Step title="Install SDK">
+    ```bash
+    pip install neatlogs
+    ```
+（最新版本0.8.0，Python 3.8+；MIT 许可证）
+  </Step>
+  <Step title="Initialize Neatlogs">
+ 在启动 Crew 代理之前，添加：
+
+    ```python
+    import neatlogs
+    neatlogs.init("YOUR_PROJECT_API_KEY")
+    ```
+
+ 代理照常运行。 Neatlogs 自动捕获所有内容。
+
+  </Step>
+</Steps>
+
+
+
+## 底层
+
+根据 GitHub，Neatlogs：
+
+- 捕获想法、工具调用、响应、错误和令牌统计
+- 支持 AI 驱动的任务生成和强大的评估工作流程
+
+只需两行代码即可完成所有操作。
+
+
+
+## 观看工作
+
+### 🔍完整演示（4分钟）
+
+<iframe
+ className="w-full方面视频rounded-xl"
+ src="https://www.youtube.com/embed/8KDme9T2I7Q?si=b8oHteaBwFNs_Duk"
+ title="NeatLogs概述"
+frameBorder="0"
+allow="加速度计;自动播放；剪贴板写入；加密媒体；陀螺仪；画中画"
+ allowedFullScreen
+></iframe>
+
+### ⚙️ CrewAI Integration (30s)
+
+<iframe
+ className="w-fullspect-video rounded-xl"
+ src="https://www.loom.com/embed/9c78b552af43452bb3e4783cb8d91230?sid=e9d7d370-a91a-49b0-809e-2f375d9e801d"
+ title="Loom 视频播放器"
+frameBorder="0"
+允许全屏
+></iframe>
+
+
+
+## 链接与支持
+
+- 📘[Neatlogs 文档](https://docs.neatlogs.com/)
+- 🔐[仪表板和 API 密钥](https://app.neatlogs.com/)
+- 🐦 [在推特上关注](https://twitter.com/neatlogs)
+- 📧 联系方式：hello@neatlogs.com
+- 🛠 [GitHub SDK](https://github.com/NeatLogs/neatlogs)
+
+
+
+## TL；DR
+
+只需：
+
+```bash
+pip install neatlogs
+
+import neatlogs
+neatlogs.init("YOUR_API_KEY")
+
+You can now capture, understand, share, and act on your CrewAI agent runs in seconds.
+No setup overhead. Full trace transparency. Full team collaboration.
+```

@@ -1,0 +1,91 @@
+---
+title: 定制管理代理
+description: 了解如何在 CrewAI 中将自定义代理设置为管理者，从而提供对任务管理和协调的更多控制。
+icon: user-shield
+mode: "wide"
+---
+
+# 在 CrewAI 中将特定代理设置为管理员
+
+CrewAI允许用户设置特定的代理作为船员的管理者，从而对任务的管理和协调提供更多的控制。
+此功能可以自定义管理角色，以更好地满足您的项目要求。
+
+## 使用`manager_agent` 属性
+
+### 定制管理代理
+
+`manager_agent` 属性允许您定义自定义代理来管理人员。该代理将监督整个过程，确保任务高效且达到最高标准完成。
+
+### 例子
+
+```python Code
+import os
+from crewai import Agent, Task, Crew, Process
+
+# Define your agents
+researcher = Agent(
+    role="Researcher",
+    goal="Conduct thorough research and analysis on AI and AI agents",
+    backstory="You're an expert researcher, specialized in technology, software engineering, AI, and startups. You work as a freelancer and are currently researching for a new client.",
+    allow_delegation=False,
+)
+
+writer = Agent(
+    role="Senior Writer",
+    goal="Create compelling content about AI and AI agents",
+    backstory="You're a senior writer, specialized in technology, software engineering, AI, and startups. You work as a freelancer and are currently writing content for a new client.",
+    allow_delegation=False,
+)
+
+# Define your task
+task = Task(
+    description="Generate a list of 5 interesting ideas for an article, then write one captivating paragraph for each idea that showcases the potential of a full article on this topic. Return the list of ideas with their paragraphs and your notes.",
+    expected_output="5 bullet points, each with a paragraph and accompanying notes.",
+)
+
+# Define the manager agent
+manager = Agent(
+    role="Project Manager",
+    goal="Efficiently manage the crew and ensure high-quality task completion",
+    backstory="You're an experienced project manager, skilled in overseeing complex projects and guiding teams to success. Your role is to coordinate the efforts of the crew members, ensuring that each task is completed on time and to the highest standard.",
+    allow_delegation=True,
+)
+
+# Instantiate your crew with a custom manager
+crew = Crew(
+    agents=[researcher, writer],
+    tasks=[task],
+    manager_agent=manager,
+    process=Process.hierarchical,
+)
+
+# Start the crew's work
+result = crew.kickoff()
+```
+
+## 定制管理代理的好处
+
+- **增强控制**：定制管理方法以适应项目的特定需求。
+- **改进协调**：确保由经验丰富的代理进行高效的任务协调和管理。
+- **可定制的管理**：定义与您的项目目标一致的管理角色和职责。
+
+## 设置LLM经理
+
+如果您使用分层流程并且不想设置自定义管理器代理，则可以指定管理器的语言模型：
+
+```python Code
+from crewai import LLM
+
+manager_llm = LLM(model="gpt-4o")
+
+crew = Crew(
+    agents=[researcher, writer],
+    tasks=[task],
+    process=Process.hierarchical,
+    manager_llm=manager_llm
+)
+```
+
+<Note>
+使用分层过程时，必须设置`manager_agent` 或`manager_llm`。
+</Note>

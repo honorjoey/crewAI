@@ -1,0 +1,52 @@
+---
+title: DALL-E工具
+description: “DallETool”是一款功能强大的工具，旨在根据文本描述生成图像。
+icon: image
+mode: "wide"
+---
+
+# `DallETool`
+
+## 描述
+
+该工具用于使 Agent 能够使用 DALL-E 模型生成图像。它是一个基于变压器的模型，可以根据文本描述生成图像。
+该工具允许代理根据用户提供的文本输入生成图像。
+
+## 安装
+
+安装crewai_tools包
+```shell
+pip install 'crewai[tools]'
+```
+
+## 例子
+
+请记住，使用此工具时，文本必须由 Agent 本身生成。文本必须是您要生成的图像的描述。
+
+```python Code
+from crewai_tools import DallETool
+
+Agent(
+    ...
+    tools=[DallETool()],
+)
+```
+
+如果需要，您还可以通过将 DALL-E 模型的参数作为参数传递给`DallETool` 班级。例如：
+
+```python Code
+from crewai_tools import DallETool
+
+dalle_tool = DallETool(model="dall-e-3",
+                       size="1024x1024",
+                       quality="standard",
+                       n=1)
+
+Agent(
+    ...
+    tools=[dalle_tool]
+)
+```
+
+参数基于`client.images.generate` 来自 OpenAI API 的方法。有关参数的更多信息，
+请参阅[OpenAI API 文档](https://platform.openai.com/docs/guides/images/introduction?lang=python)。

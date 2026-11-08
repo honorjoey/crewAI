@@ -1,0 +1,147 @@
+---
+title: 《代理能力》
+description: “了解扩展 CrewAI 代理的五种方法：工具、MCP、应用程序、技能和知识。”
+icon: puzzle-piece
+mode: "wide"
+---
+
+＃＃ 概述
+
+CrewAI 代理可以通过**五种不同的功能类型**进行扩展，每种功能类型都有不同的用途。了解何时使用每种代理以及它们如何协同工作是构建有效代理的关键。
+
+<CardGroup cols={2}>
+<Card title="工具" icon="wrench" href="/zh-CN/concepts/tools" color="#3B82F6">
+**可调用函数** — 使代理能够采取行动。 Web 搜索、文件操作、API 调用、代码执行。
+</Card>
+<Card title="MCP服务器" icon="plug" href="/zh-CN/mcp/overview" color="#8B5CF6">
+**远程工具服务器** — 通过模型上下文协议将代理连接到外部工具服务器。与工具效果相同，但托管在外部。
+</Card>
+<Card title="应用程序" icon="grid-2" color="#EC4899">
+**平台集成** — 通过 CrewAI 平台将代理连接到 SaaS 应用程序（Gmail、Slack、Jira、Salesforce）。使用平台集成令牌在本地运行。
+</Card>
+<Card title="技能" icon="bolt" href="/zh-CN/concepts/skills" color="#F59E0B">
+**领域专业知识** — 将说明、指南和参考材料注入代理提示中。技能告诉代理*如何思考*。
+</Card>
+<Card title="知识" icon="book" href="/zh-CN/concepts/knowledge" color="#10B981">
+**检索到的事实** — 通过语义搜索 (RAG) 为代理提供来自文档、文件和 URL 的数据。知识为代理人提供“知道什么”。
+</Card>
+</CardGroup>
+
+---
+
+## 关键区别
+
+最重要的是要理解：**这些功能分为两类**。
+
+### 行动能力（工具、MCP、应用程序）
+
+这些使代理能够**执行操作** - 调用 API、读取文件、搜索网络、发送电子邮件。在执行时，所有三个都解析为相同的内部格式（`BaseTool`实例）并显示在代理可以调用​​的统一工具列表中。
+
+```python
+from crewai import Agent
+from crewai_tools import SerperDevTool, FileReadTool
+
+agent = Agent(
+    role="Researcher",
+    goal="Find and compile market data",
+    backstory="Expert market analyst",
+    tools=[SerperDevTool(), FileReadTool()],  # Local tools
+    mcps=["https://mcp.example.com/sse"],     # Remote MCP server tools
+    apps=["gmail", "google_sheets"],           # Platform integrations
+)
+```
+
+### 情境能力（技能、知识）
+
+这些修改了代理的**提示**——在代理开始推理之前注入专业知识、指令或检索的数据。他们不会给特工新的行动；而是给特工新的行动。它们决定了代理的思维方式以及他们可以访问的信息。
+
+```python
+from crewai import Agent
+
+agent = Agent(
+    role="Security Auditor",
+    goal="Audit cloud infrastructure for vulnerabilities",
+    backstory="Expert in cloud security with 10 years of experience",
+    skills=["./skills/security-audit"],        # Domain instructions
+    knowledge_sources=[pdf_source, url_source], # Retrieved facts
+)
+```
+
+---
+
+## 何时使用什么
+
+|你需要...|使用|例子|
+| :------------------------------------------------ | :---------------- | :--------------------------------------- |
+|代理搜索网络|**工具**| `tools=[SerperDevTool()]`                |
+|代理通过 MCP 调用远程 API|**MCP**| `mcps=["https://api.example.com/sse"]`   |
+|代理通过 Gmail 发送电子邮件|**应用程序**| `apps=["gmail"]`                         |
+|代理需遵循特定程序|**技能**| `skills=["./skills/code-review"]`        |
+|代理参考公司文件|**知识**| `knowledge_sources=[pdf_source]`         |
+|代理搜索网络并遵循审查指南|**工具+技能**|两者一起使用|
+
+---
+
+## 组合能力
+
+在实践中，代理经常使用**多种能力类型**。这是一个现实的例子：
+
+```python
+from crewai import Agent
+from crewai_tools import SerperDevTool, FileReadTool, CodeInterpreterTool
+
+# A fully-equipped research agent
+researcher = Agent(
+    role="Senior Research Analyst",
+    goal="Produce comprehensive market analysis reports",
+    backstory="Expert analyst with deep industry knowledge",
+
+    # ACTION: What the agent can DO
+    tools=[
+        SerperDevTool(),         # Search the web
+        FileReadTool(),          # Read local files
+        CodeInterpreterTool(),   # Run Python code for analysis
+    ],
+    mcps=["https://data-api.example.com/sse"],  # Access remote data API
+    apps=["google_sheets"],                      # Write to Google Sheets
+
+    # CONTEXT: What the agent KNOWS
+    skills=["./skills/research-methodology"],    # How to conduct research
+    knowledge_sources=[company_docs],            # Company-specific data
+)
+```
+
+---
+
+## 比较表
+
+| Feature | Tools | MCPs | Apps | Skills | Knowledge |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+|**提供代理操作**| ✅ | ✅ | ✅ | ❌ | ❌ |
+|**修改提示**| ❌ | ❌ | ❌ | ✅ | ✅ |
+|**需要代码**|是的|仅配置|仅配置|仅降价|仅配置|
+|**本地运行**|是的|视情况而定|是（使用环境变量）|不适用|是的|
+|**需要 API 密钥**|每个工具|每台服务器|积分代币|不|仅包埋机|
+|**在代理上设置**| `tools=[]` | `mcps=[]` | `apps=[]` | `skills=[]` | `knowledge_sources=[]` |
+|**设置在船员**| ❌ | ❌ | ❌ | `skills=[]` | `knowledge_sources=[]` |
+
+---
+
+## 深入探讨
+
+准备好了解有关每种功能类型的更多信息了吗？
+
+<CardGroup cols={2}>
+<Card title="工具" icon="wrench" href="/zh-CN/concepts/tools">
+创建自定义工具、使用超过 75 个 OSS 目录、配置缓存和异步执行。
+</Card>
+<Card title="MCP集成" icon="plug" href="/zh-CN/mcp/overview">
+通过 stdio、SSE 或 HTTP 连接到 MCP 服务器。过滤工具，配置auth。
+</Card>
+<Card title="技能" icon="bolt" href="/zh-CN/concepts/skills">
+使用 SKILL.md 构建技能包，注入领域专业知识，使用渐进式披露。
+</Card>
+<Card title="知识" icon="book" href="/zh-CN/concepts/knowledge">
+添加来自 PDF、CSV、URL 等的知识。配置嵌入器和检索。
+</Card>
+</CardGroup>

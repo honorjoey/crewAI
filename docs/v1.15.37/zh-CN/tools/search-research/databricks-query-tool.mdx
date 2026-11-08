@@ -1,0 +1,81 @@
+---
+title: 数据砖 SQL 查询工具
+description: “ Databricks QueryTool” 对 Databricks 工作空间表执行 SQL 查询。
+icon: trowel-bricks
+mode: "wide"
+---
+
+# `DatabricksQueryTool`
+
+## 说明
+
+在 Databricks 工作空间表格上运行 SQL , 或带有 CLI profile 或直接主机/托肯认证 。
+
+## 安装
+
+```shell
+uv add crewai-tools[databricks-sdk]
+```
+
+## 环境变量
+
+- `DATABRICKS_CONFIG_PROFILE` 或(或)`DATABRICKS_HOST` + `DATABRICKS_TOKEN`)
+
+在用户设置 → 开发者 下创建个人访问符并在 Databricks 工作空间中查找主机细节 。
+文件:https://docs.databricks.com/zh-CN/dev-tools/auth/pat.html
+
+## 示例
+
+```python Code
+from crewai import Agent, Task, Crew
+from crewai_tools import DatabricksQueryTool
+
+tool = DatabricksQueryTool(
+    default_catalog="main", 
+    default_schema="default",
+)
+
+agent = Agent(
+    role="Data Analyst",
+    goal="Query Databricks",
+    tools=[tool],
+    verbose=True,
+)
+
+task = Task(
+    description="SELECT * FROM my_table LIMIT 10",
+    expected_output="10 rows", 
+    agent=agent,
+)
+
+crew = Crew(
+    agents=[agent], 
+    tasks=[task],
+    verbose=True,
+)
+result = crew.kickoff()
+
+print(result)
+```
+
+## 参数
+
+- `query` (需要):执行的 SQL 查询
+- `catalog` (可选) : 覆盖默认目录
+- `db_schema` (可选) : 覆盖默认方案
+- `warehouse_id` (可选) : 覆盖默认 SQL 仓库
+- `row_limit` (可选) : 返回的最大行( 默认: 1000)
+
+## 初始化默认值
+
+- `default_catalog`
+- `default_schema`
+- `default_warehouse_id`
+
+### 处理提示出错( T)
+
+- 认证错误: 校验`DATABRICKS_HOST` 以`https://` 和标志是有效的。
+- 权限: 确保您的 SQL 仓库和计划能通过您的代号访问 。
+- 限制:在代理循环中应避免长时间的查询;增加过滤器/限制。
+
+

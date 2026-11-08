@@ -1,0 +1,654 @@
+---
+title: 拉格工具
+description: “RagTool”是一个动态知识库工具，用于使用检索增强生成来回答问题。
+icon: vector-square
+mode: "wide"
+---
+
+# `RagTool`
+
+## 描述
+
+这`RagTool` 旨在通过 CrewAI 的原生 RAG 系统利用检索增强生成 (RAG) 的强大功能来回答问题。
+它提供了一个动态知识库，可以查询该知识库以从各种数据源检索相关信息。
+该工具对于需要访问大量信息并需要提供上下文相关答案的应用程序特别有用。
+
+## 例子
+
+以下示例演示了如何初始化该工具并将其与不同的数据源一起使用：
+
+```python Code
+from crewai_tools import RagTool
+
+# Create a RAG tool with default settings
+rag_tool = RagTool()
+
+# Add content from a file
+rag_tool.add(data_type="file", path="path/to/your/document.pdf")
+
+# Add content from a web page
+rag_tool.add(data_type="web_page", url="https://example.com")
+
+# Define an agent with the RagTool
+@agent
+def knowledge_expert(self) -> Agent:
+    '''
+    This agent uses the RagTool to answer questions about the knowledge base.
+    '''
+    return Agent(
+        config=self.agents_config["knowledge_expert"],
+        allow_delegation=False,
+        tools=[rag_tool]
+    )
+```
+
+## 支持的数据源
+
+这`RagTool` 可与多种数据源一起使用，包括：
+
+- 📰 PDF 文件
+- 📊 CSV 文件
+- 📃 JSON 文件
+- 📝 文字
+- 📁 目录/文件夹
+- 🌐 HTML 网页
+- 📽️ YouTube 频道
+- 📺 YouTube 视频
+- 📚 文档网站
+- 📝 MDX 文件
+- 📄 DOCX 文件
+- 🧾 XML 文件
+- 📬 邮箱
+- 📝 GitHub 存储库
+- 🐘 PostgreSQL 数据库
+- 🐬 MySQL 数据库
+- 🤖 闲聊
+- 💬 不和谐消息
+- 🗨️ 讨论论坛
+- 📝 子堆栈通讯
+- 🐝 Beehiiv 内容
+- 💾 Dropbox 文件
+- 🖼️ 图片
+- ⚙️ 自定义数据源
+
+## 参数
+
+这`RagTool` 接受以下参数：
+
+- **总结**：可选。是否对检索到的内容进行总结。默认为`False`.
+- **适配器**：可选。知识库的自定义适配器。如果未提供，将使用 CrewAIRagAdapter。
+- **配置**：可选。底层 CrewAI RAG 系统的配置。接受一个`RagToolConfig` 带有可选的 TypedDict`embedding_model` （提供商规范）和`vectordb` (VectorDbConfig) 键。以编程方式提供的所有配置值都优先于环境变量。
+
+## 添加内容
+
+您可以使用以下命令将内容添加到知识库`add` 方法：
+
+```python Code
+# Add a PDF file
+rag_tool.add(data_type="file", path="path/to/your/document.pdf")
+
+# Add a web page
+rag_tool.add(data_type="web_page", url="https://example.com")
+
+# Add a YouTube video
+rag_tool.add(data_type="youtube_video", url="https://www.youtube.com/watch?v=VIDEO_ID")
+
+# Add a directory of files
+rag_tool.add(data_type="directory", path="path/to/your/directory")
+```
+
+## 代理集成示例
+
+以下是如何集成`RagTool` 使用 CrewAI 代理：
+
+```python Code
+from crewai import Agent
+from crewai.project import agent
+from crewai_tools import RagTool
+
+# Initialize the tool and add content
+rag_tool = RagTool()
+rag_tool.add(data_type="web_page", url="https://docs.crewai.com")
+rag_tool.add(data_type="file", path="company_data.pdf")
+
+# Define an agent with the RagTool
+@agent
+def knowledge_expert(self) -> Agent:
+    return Agent(
+        config=self.agents_config["knowledge_expert"],
+        allow_delegation=False,
+        tools=[rag_tool]
+    )
+```
+
+## 高级配置
+
+您可以自定义`RagTool` 通过提供配置字典：
+
+```python Code
+from crewai_tools import RagTool
+from crewai_tools.tools.rag import RagToolConfig, VectorDbConfig, ProviderSpec
+
+# Create a RAG tool with custom configuration
+
+vectordb: VectorDbConfig = {
+    "provider": "qdrant",
+    "config": {
+        "collection_name": "my-collection"
+    }
+}
+
+embedding_model: ProviderSpec = {
+    "provider": "openai",
+    "config": {
+        "model_name": "text-embedding-3-small"
+    }
+}
+
+config: RagToolConfig = {
+    "vectordb": vectordb,
+    "embedding_model": embedding_model
+}
+
+rag_tool = RagTool(config=config, summarize=True)
+```
+
+## 嵌入模型配置
+
+这`embedding_model` 参数接受一个`crewai.rag.embeddings.types.ProviderSpec` 字典结构如下：
+
+```python
+{
+    "provider": "provider-name",  # Required
+    "config": {                    # Optional
+        # Provider-specific configuration
+    }
+}
+```
+
+### 支持的提供商
+
+<AccordionGroup>
+  <Accordion title="开放人工智能">
+    ```python main.py
+    from crewai.rag.embeddings.providers.openai.types import OpenAIProviderSpec
+
+    embedding_model: OpenAIProviderSpec = {
+        "provider": "openai",
+        "config": {
+            "api_key": "your-api-key",
+            "model_name": "text-embedding-ada-002",
+            "dimensions": 1536,
+            "organization_id": "your-org-id",
+            "api_base": "https://api.openai.com/v1",
+            "api_version": "v1",
+            "default_headers": {"Custom-Header": "value"}
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `api_key` (str): OpenAI API 密钥
+    - `model_name` (str)：要使用的模型。默认：`text-embedding-ada-002`。选项：`text-embedding-3-small`, `text-embedding-3-large`, `text-embedding-ada-002`
+    - `dimensions` (int)：嵌入的维数
+    - `organization_id` (str): OpenAI 组织 ID
+    - `api_base` (str): 自定义 API 基本 URL
+    - `api_version` (str): API 版本
+    - `default_headers` (dict)：API 请求的自定义标头
+
+    **环境变量：**
+    - `OPENAI_API_KEY` 或者`EMBEDDINGS_OPENAI_API_KEY`: `api_key`
+    - `OPENAI_ORGANIZATION_ID` 或者`EMBEDDINGS_OPENAI_ORGANIZATION_ID`: `organization_id`
+    - `OPENAI_MODEL_NAME` 或者`EMBEDDINGS_OPENAI_MODEL_NAME`: `model_name`
+    - `OPENAI_API_BASE` 或者`EMBEDDINGS_OPENAI_API_BASE`: `api_base`
+    - `OPENAI_API_VERSION` 或者`EMBEDDINGS_OPENAI_API_VERSION`: `api_version`
+    - `OPENAI_DIMENSIONS` 或者`EMBEDDINGS_OPENAI_DIMENSIONS`: `dimensions`
+  </Accordion>
+
+  <Accordion title="连贯">
+    ```python main.py
+    from crewai.rag.embeddings.providers.cohere.types import CohereProviderSpec
+
+    embedding_model: CohereProviderSpec = {
+        "provider": "cohere",
+        "config": {
+            "api_key": "your-api-key",
+            "model_name": "embed-english-v3.0"
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `api_key` (str): Cohere API 密钥
+    - `model_name` (str)：要使用的模型。默认：`large`。选项：`embed-english-v3.0`, `embed-multilingual-v3.0`, `large`, `small`
+
+    **环境变量：**
+    - `COHERE_API_KEY` 或者`EMBEDDINGS_COHERE_API_KEY`: `api_key`
+    - `EMBEDDINGS_COHERE_MODEL_NAME`: `model_name`
+  </Accordion>
+
+  <Accordion title="航行人工智能">
+    ```python main.py
+    from crewai.rag.embeddings.providers.voyageai.types import VoyageAIProviderSpec
+
+    embedding_model: VoyageAIProviderSpec = {
+        "provider": "voyageai",
+        "config": {
+            "api_key": "your-api-key",
+            "model": "voyage-3",
+            "input_type": "document",
+            "truncation": True,
+            "output_dtype": "float32",
+            "output_dimension": 1024,
+            "max_retries": 3,
+            "timeout": 60.0
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `api_key` (str): VoyageAI API 密钥
+    - `model` (str)：要使用的模型。默认：`voyage-2`。选项：`voyage-3`, `voyage-3-lite`, `voyage-code-3`, `voyage-large-2`
+    - `input_type` (str)：输入类型。选项：`document` （用于存储），`query` （用于搜索）
+    - `truncation` (bool)：是否截断超过最大长度的输入。默认：`True`
+    - `output_dtype` (str)：输出数据类型
+    - `output_dimension` (int)：输出嵌入的维度
+    - `max_retries` (int)：最大重试次数。默认：`0`
+    - `timeout` (float): 请求超时，以秒为单位
+
+    **环境变量：**
+    - `VOYAGEAI_API_KEY` 或者`EMBEDDINGS_VOYAGEAI_API_KEY`: `api_key`
+    - `VOYAGEAI_MODEL` 或者`EMBEDDINGS_VOYAGEAI_MODEL`: `model`
+    - `VOYAGEAI_INPUT_TYPE` 或者`EMBEDDINGS_VOYAGEAI_INPUT_TYPE`: `input_type`
+    - `VOYAGEAI_TRUNCATION` 或者`EMBEDDINGS_VOYAGEAI_TRUNCATION`: `truncation`
+    - `VOYAGEAI_OUTPUT_DTYPE` 或者`EMBEDDINGS_VOYAGEAI_OUTPUT_DTYPE`: `output_dtype`
+    - `VOYAGEAI_OUTPUT_DIMENSION` 或者`EMBEDDINGS_VOYAGEAI_OUTPUT_DIMENSION`: `output_dimension`
+    - `VOYAGEAI_MAX_RETRIES` 或者`EMBEDDINGS_VOYAGEAI_MAX_RETRIES`: `max_retries`
+    - `VOYAGEAI_TIMEOUT` 或者`EMBEDDINGS_VOYAGEAI_TIMEOUT`: `timeout`
+  </Accordion>
+
+  <Accordion title="奥拉玛">
+    ```python main.py
+    from crewai.rag.embeddings.providers.ollama.types import OllamaProviderSpec
+
+    embedding_model: OllamaProviderSpec = {
+        "provider": "ollama",
+        "config": {
+            "model_name": "llama2",
+            "url": "http://localhost:11434/api/embeddings"
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `model_name` (str)：Ollama 型号名称（例如，`llama2`, `mistral`, `nomic-embed-text`)
+    - `url` (str)：Ollama API 端点 URL。默认：`http://localhost:11434/api/embeddings`
+
+    **环境变量：**
+    - `OLLAMA_MODEL` 或者`EMBEDDINGS_OLLAMA_MODEL`: `model_name`
+    - `OLLAMA_URL` 或者`EMBEDDINGS_OLLAMA_URL`: `url`
+  </Accordion>
+
+  <Accordion title="亚马逊基岩">
+    ```python main.py
+    from crewai.rag.embeddings.providers.aws.types import BedrockProviderSpec
+
+    embedding_model: BedrockProviderSpec = {
+        "provider": "amazon-bedrock",
+        "config": {
+            "model_name": "amazon.titan-embed-text-v2:0",
+            "session": boto3_session
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `model_name` (str)：基岩模型 ID。默认：`amazon.titan-embed-text-v1`。选项：`amazon.titan-embed-text-v1`, `amazon.titan-embed-text-v2:0`, `cohere.embed-english-v3`, `cohere.embed-multilingual-v3`
+    - `session` （任意）：用于 AWS 身份验证的 Boto3 会话对象
+
+    **环境变量：**
+    - `AWS_ACCESS_KEY_ID`：AWS访问密钥
+    - `AWS_SECRET_ACCESS_KEY`：AWS密钥
+    - `AWS_REGION`：AWS 区域（例如，`us-east-1`)
+  </Accordion>
+
+  <Accordion title="Azure 开放人工智能">
+    ```python main.py
+    from crewai.rag.embeddings.providers.microsoft.types import AzureProviderSpec
+
+    embedding_model: AzureProviderSpec = {
+        "provider": "azure",
+        "config": {
+            "deployment_id": "your-deployment-id",
+            "api_key": "your-api-key",
+            "api_base": "https://your-resource.openai.azure.com",
+            "api_version": "2024-02-01",
+            "model_name": "text-embedding-ada-002",
+            "api_type": "azure"
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `deployment_id` (str)：**必需的** - Azure OpenAI 部署 ID
+    - `api_key` (str)：Azure OpenAI API 密钥
+    - `api_base` (str)：Azure OpenAI 资源端点
+    - `api_version` (str)：API 版本。例子：`2024-02-01`
+    - `model_name` (str)：型号名称。默认：`text-embedding-ada-002`
+    - `api_type` (str)：API 类型。默认：`azure`
+    - `dimensions` (int)：输出尺寸
+    - `default_headers` (dict)：自定义标头
+
+    **环境变量：**
+    - `AZURE_OPENAI_API_KEY` 或者`EMBEDDINGS_AZURE_API_KEY`: `api_key`
+    - `AZURE_OPENAI_ENDPOINT` 或者`EMBEDDINGS_AZURE_API_BASE`: `api_base`
+    - `EMBEDDINGS_AZURE_DEPLOYMENT_ID`: `deployment_id`
+    - `EMBEDDINGS_AZURE_API_VERSION`: `api_version`
+    - `EMBEDDINGS_AZURE_MODEL_NAME`: `model_name`
+    - `EMBEDDINGS_AZURE_API_TYPE`: `api_type`
+    - `EMBEDDINGS_AZURE_DIMENSIONS`: `dimensions`
+  </Accordion>
+
+  <Accordion title="谷歌生成人工智能">
+    ```python main.py
+    from crewai.rag.embeddings.providers.google.types import GenerativeAiProviderSpec
+
+    embedding_model: GenerativeAiProviderSpec = {
+        "provider": "google-generativeai",
+        "config": {
+            "api_key": "your-api-key",
+            "model_name": "gemini-embedding-001",
+            "task_type": "RETRIEVAL_DOCUMENT"
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `api_key` (str)：Google AI API 密钥
+    - `model_name` (str)：型号名称。默认：`gemini-embedding-001`。选项：`gemini-embedding-001`, `text-embedding-005`, `text-multilingual-embedding-002`
+    - `task_type` (str)：嵌入的任务类型。默认：`RETRIEVAL_DOCUMENT`。选项：`RETRIEVAL_DOCUMENT`, `RETRIEVAL_QUERY`
+
+    **环境变量：**
+    - `GOOGLE_API_KEY`, `GEMINI_API_KEY`， 或者`EMBEDDINGS_GOOGLE_API_KEY`: `api_key`
+    - `EMBEDDINGS_GOOGLE_GENERATIVE_AI_MODEL_NAME`: `model_name`
+    - `EMBEDDINGS_GOOGLE_GENERATIVE_AI_TASK_TYPE`: `task_type`
+  </Accordion>
+
+  <Accordion title="谷歌顶点人工智能">
+    ```python main.py
+    from crewai.rag.embeddings.providers.google.types import VertexAIProviderSpec
+
+    embedding_model: VertexAIProviderSpec = {
+        "provider": "google-vertex",
+        "config": {
+            "model_name": "text-embedding-004",
+            "project_id": "your-project-id",
+            "region": "us-central1",
+            "api_key": "your-api-key"
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `model_name` (str)：型号名称。默认：`textembedding-gecko`。选项：`text-embedding-004`, `textembedding-gecko`, `textembedding-gecko-multilingual`
+    - `project_id` (str)：Google Cloud 项目 ID。默认：`cloud-large-language-models`
+    - `region` (str)：Google Cloud 区域。默认：`us-central1`
+    - `api_key` (str)：用于身份验证的 API 密钥
+
+    **环境变量：**
+    - `GOOGLE_APPLICATION_CREDENTIALS`：服务帐户 JSON 文件的路径
+    - `GOOGLE_CLOUD_PROJECT` 或者`EMBEDDINGS_GOOGLE_VERTEX_PROJECT_ID`: `project_id`
+    - `EMBEDDINGS_GOOGLE_VERTEX_MODEL_NAME`: `model_name`
+    - `EMBEDDINGS_GOOGLE_VERTEX_REGION`: `region`
+    - `EMBEDDINGS_GOOGLE_VERTEX_API_KEY`: `api_key`
+  </Accordion>
+
+  <Accordion title="艾吉娜">
+    ```python main.py
+    from crewai.rag.embeddings.providers.jina.types import JinaProviderSpec
+
+    embedding_model: JinaProviderSpec = {
+        "provider": "jina",
+        "config": {
+            "api_key": "your-api-key",
+            "model_name": "jina-embeddings-v3"
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `api_key` (str): Jina AI API 密钥
+    - `model_name` (str)：型号名称。默认：`jina-embeddings-v2-base-en`。选项：`jina-embeddings-v3`, `jina-embeddings-v2-base-en`, `jina-embeddings-v2-small-en`
+
+    **环境变量：**
+    - `JINA_API_KEY` 或者`EMBEDDINGS_JINA_API_KEY`: `api_key`
+    - `EMBEDDINGS_JINA_MODEL_NAME`: `model_name`
+  </Accordion>
+
+  <Accordion title="抱脸">
+    ```python main.py
+    from crewai.rag.embeddings.providers.huggingface.types import HuggingFaceProviderSpec
+
+    embedding_model: HuggingFaceProviderSpec = {
+        "provider": "huggingface",
+        "config": {
+            "url": "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2"
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `url` (str)：HuggingFace 推理 API 端点的完整 URL
+
+    **环境变量：**
+    - `HUGGINGFACE_URL` 或者`EMBEDDINGS_HUGGINGFACE_URL`: `url`
+  </Accordion>
+
+  <Accordion title="讲师">
+    ```python main.py
+    from crewai.rag.embeddings.providers.instructor.types import InstructorProviderSpec
+
+    embedding_model: InstructorProviderSpec = {
+        "provider": "instructor",
+        "config": {
+            "model_name": "hkunlp/instructor-xl",
+            "device": "cuda",
+            "instruction": "Represent the document"
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `model_name` (str)：HuggingFace 模型 ID。默认：`hkunlp/instructor-base`。选项：`hkunlp/instructor-xl`, `hkunlp/instructor-large`, `hkunlp/instructor-base`
+    - `device` (str)：运行的设备。默认：`cpu`。选项：`cpu`, `cuda`, `mps`, `xpu`
+    - `instruction` (str)：嵌入的指令前缀
+
+    **环境变量：**
+    - `EMBEDDINGS_INSTRUCTOR_MODEL_NAME`: `model_name`
+    - `EMBEDDINGS_INSTRUCTOR_DEVICE`: `device`
+    - `EMBEDDINGS_INSTRUCTOR_INSTRUCTION`: `instruction`
+  </Accordion>
+
+  <Accordion title="句子转换器">
+    ```python main.py
+    from crewai.rag.embeddings.providers.sentence_transformer.types import SentenceTransformerProviderSpec
+
+    embedding_model: SentenceTransformerProviderSpec = {
+        "provider": "sentence-transformer",
+        "config": {
+            "model_name": "all-mpnet-base-v2",
+            "device": "cuda",
+            "normalize_embeddings": True
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `model_name` (str)：句子变形金刚型号名称。默认：`all-MiniLM-L6-v2`。选项：`all-mpnet-base-v2`, `all-MiniLM-L6-v2`, `paraphrase-multilingual-MiniLM-L12-v2`
+    - `device` (str)：运行的设备。默认：`cpu`。选项：`cpu`, `cuda`, `mps`, `xpu`
+    - `normalize_embeddings` (bool)：是否标准化嵌入。默认：`False`
+
+    **环境变量：**
+    - `EMBEDDINGS_SENTENCE_TRANSFORMER_MODEL_NAME`: `model_name`
+    - `EMBEDDINGS_SENTENCE_TRANSFORMER_DEVICE`: `device`
+    - `EMBEDDINGS_SENTENCE_TRANSFORMER_NORMALIZE_EMBEDDINGS`: `normalize_embeddings`
+  </Accordion>
+
+  <Accordion title="奥恩克斯">
+    ```python main.py
+    from crewai.rag.embeddings.providers.onnx.types import ONNXProviderSpec
+
+    embedding_model: ONNXProviderSpec = {
+        "provider": "onnx",
+        "config": {
+            "preferred_providers": ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `preferred_providers` (list[str])：按优先顺序排列的 ONNX 执行提供程序列表
+
+    **环境变量：**
+    - `EMBEDDINGS_ONNX_PREFERRED_PROVIDERS`: `preferred_providers` （逗号分隔列表）
+  </Accordion>
+
+  <Accordion title="开放式剪辑">
+    ```python main.py
+    from crewai.rag.embeddings.providers.openclip.types import OpenCLIPProviderSpec
+
+    embedding_model: OpenCLIPProviderSpec = {
+        "provider": "openclip",
+        "config": {
+            "model_name": "ViT-B-32",
+            "checkpoint": "laion2b_s34b_b79k",
+            "device": "cuda"
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `model_name` (str)：OpenCLIP 模型架构。默认：`ViT-B-32`。选项：`ViT-B-32`, `ViT-B-16`, `ViT-L-14`
+    - `checkpoint` (str)：预训练的检查点名称。默认：`laion2b_s34b_b79k`。选项：`laion2b_s34b_b79k`, `laion400m_e32`, `openai`
+    - `device` (str)：运行的设备。默认：`cpu`。选项：`cpu`, `cuda`, `mps`, `xpu`
+
+    **环境变量：**
+    - `EMBEDDINGS_OPENCLIP_MODEL_NAME`: `model_name`
+    - `EMBEDDINGS_OPENCLIP_CHECKPOINT`: `checkpoint`
+    - `EMBEDDINGS_OPENCLIP_DEVICE`: `device`
+  </Accordion>
+
+  <Accordion title="文本2Vec">
+    ```python main.py
+    from crewai.rag.embeddings.providers.text2vec.types import Text2VecProviderSpec
+
+    embedding_model: Text2VecProviderSpec = {
+        "provider": "text2vec",
+        "config": {
+            "model_name": "shibing624/text2vec-base-multilingual"
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `model_name` (str)：来自 HuggingFace 的 Text2Vec 模型名称。默认：`shibing624/text2vec-base-chinese`。选项：`shibing624/text2vec-base-multilingual`, `shibing624/text2vec-base-chinese`
+
+    **环境变量：**
+    - `EMBEDDINGS_TEXT2VEC_MODEL_NAME`: `model_name`
+  </Accordion>
+
+  <Accordion title="机器人流">
+    ```python main.py
+    from crewai.rag.embeddings.providers.roboflow.types import RoboflowProviderSpec
+
+    embedding_model: RoboflowProviderSpec = {
+        "provider": "roboflow",
+        "config": {
+            "api_key": "your-api-key",
+            "api_url": "https://infer.roboflow.com"
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `api_key` (str)：Roboflow API 密钥。默认：`""` （空字符串）
+    - `api_url` (str)：Roboflow 推理 API URL。默认：`https://infer.roboflow.com`
+
+    **环境变量：**
+    - `ROBOFLOW_API_KEY` 或者`EMBEDDINGS_ROBOFLOW_API_KEY`: `api_key`
+    - `ROBOFLOW_API_URL` 或者`EMBEDDINGS_ROBOFLOW_API_URL`: `api_url`
+  </Accordion>
+
+  <Accordion title="沃森X (IBM)">
+    ```python main.py
+    from crewai.rag.embeddings.providers.ibm.types import WatsonXProviderSpec
+
+    embedding_model: WatsonXProviderSpec = {
+        "provider": "watsonx",
+        "config": {
+            "model_id": "ibm/slate-125m-english-rtrvr",
+            "url": "https://us-south.ml.cloud.ibm.com",
+            "api_key": "your-api-key",
+            "project_id": "your-project-id",
+            "batch_size": 100,
+            "concurrency_limit": 10,
+            "persistent_connection": True
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `model_id` (str)：WatsonX 模型标识符
+    - `url` (str)：WatsonX API 端点
+    - `api_key` (str)：IBM Cloud API 密钥
+    - `project_id` (str)：WatsonX 项目 ID
+    - `space_id` (str)：WatsonX 空间 ID（替代 project_id）
+    - `batch_size` (int)：嵌入的批量大小。默认：`100`
+    - `concurrency_limit` (int)：最大并发请求数。默认：`10`
+    - `persistent_connection` (bool)：使用持久连接。默认：`True`
+    - 加上 20 多个额外的身份验证和配置选项
+
+    **环境变量：**
+    - `WATSONX_API_KEY` 或者`EMBEDDINGS_WATSONX_API_KEY`: `api_key`
+    - `WATSONX_URL` 或者`EMBEDDINGS_WATSONX_URL`: `url`
+    - `WATSONX_PROJECT_ID` 或者`EMBEDDINGS_WATSONX_PROJECT_ID`: `project_id`
+    - `EMBEDDINGS_WATSONX_MODEL_ID`: `model_id`
+    - `EMBEDDINGS_WATSONX_SPACE_ID`: `space_id`
+    - `EMBEDDINGS_WATSONX_BATCH_SIZE`: `batch_size`
+    - `EMBEDDINGS_WATSONX_CONCURRENCY_LIMIT`: `concurrency_limit`
+    - `EMBEDDINGS_WATSONX_PERSISTENT_CONNECTION`: `persistent_connection`
+  </Accordion>
+
+  <Accordion title="风俗">
+    ```python main.py
+    from crewai.rag.core.base_embeddings_callable import EmbeddingFunction
+    from crewai.rag.embeddings.providers.custom.types import CustomProviderSpec
+
+    class MyEmbeddingFunction(EmbeddingFunction):
+        def __call__(self, input):
+            # Your custom embedding logic
+            return embeddings
+
+    embedding_model: CustomProviderSpec = {
+        "provider": "custom",
+        "config": {
+            "embedding_callable": MyEmbeddingFunction
+        }
+    }
+    ```
+
+    **配置选项：**
+    - `embedding_callable` (type[EmbeddingFunction])：自定义嵌入函数类
+
+    **笔记：** 自定义嵌入函数必须实现`EmbeddingFunction` 协议定义于`crewai.rag.core.base_embeddings_callable`。这`__call__` 方法应该接受输入数据并将嵌入作为 numpy 数组列表（或将被标准化的兼容格式）返回。返回的嵌入会自动标准化和验证。
+  </Accordion>
+</AccordionGroup>
+
+### 笔记
+- 所有配置字段都是可选的，除非标记为 **必需的**
+- API 密钥通常可以通过环境变量而不是配置提供
+- 在适用的情况下显示默认值
+
+
+## 结论
+这`RagTool` 提供了一种从各种数据源创建和查询知识库的强大方法。通过利用检索增强生成，它使代理能够有效地访问和检索相关信息，从而增强他们提供准确且适合上下文的响应的能力。

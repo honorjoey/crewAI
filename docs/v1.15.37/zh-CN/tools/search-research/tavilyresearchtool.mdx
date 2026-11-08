@@ -1,0 +1,125 @@
+---
+title: "Tavily 研究工具"
+description: "使用 Tavily 研究 API 执行多步骤研究任务并获取引用报告"
+icon: "flask"
+mode: "wide"
+---
+
+那个`TavilyResearchTool` 让CrewAI代理启动Tavily的研究任务,返回一个被合成,引用的报告(或一系列进展事件)而不是原始搜索结果. 当特工需要调查答案而不是单一网络搜索时使用.
+
+## 安装
+
+用来使用`TavilyResearchTool`,安装`tavily-python` 对话框并列`crewai-tools`:
+
+```shell
+uv add 'crewai[tools]' tavily-python
+```
+
+## 环境变量
+
+设置您的 Tavily API 密钥 :
+
+```bash
+export TAVILY_API_KEY='your_tavily_api_key'
+```
+
+获取“ 0” 的 API 密钥( 签名后创建密钥) 。
+
+## 示例使用
+
+```python
+import os
+from crewai import Agent, Crew, Task
+from crewai_tools import TavilyResearchTool
+
+# Ensure TAVILY_API_KEY is set in your environment
+# os.environ["TAVILY_API_KEY"] = "YOUR_API_KEY"
+
+tavily_tool = TavilyResearchTool()
+
+researcher = Agent(
+    role="Research Analyst",
+    goal="Investigate questions and produce concise, well-cited briefings.",
+    backstory=(
+        "You are a meticulous analyst who delegates web research to the Tavily "
+        "Research tool, then synthesizes the findings into short briefings."
+    ),
+    tools=[tavily_tool],
+    verbose=True,
+)
+
+research_task = Task(
+    description=(
+        "Investigate notable open-source agent orchestration frameworks released "
+        "in the last six months and summarize their differentiators."
+    ),
+    expected_output="A bulleted briefing with citations.",
+    agent=researcher,
+)
+
+crew = Crew(agents=[researcher], tasks=[research_task])
+print(crew.kickoff())
+```
+
+## 配置选项
+
+那个`TavilyResearchTool` 接受下列参数——所有参数都可以设置在工具实例上(每次呼叫的默认值)或通过代理工具输入的每次呼叫:
+
+- `input` (三): **要求。** 研究任务或调查问题。
+- `model` (语言["mini,"pro,"auto"]): 塔维利研究模式.`"auto"` 让塔维利选;`"mini"` 速度较快/便宜;`"pro"` 这是最有能力的。 默认为`"auto"`.
+- `output_schema` (dit QQ None):可选的JSON Schema,构建研究产出. 需要严格输入结果时有用 。
+- `stream` 何时`True`,该工具返回 SSE 块释放研究进展和最终结果的浏览器,而不是一个字符串。 默认为`False`.
+- `citation_format` (字形["编号","mla","pa","chicago"]): 报告引用格式。 默认为`"numbered"`.
+
+## 高级使用
+
+### 配置工具实例上的默认值
+
+```python
+from crewai_tools import TavilyResearchTool
+
+tavily_tool = TavilyResearchTool(
+    model="pro",                # use Tavily's most capable research model
+    citation_format="apa",      # APA-style citations
+)
+```
+
+### 研究进展
+
+何时`stream=True`,工具返回一个生成器(或来自`_arun`)的SSE块,所以您的应用程序可以显示增量进度:
+
+```python
+tavily_tool = TavilyResearchTool(stream=True)
+
+for chunk in tavily_tool.run(input="Summarize recent advances in retrieval-augmented generation."):
+    print(chunk)
+```
+
+### 通过 JSON Schema 结构化输出
+
+通过一个`output_schema` 当需要输入结果而不是自由格式报告时:
+
+```python
+output_schema = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "key_points": {"type": "array", "items": {"type": "string"}},
+        "sources": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["summary", "key_points", "sources"],
+}
+
+tavily_tool = TavilyResearchTool(output_schema=output_schema)
+```
+
+## 特征
+
+- "0":返回一个综合的,引用的报告而不是原始的搜索点击.
+- ○ 通过成本、速度和深度交换`mini`, `pro`,或`auto`.
+- "0":作为响应性UI的SSE块,不断递增的进展和结果.
+- 你给JSON Schema下了定义
+- **多个引用样式**:从编号,司法协助,APA,或芝加哥引用中选择.
+- "0":使用其中之一`_run` 或`_arun` 取决于您的申请运行时间。
+
+有关研究API的全部详情,请参见"0¤".

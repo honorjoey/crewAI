@@ -1,0 +1,113 @@
+---
+title: "链接搜索工具"
+description: "链接搜索工具 工具文档。"
+icon: link
+mode: "wide"
+---
+
+# `LinkupSearchTool`
+
+## 说明
+
+那个`LinkupSearchTool` 提供查询链接API以获取背景资料和检索结构化结果的能力。 这一工具是利用Linkup提供的最新可靠信息来丰富工作流程的理想工具,使代理商能够在任务期间访问相关数据.
+
+## 安装
+
+要使用此工具, 您需要安装 Linkup SDK :
+
+```shell
+uv add linkup-sdk
+```
+
+## 开始的步骤
+
+有效利用`LinkupSearchTool`,遵循这些步骤:
+
+1. "0":获取链接 API 密钥.
+2. "0":用API键设置环境.
+3. “0”: 使用上面的命令安装链接 SDK 。
+
+## 示例
+
+以下例子说明如何初始化该工具并将其用于一种剂:
+
+```python Code
+from crewai_tools import LinkupSearchTool
+from crewai import Agent
+import os
+
+# Initialize the tool with your API key
+linkup_tool = LinkupSearchTool(api_key=os.getenv("LINKUP_API_KEY"))
+
+# Define an agent that uses the tool
+@agent
+def researcher(self) -> Agent:
+    '''
+    This agent uses the LinkupSearchTool to retrieve contextual information
+    from the Linkup API.
+    '''
+    return Agent(
+        config=self.agents_config["researcher"],
+        tools=[linkup_tool]
+    )
+```
+
+## 参数
+
+那个`LinkupSearchTool` 接受以下参数:
+
+### 构造参数
+- 需要吗? 您的链接 API 密钥 。
+
+### 运行参数
+- 需要吗? 搜索词或短语.
+- 零:可选。 寻深. 默认是"标准".
+- 零:可选。 输出类型. 默认为"ResearchResults".
+
+## 高级使用
+
+您可以自定义搜索参数以获取更具体的结果 :
+
+```python Code
+# Perform a search with custom parameters
+results = linkup_tool.run(
+    query="Women Nobel Prize Physics",
+    depth="deep",
+    output_type="searchResults"
+)
+```
+
+## 返回格式
+
+工具返回结果如下:
+
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "name": "Result Title",
+      "url": "https://example.com/result",
+      "content": "Content of the result..."
+    },
+    // Additional results...
+  ]
+}
+```
+
+如果发生错误,反应将是:
+
+```json
+{
+  "success": false,
+  "error": "Error message"
+}
+```
+
+## 处理错误
+
+该工具优雅地处理API错误并提供结构化反馈. 如果 API 请求失败, 工具将返回一个字典`success: false` 和错误消息。
+
+## 结论
+
+那个`LinkupSearchTool` 提供一种无缝的方法,将Linkup的背景信息检索能力整合到您的CrewAI代理中. 通过利用这一工具,代理人可以获取相关的最新信息,以加强其决策和任务执行。

@@ -1,0 +1,188 @@
+---
+title: Bedrock Invoke 代理工具
+description: 允许 CrewAI 代理 引用 Amazon Bedrock 代理 并在您的工作流程中利用其能力
+icon: aws
+mode: "wide"
+---
+
+# `BedrockInvokeAgentTool`
+
+那个`BedrockInvokeAgentTool` 使CrewAI特工能够 引用亚马逊贝德罗克代理 并利用其能力 在你的工作流程。
+
+## 安装
+
+```bash
+uv pip install 'crewai[tools]'
+```
+
+## 所需经费
+
+- 配置 AWS 证书( 通过环境变量或 AWS CLI)
+- `boto3` 和`python-dotenv` 软件包
+- 亚马逊贝德罗克代理公司
+
+## 使用量
+
+以下是如何使用 CrewAI 代理工具:
+
+```python {2, 4-8}
+from crewai import Agent, Task, Crew
+from crewai_tools.aws.bedrock.agents.invoke_agent_tool import BedrockInvokeAgentTool
+
+# Initialize the tool
+agent_tool = BedrockInvokeAgentTool(
+    agent_id="your-agent-id",
+    agent_alias_id="your-agent-alias-id"
+)
+
+# Create a CrewAI agent that uses the tool
+aws_expert = Agent(
+    role='AWS Service Expert',
+    goal='Help users understand AWS services and quotas',
+    backstory='I am an expert in AWS services and can provide detailed information about them.',
+    tools=[agent_tool],
+    verbose=True
+)
+
+# Create a task for the agent
+quota_task = Task(
+    description="Find out the current service quotas for EC2 in us-west-2 and explain any recent changes.",
+    agent=aws_expert
+)
+
+# Create a crew with the agent
+crew = Crew(
+    agents=[aws_expert],
+    tasks=[quota_task],
+    verbose=2
+)
+
+# Run the crew
+result = crew.kickoff()
+print(result)
+```
+
+## 工具参数
+
+| 参数| 类型| 要求数| 默认| 说明|
+|:---------|:-----|:---------|:--------|:------------|
+| **代理服务器( D)** | `str ' 号| 对| 无| Bedrock 代理的唯一标识符|
+| **代理( alias id)** | `str ' 号| 对| 无| 代理别名的独特标识符|
+| **会话( D)** | `str ' 号| 没有| 时间戳| 会议的独特标识符|
+| **启用跟踪( T)** | `波尔'| 没有| 虚假| 是否启用调试的跟踪|
+| **结束会话( S)** | `波尔'| 没有| 虚假| 是否在引用后结束届会|
+| **说明** | `str ' 号| 没有| 无| 自定义工具描述|
+
+## 环境变量
+
+```bash
+BEDROCK_AGENT_ID=your-agent-id           # Alternative to passing agent_id
+BEDROCK_AGENT_ALIAS_ID=your-agent-alias-id # Alternative to passing agent_alias_id
+AWS_REGION=your-aws-region               # Defaults to us-west-2
+AWS_ACCESS_KEY_ID=your-access-key        # Required for AWS authentication
+AWS_SECRET_ACCESS_KEY=your-secret-key    # Required for AWS authentication
+```
+
+## 高级使用
+
+### 多代理工作流程与会话管理
+
+```python {2, 4-22}
+from crewai import Agent, Task, Crew, Process
+from crewai_tools.aws.bedrock.agents.invoke_agent_tool import BedrockInvokeAgentTool
+
+# Initialize tools with session management
+initial_tool = BedrockInvokeAgentTool(
+    agent_id="your-agent-id",
+    agent_alias_id="your-agent-alias-id",
+    session_id="custom-session-id"
+)
+
+followup_tool = BedrockInvokeAgentTool(
+    agent_id="your-agent-id",
+    agent_alias_id="your-agent-alias-id",
+    session_id="custom-session-id"
+)
+
+final_tool = BedrockInvokeAgentTool(
+    agent_id="your-agent-id",
+    agent_alias_id="your-agent-alias-id",
+    session_id="custom-session-id",
+    end_session=True
+)
+
+# Create agents for different stages
+researcher = Agent(
+    role='AWS Service Researcher',
+    goal='Gather information about AWS services',
+    backstory='I am specialized in finding detailed AWS service information.',
+    tools=[initial_tool]
+)
+
+analyst = Agent(
+    role='Service Compatibility Analyst',
+    goal='Analyze service compatibility and requirements',
+    backstory='I analyze AWS services for compatibility and integration possibilities.',
+    tools=[followup_tool]
+)
+
+summarizer = Agent(
+    role='Technical Documentation Writer',
+    goal='Create clear technical summaries',
+    backstory='I specialize in creating clear, concise technical documentation.',
+    tools=[final_tool]
+)
+
+# Create tasks
+research_task = Task(
+    description="Find all available AWS services in us-west-2 region.",
+    agent=researcher
+)
+
+analysis_task = Task(
+    description="Analyze which services support IPv6 and their implementation requirements.",
+    agent=analyst
+)
+
+summary_task = Task(
+    description="Create a summary of IPv6-compatible services and their key features.",
+    agent=summarizer
+)
+
+# Create a crew with the agents and tasks
+crew = Crew(
+    agents=[researcher, analyst, summarizer],
+    tasks=[research_task, analysis_task, summary_task],
+    process=Process.sequential,
+    verbose=2
+)
+
+# Run the crew
+result = crew.kickoff()
+```
+
+## 使用大小写
+
+### 混合多代理协作
+- 创建工作流程,让CrewAI代理商与管理中的Bedrock代理商合作,在AWS中作为服务运行
+- 启用在您的 AWS 环境中进行敏感数据处理而其他代理在外部运行的情景
+- 利用云基Bedrock代理商进行分布式情报工作流程
+
+### 数据主权和遵守情况
+- 在您的 AWS 环境中保留对数据敏感的代理工作流程,同时允许外部 CrewAI 代理来协调任务
+- 仅通过在您的 AWS 账户中处理敏感信息来保持对数据存储要求的遵守
+- 启用安全的多代理协作, 有些代理无法访问您的组织的私人数据
+
+### 无缝AWS服务集成
+- 通过 Amazon Bedrock Action 访问任何 AWS 服务而不写入复杂的集成代码
+- 允许 CrewAI 代理通过自然语言请求与 AWS 服务交互
+- 利用预建的Bedrock代理能力,与Bedrock知识库、Lambda等AWS服务互动
+
+### 可缩放混合剂结构
+- 在CrewAI运行的轻量级任务中,为管理Bedrock代理而自动卸载密集任务
+- 通过在当地CrewAI代理和云基Bedrock代理之间分配工作量来扩大代理处理范围
+
+### 跨组织代理协作
+- 允许贵组织的CrewAI代理商和伙伴组织进行安全合作。 贝德洛克特工
+- 创建工作流程,在不暴露敏感数据的情况下纳入Bedrock代理商的外部专门知识
+- 建立跨越组织界限的代理生态系统,同时维持安全和数据控制

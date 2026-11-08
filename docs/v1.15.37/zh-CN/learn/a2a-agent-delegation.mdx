@@ -1,0 +1,550 @@
+---
+title: 代理到代理 (A2A) 协议
+description: 代理将任务委托给远程 A2A 代理和/或作为符合 A2A 的服务器代理运行。
+icon: network-wired
+mode: "wide"
+---
+
+## A2A 代理委托
+
+<Info>
+将 A2A 代理部署到生产中？有关分布式状态、企业身份验证、gRPC 传输和水平扩展，请参阅 [AMP 上的 A2A](https://docs-platform.crewai.com/platform/zh-CN/features/a2a)。
+</Info>
+
+CrewAI 将 [A2A 协议](https://a2a-protocol.org/latest/) 视为一流的委托原语，使代理能够委托任务、请求信息并与远程代理协作，并充当符合 A2A 的服务器代理。
+在客户端模式下，代理根据任务要求自主选择本地执行或远程委托。
+
+## 它是如何运作的
+
+当代理配置了 A2A 功能时：
+
+1. Agent 分析每个任务
+2. 它决定：
+   - 直接利用自身能力处理任务
+   - 委托给远程 A2A 代理进行专门处理
+3. 如果是委托，代理通过协议与远程A2A代理进行通信
+4. 结果返回到 CrewAI 工作流程
+
+<Note>
+A2A 委托需要 `a2a-sdk` 包。安装方式：`uv add 'crewai[a2a]'` 或`pip install 'crewai[a2a]'`
+</Note>
+
+## 基本配置
+
+<Warning>
+`crewai.a2a.config.A2AConfig` 已弃用，并将在 v2.0.0 中删除。使用 `A2AClientConfig` 连接到远程代理和/或使用 `A2AServerConfig` 将代理公开为服务器。
+</Warning>
+
+通过设置 `a2a` 参数来配置 A2A 委派代理：
+
+```python Code
+from crewai import Agent, Crew, Task
+from crewai.a2a import A2AClientConfig
+
+agent = Agent(
+    role="Research Coordinator",
+    goal="Coordinate research tasks efficiently",
+    backstory="Expert at delegating to specialized research agents",
+    llm="gpt-4o",
+    a2a=A2AClientConfig(
+        endpoint="https://example.com/.well-known/agent-card.json",
+        timeout=120,
+        max_turns=10
+    )
+)
+
+task = Task(
+    description="Research the latest developments in quantum computing",
+    expected_output="A comprehensive research report",
+    agent=agent
+)
+
+crew = Crew(agents=[agent], tasks=[task], verbose=True)
+result = crew.kickoff()
+```
+
+## 客户端配置选项
+
+`A2AClientConfig` 类接受以下参数：
+
+<ParamField path="endpoint" type="str" required>
+A2A 代理端点 URL（通常指向 `.well-known/agent-card.json`）
+</ParamField>
+
+<ParamField path="auth" type="AuthScheme" default="None">
+A2A 代理的身份验证方案。支持 Bearer 令牌、OAuth2、API 密钥和 HTTP 身份验证。
+</ParamField>
+
+<ParamField path="timeout" type="int" default="120">
+请求超时（以秒为单位）
+</ParamField>
+
+<ParamField path="max_turns" type="int" default="10">
+与 A2A 代理的最大对话轮数
+</ParamField>
+
+<ParamField path="response_model" type="type[BaseModel]" default="None">
+可选的 Pydantic 模型，用于请求 A2A 代理的结构化输出。 A2A协议不
+强制执行此操作，因此 A2A 代理无需满足此请求。
+</ParamField>
+
+<ParamField path="fail_fast" type="bool" default="True">
+如果代理连接失败，是否立即引发错误。当 `False` 时，代理将继续使用可用的代理，并通知 LLM 不可用的代理。
+</ParamField>
+
+<ParamField path="trust_remote_completion_status" type="bool" default="False">
+当`True`时，A2A代理在发出完成信号时直接返回结果。当 `False` 时，允许服务器代理查看结果并可能继续对话。
+</ParamField>
+
+<ParamField path="updates" type="UpdateConfig" default="StreamingConfig()">
+接收任务状态的更新机制。选项：`StreamingConfig`、`PollingConfig` 或 `PushNotificationConfig`。
+</ParamField>
+
+<ParamField path="accepted_output_modes" type="list[str]" default='["application/json"]'>
+客户端可以在响应中接受的媒体类型。
+</ParamField>
+
+<ParamField path="extensions" type="list[str]" default="[]">
+客户端支持的 A2A 协议扩展 URI。
+</ParamField>
+
+<ParamField path="client_extensions" type="list[A2AExtension]" default="[]">
+用于工具注入、提示增强和响应修改的客户端处理挂钩。
+</ParamField>
+
+<ParamField path="transport" type="ClientTransportConfig" default="ClientTransportConfig()">
+传输配置，包括首选传输、支持的协商传输以及特定于协议的设置（gRPC 消息大小、keepalive 等）。
+</ParamField>
+
+<ParamField path="transport_protocol" type="Literal['JSONRPC', 'GRPC', 'HTTP+JSON']" default="None">
+**已弃用**：使用 `transport=ClientTransportConfig(preferred=...)` 代替。
+</ParamField>
+
+<ParamField path="supported_transports" type="list[str]" default="None">
+**已弃用**：使用 `transport=ClientTransportConfig(supported=...)` 代替。
+</ParamField>
+
+## 验证
+
+对于需要身份验证的 A2A 代理，请使用提供的身份验证方案之一：
+
+<Tabs>
+  <Tab title="Bearer Token">
+```python bearer_token_auth.py lines
+from crewai.a2a import A2AClientConfig
+from crewai.a2a.auth import BearerTokenAuth
+
+agent = Agent(
+    role="Secure Coordinator",
+    goal="Coordinate tasks with secured agents",
+    backstory="Manages secure agent communications",
+    llm="gpt-4o",
+    a2a=A2AClientConfig(
+        endpoint="https://secure-agent.example.com/.well-known/agent-card.json",
+        auth=BearerTokenAuth(token="your-bearer-token"),
+        timeout=120
+    )
+)
+```
+  </Tab>
+
+  <Tab title="API Key">
+```python api_key_auth.py lines
+from crewai.a2a import A2AClientConfig
+from crewai.a2a.auth import APIKeyAuth
+
+agent = Agent(
+    role="API Coordinator",
+    goal="Coordinate with API-based agents",
+    backstory="Manages API-authenticated communications",
+    llm="gpt-4o",
+    a2a=A2AClientConfig(
+        endpoint="https://api-agent.example.com/.well-known/agent-card.json",
+        auth=APIKeyAuth(
+            api_key="your-api-key",
+            location="header",  # or "query" or "cookie"
+            name="X-API-Key"
+        ),
+        timeout=120
+    )
+)
+```
+  </Tab>
+
+  <Tab title="OAuth2">
+```python oauth2_auth.py lines
+from crewai.a2a import A2AClientConfig
+from crewai.a2a.auth import OAuth2ClientCredentials
+
+agent = Agent(
+    role="OAuth Coordinator",
+    goal="Coordinate with OAuth-secured agents",
+    backstory="Manages OAuth-authenticated communications",
+    llm="gpt-4o",
+    a2a=A2AClientConfig(
+        endpoint="https://oauth-agent.example.com/.well-known/agent-card.json",
+        auth=OAuth2ClientCredentials(
+            token_url="https://auth.example.com/oauth/token",
+            client_id="your-client-id",
+            client_secret="your-client-secret",
+            scopes=["read", "write"]
+        ),
+        timeout=120
+    )
+)
+```
+  </Tab>
+
+  <Tab title="HTTP Basic">
+```python http_basic_auth.py lines
+from crewai.a2a import A2AClientConfig
+from crewai.a2a.auth import HTTPBasicAuth
+
+agent = Agent(
+    role="Basic Auth Coordinator",
+    goal="Coordinate with basic auth agents",
+    backstory="Manages basic authentication communications",
+    llm="gpt-4o",
+    a2a=A2AClientConfig(
+        endpoint="https://basic-agent.example.com/.well-known/agent-card.json",
+        auth=HTTPBasicAuth(
+            username="your-username",
+            password="your-password"
+        ),
+        timeout=120
+    )
+)
+```
+  </Tab>
+</Tabs>
+
+## 多个 A2A 代理
+
+通过传递列表来配置多个 A2A 代理进行委派：
+
+```python Code
+from crewai.a2a import A2AClientConfig
+from crewai.a2a.auth import BearerTokenAuth
+
+agent = Agent(
+    role="Multi-Agent Coordinator",
+    goal="Coordinate with multiple specialized agents",
+    backstory="Expert at delegating to the right specialist",
+    llm="gpt-4o",
+    a2a=[
+        A2AClientConfig(
+            endpoint="https://research.example.com/.well-known/agent-card.json",
+            timeout=120
+        ),
+        A2AClientConfig(
+            endpoint="https://data.example.com/.well-known/agent-card.json",
+            auth=BearerTokenAuth(token="data-token"),
+            timeout=90
+        )
+    ]
+)
+```
+
+LLM将根据任务要求自动选择委托给哪个A2A代理。
+
+## 错误处理
+
+使用 `fail_fast` 参数控制代理连接失败的处理方式：
+
+```python Code
+from crewai.a2a import A2AClientConfig
+
+# Fail immediately on connection errors (default)
+agent = Agent(
+    role="Research Coordinator",
+    goal="Coordinate research tasks",
+    backstory="Expert at delegation",
+    llm="gpt-4o",
+    a2a=A2AClientConfig(
+        endpoint="https://research.example.com/.well-known/agent-card.json",
+        fail_fast=True
+    )
+)
+
+# Continue with available agents
+agent = Agent(
+    role="Multi-Agent Coordinator",
+    goal="Coordinate with multiple agents",
+    backstory="Expert at working with available resources",
+    llm="gpt-4o",
+    a2a=[
+        A2AClientConfig(
+            endpoint="https://primary.example.com/.well-known/agent-card.json",
+            fail_fast=False
+        ),
+        A2AClientConfig(
+            endpoint="https://backup.example.com/.well-known/agent-card.json",
+            fail_fast=False
+        )
+    ]
+)
+```
+
+当`fail_fast=False`时：
+- 如果某些代理失败，LLM会获知哪些代理不可用，并可以委派给正在工作的代理
+- 如果所有代理均失败，LLM 会收到代理不可用的通知并直接处理任务
+- 连接错误被捕获并包含在上下文中，以便做出更好的决策
+
+## 更新机制
+
+控制代理如何从远程 A2A 代理接收任务状态更新：
+
+<Tabs>
+  <Tab title="Streaming (Default)">
+```python streaming_config.py lines
+from crewai.a2a import A2AClientConfig
+from crewai.a2a.updates import StreamingConfig
+
+agent = Agent(
+    role="Research Coordinator",
+    goal="Coordinate research tasks",
+    backstory="Expert at delegation",
+    llm="gpt-4o",
+    a2a=A2AClientConfig(
+        endpoint="https://research.example.com/.well-known/agent-card.json",
+        updates=StreamingConfig()
+    )
+)
+```
+  </Tab>
+
+  <Tab title="Polling">
+```python polling_config.py lines
+from crewai.a2a import A2AClientConfig
+from crewai.a2a.updates import PollingConfig
+
+agent = Agent(
+    role="Research Coordinator",
+    goal="Coordinate research tasks",
+    backstory="Expert at delegation",
+    llm="gpt-4o",
+    a2a=A2AClientConfig(
+        endpoint="https://research.example.com/.well-known/agent-card.json",
+        updates=PollingConfig(
+            interval=2.0,
+            timeout=300.0,
+            max_polls=100
+        )
+    )
+)
+```
+  </Tab>
+
+  <Tab title="Push Notifications">
+```python push_notifications_config.py lines
+from crewai.a2a import A2AClientConfig
+from crewai.a2a.updates import PushNotificationConfig
+
+agent = Agent(
+    role="Research Coordinator",
+    goal="Coordinate research tasks",
+    backstory="Expert at delegation",
+    llm="gpt-4o",
+    a2a=A2AClientConfig(
+        endpoint="https://research.example.com/.well-known/agent-card.json",
+        updates=PushNotificationConfig(
+            url="{base_url}/a2a/callback",
+            token="your-validation-token",
+            timeout=300.0
+        )
+    )
+)
+```
+  </Tab>
+</Tabs>
+
+## 将代理公开为 A2A 服务器
+
+您可以将 CrewAI 代理公开为 A2A 兼容服务器，允许其他 A2A 客户端将任务委派给它们。
+
+### 服务器配置
+
+将 `A2AServerConfig` 添加到您的代理以启用服务器功能：
+
+```python a2a_server_agent.py lines
+from crewai import Agent
+from crewai.a2a import A2AServerConfig
+
+agent = Agent(
+    role="Data Analyst",
+    goal="Analyze datasets and provide insights",
+    backstory="Expert data scientist with statistical analysis skills",
+    llm="gpt-4o",
+    a2a=A2AServerConfig(url="https://your-server.com")
+)
+```
+
+### 服务器配置选项
+
+<ParamField path="name" type="str" default="None">
+代理的人类可读名称。如果未提供，则默认为代理角色。
+</ParamField>
+
+<ParamField path="description" type="str" default="None">
+人类可读的描述。如果未提供，则默认为代理的目标和背景故事。
+</ParamField>
+
+<ParamField path="version" type="str" default="1.0.0">
+代理卡的版本字符串。
+</ParamField>
+
+<ParamField path="skills" type="list[AgentSkill]" default="[]">
+代理技能列表。如果未提供，则从代理工具自动生成。
+</ParamField>
+
+<ParamField path="capabilities" type="AgentCapabilities" default="AgentCapabilities(streaming=True, push_notifications=False)">
+代理支持的可选功能的声明。
+</ParamField>
+
+<ParamField path="default_input_modes" type="list[str]" default='["text/plain", "application/json"]'>
+支持的输入 MIME 类型。
+</ParamField>
+
+<ParamField path="default_output_modes" type="list[str]" default='["text/plain", "application/json"]'>
+支持的输出 MIME 类型。
+</ParamField>
+
+<ParamField path="url" type="str" default="None">
+首选端点 URL。如果设置，则覆盖传递给 `to_agent_card()` 的 URL。
+</ParamField>
+
+<ParamField path="protocol_version" type="str" default="0.3.0">
+此代理支持的 A2A 协议版本。
+</ParamField>
+
+<ParamField path="provider" type="AgentProvider" default="None">
+有关代理服务提供商的信息。
+</ParamField>
+
+<ParamField path="documentation_url" type="str" default="None">
+代理文档的 URL。
+</ParamField>
+
+<ParamField path="icon_url" type="str" default="None">
+代理图标的 URL。
+</ParamField>
+
+<ParamField path="additional_interfaces" type="list[AgentInterface]" default="[]">
+其他支持的接口（传输和 URL 组合）。
+</ParamField>
+
+<ParamField path="security" type="list[dict[str, list[str]]]" default="[]">
+所有代理交互的安全需求对象。
+</ParamField>
+
+<ParamField path="security_schemes" type="dict[str, SecurityScheme]" default="{}">
+可用于授权请求的安全方案。
+</ParamField>
+
+<ParamField path="supports_authenticated_extended_card" type="bool" default="False">
+代理是否为经过身份验证的用户提供扩展卡。
+</ParamField>
+
+<ParamField path="extended_skills" type="list[AgentSkill]" default="[]">
+其他技能仅对扩展座席卡中经过身份验证的用户可见。
+</ParamField>
+
+<ParamField path="signing_config" type="AgentCardSigningConfig" default="None">
+使用 JWS 签署 AgentCard 的配置。支持RS256、ES256、PS256及相关算法。
+</ParamField>
+
+<ParamField path="server_extensions" type="list[ServerExtension]" default="[]">
+服务器端 A2A 协议扩展，具有修改代理行为的 `on_request`/`on_response` 挂钩。
+</ParamField>
+
+<ParamField path="push_notifications" type="ServerPushNotificationConfig" default="None">
+传出推送通知的配置，包括 HMAC-SHA256 签名密钥。
+</ParamField>
+
+<ParamField path="transport" type="ServerTransportConfig" default="ServerTransportConfig()">
+传输配置包括首选传输、gRPC 服务器设置、JSON-RPC 路径和 HTTP+JSON 设置。
+</ParamField>
+
+<ParamField path="auth" type="ServerAuthScheme" default="None">
+传入 A2A 请求的身份验证方案。使用`AUTH_TOKEN` 环境变量默认为`SimpleTokenAuth`。
+</ParamField>
+
+<ParamField path="preferred_transport" type="Literal['JSONRPC', 'GRPC', 'HTTP+JSON']" default="None">
+**已弃用**：使用 `transport=ServerTransportConfig(preferred=...)` 代替。
+</ParamField>
+
+<ParamField path="signatures" type="list[AgentCardSignature]" default="None">
+**已弃用**：使用 `signing_config=AgentCardSigningConfig(...)` 代替。
+</ParamField>
+
+### 组合客户端和服务器
+
+通过提供两种配置，代理可以充当客户端和服务器：
+
+```python Code
+from crewai import Agent
+from crewai.a2a import A2AClientConfig, A2AServerConfig
+
+agent = Agent(
+    role="Research Coordinator",
+    goal="Coordinate research and serve analysis requests",
+    backstory="Expert at delegation and analysis",
+    llm="gpt-4o",
+    a2a=[
+        A2AClientConfig(
+            endpoint="https://specialist.example.com/.well-known/agent-card.json",
+            timeout=120
+        ),
+        A2AServerConfig(url="https://your-server.com")
+    ]
+)
+```
+
+### 文件输入和结构化输出
+
+A2A 支持双向传递文件和请求结构化输出。
+
+**客户端**：委派给远程 A2A 代理时，任务 `input_files` 中的文件将在传出消息中作为 `FilePart` 发送。如果在 `A2AClientConfig` 上设置了 `response_model`，则 Pydantic 模型的 JSON 模式将嵌入到消息元数据中，请求远程代理的结构化输出。
+
+**服务器端**：传入的`FilePart`被提取并作为`input_files`传递给代理的任务。如果客户端包含 JSON 架构，服务器会从中创建响应模型并将其应用于任务。当代理返回结构化数据时，响应将以 `DataPart` 形式发回，而不是纯文本。
+
+## 最佳实践
+
+<CardGroup cols={2}>
+  <Card title="Set Appropriate Timeouts" icon="clock">
+根据预期的 A2A 代理响应时间配置超时。运行时间较长的任务可能需要更高的超时值。
+  </Card>
+
+  <Card title="Limit Conversation Turns" icon="comments">
+使用`max_turns` 来防止过度的来回。代理将在达到限制之前自动结束对话。
+  </Card>
+
+  <Card title="Use Resilient Error Handling" icon="shield-check">
+为具有多个代理的生产环境设置`fail_fast=False`，以妥善处理连接故障并保持工作流程连续性。
+  </Card>
+
+  <Card title="Secure Your Credentials" icon="lock">
+将身份验证令牌和凭据存储为环境变量，而不是代码中。
+  </Card>
+
+  <Card title="Monitor Delegation Decisions" icon="eye">
+使用详细模式观察LLM何时选择委派任务或直接处理任务。
+  </Card>
+</CardGroup>
+
+## 支持的身份验证方法
+
+- **不记名令牌** - 简单的基于令牌的身份验证
+- **OAuth2 客户端凭证** - 用于机器对机器通信的 OAuth2 流程
+- **OAuth2 授权代码** - 需要用户授权的 OAuth2 流程
+- **API 密钥** - 基于密钥的身份验证（标头、查询参数或 cookie）
+- **HTTP 基本** - 用户名/密码身份验证
+- **HTTP Digest** - 摘要式身份验证（需要 `httpx-auth` 包）
+
+## 了解更多
+
+有关 A2A 协议和参考实现的更多信息：
+
+- [A2A协议文档](https://a2a-protocol.org)
+- [A2A 示例实现](https://github.com/a2aproject/a2a-samples)
+- [A2A Python SDK](https://github.com/a2aproject/a2a-python)

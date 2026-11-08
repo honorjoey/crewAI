@@ -1,0 +1,112 @@
+---
+title: 定制代理
+description: 针对 CrewAI 框架内的特定角色、任务和高级定制定制代理的综合指南。
+icon: user-pen
+mode: "wide"
+---
+
+## 可定制的属性
+
+打造高效的 CrewAI 团队取决于动态定制 AI 代理以满足任何项目的独特要求的能力。本节介绍您可以自定义的基本属性。
+
+### 定制的关键属性
+
+| 属性              | 描述                                                                                                                                               |
+|:-----------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **角色**              | 指定客服人员在团队中的职位，例如“分析师”或“客户服务代表”。                                                                   |
+| **目标**              | 定义代理的目标，与其角色和机组人员的总体任务保持一致。                                                                  |
+| **背景故事**         | 为特工的角色提供深度，增强工作人员的积极性和参与度。                                                              |
+| **工具** *（可选）*        | 表示代理用于任务的功能或方法，从简单的功能到复杂的集成。                                              |
+| **缓存** *（可选）*        | 确定代理是否应使用缓存来使用工具。                                                                                          |
+| **最大转速**           | 设置每分钟的最大请求数 (`max_rpm`)。可以设置为 `None` 以无限制地请求外部服务。                                        |
+| **详细** *（可选）*      | 启用用于调试和优化的详细日志记录，提供对执行流程的洞察。                                                 |
+| **允许委派** *（可选）* | 控制任务委托给其他代理，默认为`False`。                                                                                    |
+| **最大迭代次数** *（可选）*      | 限制任务的最大迭代次数 (`max_iter`) 以防止无限循环，默认值为 25。                                    |
+| **最大执行时间** *（可选）* | 设置代理完成任务所允许的最长时间。                                                                                   |
+| **系统模板** *（可选）*   | 定义代理的系统格式。                                                                                                       |
+| **提示模板** *（可选）*   | 定义代理的提示格式。                                                                                                       |
+| **回复模板** *（可选）* | 定义代理的响应格式。                                                                                                     |
+| **使用系统提示** *（可选）* | 控制代理在任务执行期间是否使用系统提示。                                                                      |
+| **尊重上下文窗口**       | 默认情况下启用滑动上下文窗口，保持上下文大小。                                                                           |
+| **最大重试限制**              | 设置代理发生错误时的最大重试次数 (`max_retry_limit`)。                                                           |
+
+## 高级定制选项
+
+除了基本属性之外，CrewAI 还允许进行更深入的定制，以显着增强代理的行为和能力。
+
+### 语言模型定制
+
+可以使用特定的语言模型（`llm`）和函数调用语言模型（`function_calling_llm`）来定制代理，从而对其处理和决策能力提供高级控制。
+值得注意的是，设置 `function_calling_llm` 允许覆盖默认的组函数调用语言模型，从而提供更大程度的定制。
+
+## 性能和调试设置
+
+调整代理的性能并监控其操作对于高效执行任务至关重要。
+
+### 详细模式和 RPM 限制
+
+- **详细模式**：启用代理操作的详细日志记录，对于调试和优化非常有用。具体来说，它提供了对代理执行流程的深入了解，有助于优化性能。
+- **RPM 限制**：设置每分钟的最大请求数 (`max_rpm`)。该属性是可选的，可以无限制地设置为`None`，从而允许在需要时对外部服务进行无限制的查询。
+
+### 任务执行的最大迭代次数
+
+`max_iter` 属性允许用户定义代理可以对单个任务执行的最大迭代次数，从而防止无限循环或过长的执行。
+默认值设置为 25，提供彻底性和效率之间的平衡。一旦代理接近这个数字，它就会尽力给出一个好的答案。
+
+## 定制代理和工具
+
+通过在初始化期间定义代理的属性和工具来定制代理。工具对于代理的功能至关重要，使他们能够执行专门的任务。
+`tools` 属性应该是代理可以使用的工具数组，默认情况下它被初始化为空列表。可以在代理初始化后添加或修改工具以适应新的要求。
+
+```shell
+pip install 'crewai[tools]'
+```
+
+### 示例：将工具分配给代理
+
+```python Code
+import os
+from crewai import Agent
+from crewai_tools import SerperDevTool
+
+# Set API keys for tool initialization
+os.environ["OPENAI_API_KEY"] = "Your Key"
+os.environ["SERPER_API_KEY"] = "Your Key"
+
+# Initialize a search tool
+search_tool = SerperDevTool()
+
+# Initialize the agent with advanced options
+agent = Agent(
+  role='Research Analyst',
+  goal='Provide up-to-date market analysis',
+  backstory='An expert analyst with a keen eye for market trends.',
+  tools=[search_tool],
+  memory=True, # Enable memory
+  verbose=True,
+  max_rpm=None, # No limit on requests per minute
+  max_iter=25, # Default value for maximum iterations
+)
+```
+
+## 授权与自治
+
+控制代理委派任务或提出问题的能力对于在 CrewAI 框架内定制其自主性和协作动态至关重要。默认情况下，
+`allow_delegation` 属性现在设置为`False`，禁止代理根据需要寻求帮助或委派任务。可以更改此默认行为以促进协作解决问题和
+CrewAI 生态系统内的效率。如果需要，可以启用委派以满足特定的操作要求。
+
+### 示例：禁用代理的委派
+
+```python Code
+agent = Agent(
+  role='Content Writer',
+  goal='Write engaging content on market trends',
+  backstory='A seasoned writer with expertise in market analysis.',
+  allow_delegation=True # Enabling delegation
+)
+```
+
+## 结论
+
+通过设置角色、目标、背景故事和工具以及语言模型定制、内存、性能设置和委托首选项等高级选项来定制 CrewAI 中的代理，
+配备一支细致且有能力的人工智能团队，为复杂的挑战做好准备。

@@ -1,0 +1,442 @@
+---
+title: 技能
+description: 基于文件系统的技能包,将域专业知识和指令注入代理提示.
+icon: bolt
+mode: "wide"
+---
+
+## 概览
+
+技能是自成一体的目录,为代理人提供**域特定指令,准则和参考材料**. 每种技能由一个`SKILL.md`带有 YAML 前题和一个标记下的身体。
+
+特工们首先收到每个配置的技能名称和描述. 当 a
+描述适用于当前请求,代理加载技能满载
+执行指令。 这将不相关的指令从
+上下文,同时赋予代理人相关的专业知识而不修改代码。
+
+<Note type="info" title="Skills vs Tools — The Key Distinction">
+** 技能不是工具。 ** 这是最常见的混淆点。
+
+- ** 技能** 将 * 指示和上下文 * 注入代理人的提示中。 他们告诉特工 如何思考一个问题。
+- **Tools**赋予代理 *可调用函数 * 采取行动(搜索,读取文件,调用API).
+
+你经常需要** 两者:专门技能、行动工具。 它们是独立配置的,相辅相成。
+</Note>
+
+---
+
+## 快速启动
+
+### 1. 以国家领导才能创建技能
+
+CLI 是创建技能的辅助方式——它使目录布局和有效`SKILL.md`给你:
+
+```shell Terminal
+crewai create skill code-review
+```
+
+在船员项目内(在哪里)`pyproject.toml`创造生命`./skills/code-review/`; 在它创建的项目之外`./code-review/`在当前目录中(您可以用`--no-project`打开`crewai create skill`):
+
+```
+skills/
+└── code-review/
+    ├── SKILL.md          # Required — instructions (pre-filled template)
+    ├── references/       # Optional — reference docs
+    ├── scripts/          # Optional — executable scripts
+    └── assets/           # Optional — static files
+```
+
+### 2. 写你的SKILL.MD
+
+```markdown
+---
+name: code-review
+description: Guidelines for conducting thorough code reviews with focus on security and performance.
+metadata:
+  author: your-team
+  version: "1.0"
+---
+
+## Code Review Guidelines
+
+When reviewing code, follow this checklist:
+
+1. **Security**: Check for injection vulnerabilities, auth bypasses, and data exposure
+2. **Performance**: Look for N+1 queries, unnecessary allocations, and blocking calls
+3. **Readability**: Ensure clear naming, appropriate comments, and consistent style
+4. **Testing**: Verify adequate test coverage for new functionality
+
+### Severity Levels
+- **Critical**: Security vulnerabilities, data loss risks → block merge
+- **Major**: Performance issues, logic errors → request changes
+- **Minor**: Style issues, naming suggestions → approve with comments
+```
+
+### 3. 附于代理人
+
+```python
+from crewai import Agent
+from crewai_tools import GithubSearchTool, FileReadTool
+
+reviewer = Agent(
+    role="Senior Code Reviewer",
+    goal="Review pull requests for quality and security issues",
+    backstory="Staff engineer with expertise in secure coding practices.",
+    skills=["./skills"],                          # Discovers review skills
+    tools=[GithubSearchTool(), FileReadTool()],   # Lets agent read code
+)
+```
+
+代理商现在既具备**专门知识**(从相关技能中加载)
+• 能力**(来自工具)。
+
+---
+
+## 技能 + 工具:共同努力
+
+以下是表明技能和工具如何相互补充的共同模式:
+
+### 模式1:只掌握技能(领域专门知识,不需要行动)
+
+当代理机需要特定指令但不需要调用外部服务时使用:
+
+```python
+agent = Agent(
+    role="Technical Writer",
+    goal="Write clear API documentation",
+    backstory="Expert technical writer",
+    skills=["./skills/api-docs-style"],  # Writing guidelines and templates
+    # No tools needed — agent writes based on provided context
+)
+```
+
+### 图案2:只限工具(行动,无特殊专长)
+
+当代理需要采取行动但不需要特定域的指示时使用:
+
+```python
+from crewai_tools import SerperDevTool, ScrapeWebsiteTool
+
+agent = Agent(
+    role="Web Researcher",
+    goal="Find information about a topic",
+    backstory="Skilled at finding information online",
+    tools=[SerperDevTool(), ScrapeWebsiteTool()],  # Can search and scrape
+    # No skills needed — general research doesn't need special guidelines
+)
+```
+
+### 图案3:技能+工具(经验和行动)
+
+最常见的现实世界模式. 该技能提供* 如何* 接近工作;工具提供* 代理人可以做什么:
+
+```python
+from crewai_tools import SerperDevTool, FileReadTool, CodeInterpreterTool
+
+analyst = Agent(
+    role="Security Analyst",
+    goal="Audit infrastructure for vulnerabilities",
+    backstory="Expert in cloud security and compliance",
+    skills=["./skills/security-audit"],   # Audit methodology and checklists
+    tools=[
+        SerperDevTool(),                  # Research known vulnerabilities
+        FileReadTool(),                   # Read config files
+        CodeInterpreterTool(),            # Run analysis scripts
+    ],
+)
+```
+
+### 图案4:技能+多边方案
+
+技能与MCP服务器并肩工作,与工具工作方式相同:
+
+```python
+agent = Agent(
+    role="Data Analyst",
+    goal="Analyze customer data and generate reports",
+    backstory="Expert data analyst with strong statistical background",
+    skills=["./skills/data-analysis"],           # Analysis methodology
+    mcps=["https://data-warehouse.example.com/sse"],  # Remote data access
+)
+```
+
+### 图案5:技能+应用程序
+
+技能可以指导代理人如何使用平台集成:
+
+```python
+agent = Agent(
+    role="Customer Support Agent",
+    goal="Respond to customer inquiries professionally",
+    backstory="Experienced support representative",
+    skills=["./skills/support-playbook"],  # Response templates and escalation rules
+    apps=["gmail", "zendesk"],             # Can send emails and update tickets
+)
+```
+
+---
+
+## 创造、出版和安装技能
+
+技能有一个完整的生命周期,由国家自主管理:**创造这些技能`crewai create skill`,用`crewai skill publish`**——手卷目录对本地实验有用,但CLI是预定的工作流程,并保持你的技巧布局和前题有效.
+
+<Note>
+  `crewai skill create`已经贬值了,但还是有警告的。 使用`crewai create skill`相反。
+</Note>
+
+### 创建
+
+```shell Terminal
+crewai create skill my-skill
+```
+
+脚手架目录( 输入)`./skills/`包含一个模板`SKILL.md`,加上空`scripts/`, `references/`,以及`assets/`目录。 编辑`SKILL.md`用于定义指令。
+
+### 发布
+
+从技能目录内部运行( 在哪里)`SKILL.md`即:
+
+```shell Terminal
+cd skills/my-skill
+crewai skill publish
+```
+
+出版阅读`name`, `description`,以及`metadata.version`从`SKILL.md`将技术推到CrewAI注册。 ** 所展示的技能总是适用于贵组织**——如工具一样,只有出版者才能看到和安装这些技能;没有公众知名度。 有用旗帜 :
+
+|旗帜|效果|
+| :--- | :--- |
+| `--org <slug>` |在特定组织下发布(覆盖设置).|
+| `--force` |跳过 git- state 验证( 未承诺更改等) 。|
+
+### 安装
+
+安装已公布的技能`@org-uuid/name`参考:
+
+```shell Terminal
+crewai skill install @your-org-uuid/code-review
+```
+
+<Note>
+使用您的组织的**UUID**,而不是它的名称——组织名称并不是独一无二的,所以一个名称可以解决错误的组织,安装失败时会出现"找不到"的错误. 运行`crewai org list`以查看UUID`ID`包括所属的每个组织。
+</Note>
+
+在一个团队内部 将技能投射到`./skills/{name}/`; 在一个工程之外,它去共享缓存`~/.crewai/skills/{org-uuid}/{name}/`.
+
+代理人也可以直接参考注册技能——他们从本地缓存(或项目)解析.`skills/`目录),运行时间:
+
+```python
+agent = Agent(
+    role="Senior Code Reviewer",
+    goal="Review pull requests for quality and security issues",
+    backstory="Staff engineer with expertise in secure coding practices.",
+    skills=["@your-org-uuid/code-review"],  # registry ref, resolved locally
+)
+```
+
+### 键入版本
+
+无标注的参考文献决定了最新出版的版本,因此,
+新版本更改了每一个引用它的代理. 附加`@<version>`针
+改为:
+
+```python
+agent = Agent(
+    role="Senior Code Reviewer",
+    goal="Review pull requests for quality and security issues",
+    backstory="Staff engineer with expertise in secure coding practices.",
+    skills=["@your-org-uuid/code-review@1.2.0"],  # pinned; a leading "v" also works
+)
+```
+
+标注的参考文献重新下载,除非它发现的复制品是准确的版本——
+a pin 要求特定版本,而不是暗示一个版本。 一个缓存技能是
+匹配安装时记录的版本,所以不需要在
+其前题; 工程本地副本`skills/`没有这样的记录,所以它
+匹配在`metadata.version`联合国`SKILL.md`前题 固定一个
+未发布的版本失败, 而不是回到最新版本 。
+
+<Note>
+** 代理存储器** 的代理自动锁定:存储器
+在它所指派的每个技能旁边记录一个版本,运行时间应用这些
+当它装入代理人时, 便针。
+</Note>
+
+### 搜索
+
+列出在 AMP 上向您的组织发布的技能,可选由一个
+术语与每种技能的手柄和描述相匹配:
+
+```shell Terminal
+crewai skill search
+crewai skill search "code review"
+```
+
+每行从最新版本的安全扫描状态开始(`passed`,
+`pending`或`failed`; 只有一个`passed`版本安装),然后是
+`<handle>@<latest-version>`和描述。 一个手柄或版本
+字符中不能包含的引用以引文显示。 在技能之上的一行给当前组织的UUID
+在参考文献中,代理人`skills`带,`@<org-uuid>/<handle>@<version>`;
+`crewai skill install`带`@<org-uuid>/<handle>`首先确定组织
+与`crewai org switch <org-uuid>`。标记技能`(public)`可能属于
+另一组织,其UUID的参考需要;列表没有显示.
+
+### 列表
+
+```shell Terminal
+crewai skill list
+```
+
+从两个项目显示已安装的技能`./skills/`目录和全局缓存,及其版本和路径。
+
+---
+
+## 机组级技能
+
+可以规定船员向**所有代理人申请技能**:
+
+```python
+from crewai import Crew
+
+crew = Crew(
+    agents=[researcher, writer, reviewer],
+    tasks=[research_task, write_task, review_task],
+    skills=["./skills"],  # All agents get these skills
+)
+```
+
+代理级技能优先——如果在两个级别上都发现了相同的技能,则使用代理的版本.
+
+---
+
+## SKILL.md 格式
+
+```markdown
+---
+name: my-skill
+description: Short description of what this skill does and when to use it.
+license: Apache-2.0                    # optional
+compatibility: crewai>=0.1.0          # optional
+metadata:                              # optional
+  author: your-name
+  version: "1.0"
+allowed-tools: web-search file-read   # optional, experimental
+---
+
+Instructions for the agent go here. This markdown body is injected
+into the agent's prompt when the skill is activated.
+```
+
+### 前题字段
+
+|外地|要求数|说明|
+| :-------------- | :------- | :----------------------------------------------------------------------- |
+| `name`          |对|1 -64个字符。 小写字母和连字符。 必须匹配目录名称 。|
+| `description`   |对|1–1024个字符。 描述技能的作用以及何时使用.|
+| `license`       |没有|许可证名称或一个捆绑的许可证文件的引用.|
+| `compatibility` |没有|最大500个字符。 环境要求(产品、包、网络)。|
+| `metadata`      |没有|任意字符串键值映射 。|
+| `allowed-tools` |没有|预批准工具的空间限制列表. 实验|
+
+---
+
+## 目录结构
+
+```
+my-skill/
+├── SKILL.md            # Required — frontmatter + instructions
+├── scripts/            # Optional — executable scripts
+├── references/         # Optional — reference documents
+└── assets/             # Optional — static files (configs, data)
+```
+
+目录名称必须与`name`输入`SKILL.md`编辑`scripts/`, `references/`,以及`assets/`有关技能的目录`path`用于需要直接引用文件的代理。
+
+---
+
+## 预装技能
+
+为了更多的控制,你可以在程序上发现和激活技能.
+传递一个激活的技巧 使它的指示总是:
+
+```python
+from pathlib import Path
+from crewai.skills import discover_skills, activate_skill
+
+# Discover all skills in a directory
+skills = discover_skills(Path("./skills"))
+
+# Activate them (loads full SKILL.md body)
+activated = [activate_skill(s) for s in skills]
+
+# Pass to an agent
+agent = Agent(
+    role="Researcher",
+    goal="Find relevant information",
+    backstory="An expert researcher.",
+    skills=activated,
+)
+```
+
+---
+
+## 如何装入技能
+
+技能使用**渐进披露**——只装载每个阶段所需的物品:
+
+|阶段|装满的|何时|
+| :--------- | :------------------------------------ | :---------------------------------------- |
+|发现|名称、描述、前题字段|代理设置或`discover_skills()`        |
+|激活|完整的 SKILL.md 文本|相关的运行时间请求或`activate_skill()` |
+|资源|资源目录目录|明确`load_resources()`电话|
+
+与`skills=["./skills"]`,在设置时发现了目录,但完整
+指令不是放在每个提示中。 代理审查元数据
+每一个执行和加载只应用一个技能。 装填的指令是
+执行范围,所以为先前调用选择的技能不会累积
+在经纪人。
+
+内置技能字符串和`Skill`已激活对象
+`activate_skill()`一直坚持下去 这提供了在下列情况下的明确选择:
+指示应适用于每项请求。
+
+---
+
+## 技能与知识
+
+技能和知识都改变了经纪人的及时性,但它们服务于不同的目的:
+
+|侧面|技能|知识|
+| :--- | :--- | :--- |
+|** 它提供的内容**|指示、程序、准则|事实、数据、资料|
+|*如何储存*|标记下的文件( SKILL. md)|嵌入向量存储器( ChromaDB)|
+|** 如何检索**|整个身体迅速注入|语义搜索找到相关的块|
+|** 最佳办法**|方法、核对表、样式指南|公司文件、产品信息、参考数据|
+|** 通过**| `skills=["./skills"]` | `knowledge_sources=[source]` |
+
+** 拇指规则:** 如果代理人需要遵循 * 进程 *,则使用技能. 如果代理人需要参考 *data *,使用知识.
+
+---
+
+## 共同问题
+
+<AccordionGroup>
+  <Accordion title="Do I need to set skills AND tools?">
+这取决于你的用例。 技能和工具是独立的,可以同时使用,也可以不使用。
+
+    - ** 仅技能**: 当代理商需要专业知识但没有外部动作时(例如,写作时采用风格准则)
+    - ** 仅是工具**: 当代理机需要动作但没有特殊方法(例如简单的网络搜索)时.
+    - ** 两个**: 当代理人需要专门知识和行动时(例如,有具体核对表的安全审计和扫描代码的能力)
+  </Accordion>
+
+  <Accordion title="Do skills automatically provide tools?">
+** 编号。 ** 那个`allowed-tools`字段在SKILL.md中只是实验元数据——它不提供或注入任何工具. 您必须始终通过`tools=[]`, `mcps=[]`,或`apps=[]`.
+  </Accordion>
+
+  <Accordion title="What happens if I set the same skill on both an agent and its crew?">
+代理级别的技能优先。 技能按名称来简化——代理技能先处理,所以如果在两个级别都出现相同的技能名称,则使用代理版本.
+  </Accordion>
+
+  <Accordion title="How large can a SKILL.md body be?">
+有软警告5万字,但没有硬限制. 保持技能的集中和简洁,以取得最佳效果——大规模即时注射可以淡化剂的注意力.
+  </Accordion>
+</AccordionGroup>

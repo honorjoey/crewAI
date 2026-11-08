@@ -1,0 +1,349 @@
+---
+title: MCP DSL 集成
+description: 了解如何使用 CrewAI 的简单 DSL 语法，通过 mcps 字段将 MCP 服务器直接与您的代理集成。
+icon: code
+mode: "wide"
+---
+
+## 概述
+
+CrewAI 的 MCP DSL（域特定语言）集成提供了**最简单的方法**将您的代理连接到 MCP（模型上下文协议）服务器。只需向您的代理添加 `mcps` 字段，CrewAI 就会自动处理所有复杂性。
+
+<Info>
+对于大多数 MCP 用例来说，这是**推荐的方法**。对于高级
+需要手动连接管理的场景，请参阅
+[MCP服务器适配器](/zh-CN/mcp/overview#advanced-mcpserveradapter)。
+</Info>
+
+## 基本用法
+
+使用 `mcps` 字段将 MCP 服务器添加到您的代理：
+
+```python
+from crewai import Agent
+
+agent = Agent(
+    role="Research Assistant",
+    goal="Help with research and analysis tasks",
+    backstory="Expert assistant with access to advanced research tools",
+    mcps=[
+        "https://mcp.exa.ai/mcp?api_key=your_key&profile=research"
+    ]
+)
+
+# MCP tools are now automatically available!
+# No need for manual connection management or tool configuration
+```
+
+## 支持的参考格式
+
+### 外部 MCP 远程服务器
+
+```python
+# Basic HTTPS server
+"https://api.example.com/mcp"
+
+# Server with authentication
+"https://mcp.exa.ai/mcp?api_key=your_key&profile=your_profile"
+
+# Server with custom path
+"https://services.company.com/api/v1/mcp"
+```
+
+### 具体工具选择
+
+使用 `#` 语法从服务器中选择特定工具：
+
+```python
+# Get only the forecast tool from weather server
+"https://weather.api.com/mcp#get_forecast"
+
+# Get only the search tool from Exa
+"https://mcp.exa.ai/mcp?api_key=your_key#web_search_exa"
+```
+
+### 连接的 MCP 集成
+
+从 CrewAI 目录连接 MCP 服务器或自带。连接到您的帐户后，通过 slug 引用它们：
+
+```python
+# Connected MCP with all tools
+"snowflake"
+
+# Specific tool from a connected MCP
+"stripe#list_invoices"
+
+# Multiple connected MCPs
+mcps=[
+    "snowflake",
+    "stripe",
+    "github"
+]
+```
+
+## 完整示例
+
+以下是使用多个 MCP 服务器的完整示例：
+
+```python
+from crewai import Agent, Task, Crew, Process
+
+# Create agent with multiple MCP sources
+multi_source_agent = Agent(
+    role="Multi-Source Research Analyst",
+    goal="Conduct comprehensive research using multiple data sources",
+    backstory="""Expert researcher with access to web search, weather data,
+    financial information, and academic research tools""",
+    mcps=[
+        # External MCP servers
+        "https://mcp.exa.ai/mcp?api_key=your_exa_key&profile=research",
+        "https://weather.api.com/mcp#get_current_conditions",
+
+        # Connected MCPs from catalog
+        "snowflake",
+        "stripe#list_invoices",
+        "github#search_repositories"
+    ]
+)
+
+# Create comprehensive research task
+research_task = Task(
+    description="""Research the impact of AI agents on business productivity.
+    Include current weather impacts on remote work, financial market trends,
+    and recent academic publications on AI agent frameworks.""",
+    expected_output="""Comprehensive report covering:
+    1. AI agent business impact analysis
+    2. Weather considerations for remote work
+    3. Financial market trends related to AI
+    4. Academic research citations and insights
+    5. Competitive landscape analysis""",
+    agent=multi_source_agent
+)
+
+# Create and execute crew
+research_crew = Crew(
+    agents=[multi_source_agent],
+    tasks=[research_task],
+    process=Process.sequential,
+    verbose=True
+)
+
+result = research_crew.kickoff()
+print(f"Research completed with {len(multi_source_agent.mcps)} MCP data sources")
+```
+
+## 工具命名和组织
+
+CrewAI 自动处理工具命名以防止冲突：
+
+```python
+# Original MCP server has tools: "search", "analyze"
+# CrewAI creates tools: "mcp_exa_ai_search", "mcp_exa_ai_analyze"
+
+agent = Agent(
+    role="Tool Organization Demo",
+    goal="Show how tool naming works",
+    backstory="Demonstrates automatic tool organization",
+    mcps=[
+        "https://mcp.exa.ai/mcp?api_key=key",      # Tools: mcp_exa_ai_*
+        "https://weather.service.com/mcp",         # Tools: weather_service_com_*
+        "snowflake"                                # Tools: snowflake_*
+    ]
+)
+
+# Each server's tools get unique prefixes based on the server name
+# This prevents naming conflicts between different MCP servers
+```
+
+## 错误处理和弹性
+
+MCP DSL 设计坚固且用户友好：
+
+### 优雅的服务器故障
+
+```python
+agent = Agent(
+    role="Resilient Researcher",
+    goal="Research despite server issues",
+    backstory="Experienced researcher who adapts to available tools",
+    mcps=[
+        "https://primary-server.com/mcp",         # Primary data source
+        "https://backup-server.com/mcp",          # Backup if primary fails
+        "https://unreachable-server.com/mcp",     # Will be skipped with warning
+        "snowflake"                               # Connected MCP from catalog
+    ]
+)
+
+# Agent will:
+# 1. Successfully connect to working servers
+# 2. Log warnings for failing servers
+# 3. Continue with available tools
+# 4. Not crash or hang on server failures
+```
+
+### 超时保护
+
+所有 MCP 操作都有内置超时：
+
+- **连接超时**：10秒
+- **工具执行超时**：30秒
+- **发现超时**：15 秒
+
+```python
+# These servers will timeout gracefully if unresponsive
+mcps=[
+    "https://slow-server.com/mcp",        # Will timeout after 10s if unresponsive
+    "https://overloaded-api.com/mcp"      # Will timeout if discovery takes > 15s
+]
+```
+
+## 性能特点
+
+### 自动缓存
+
+工具模式缓存 5 分钟以提高性能：
+
+```python
+# First agent creation - discovers tools from server
+agent1 = Agent(role="First", goal="Test", backstory="Test",
+               mcps=["https://api.example.com/mcp"])
+
+# Second agent creation (within 5 minutes) - uses cached tool schemas
+agent2 = Agent(role="Second", goal="Test", backstory="Test",
+               mcps=["https://api.example.com/mcp"])  # Much faster!
+```
+
+### 按需连接
+
+仅在实际使用工具时才建立工具连接：
+
+```python
+# Agent creation is fast - no MCP connections made yet
+agent = Agent(
+    role="On-Demand Agent",
+    goal="Use tools efficiently",
+    backstory="Efficient agent that connects only when needed",
+    mcps=["https://api.example.com/mcp"]
+)
+
+# MCP connection is made only when a tool is actually executed
+# This minimizes connection overhead and improves startup performance
+```
+
+## 与现有功能集成
+
+MCP 工具与其他 CrewAI 功能无缝协作：
+
+```python
+from crewai.tools import BaseTool
+
+class CustomTool(BaseTool):
+    name: str = "custom_analysis"
+    description: str = "Custom analysis tool"
+
+    def _run(self, **kwargs):
+        return "Custom analysis result"
+
+agent = Agent(
+    role="Full-Featured Agent",
+    goal="Use all available tool types",
+    backstory="Agent with comprehensive tool access",
+
+    # All tool types work together
+    tools=[CustomTool()],                          # Custom tools
+    apps=["gmail", "slack"],                       # Platform integrations
+    mcps=[                                         # MCP servers
+        "https://mcp.exa.ai/mcp?api_key=key",
+        "snowflake"
+    ],
+
+    verbose=True,
+    max_iter=15
+)
+```
+
+## 最佳实践
+
+### 1. 尽可能使用特定工具
+
+```python
+# Good - only get the tools you need
+mcps=["https://weather.api.com/mcp#get_forecast"]
+
+# Less efficient - gets all tools from server
+mcps=["https://weather.api.com/mcp"]
+```
+
+### 2. 安全地处理身份验证
+
+```python
+import os
+
+# Store API keys in environment variables
+exa_key = os.getenv("EXA_API_KEY")
+exa_profile = os.getenv("EXA_PROFILE")
+
+agent = Agent(
+    role="Secure Agent",
+    goal="Use MCP tools securely",
+    backstory="Security-conscious agent",
+    mcps=[f"https://mcp.exa.ai/mcp?api_key={exa_key}&profile={exa_profile}"]
+)
+```
+
+### 3. 针对服务器故障做好计划
+
+```python
+# Always include backup options
+mcps=[
+    "https://primary-api.com/mcp",       # Primary choice
+    "https://backup-api.com/mcp",        # Backup option
+    "snowflake"                          # Connected MCP fallback
+]
+```
+
+### 4. 使用描述性代理角色
+
+```python
+agent = Agent(
+    role="Weather-Enhanced Market Analyst",
+    goal="Analyze markets considering weather impacts",
+    backstory="Financial analyst with access to weather data for agricultural market insights",
+    mcps=[
+        "https://weather.service.com/mcp#get_forecast",
+        "stripe#list_invoices"
+    ]
+)
+```
+
+## 故障排除
+
+### 常见问题
+
+**未发现任何工具：**
+
+```python
+# Check your MCP server URL and authentication
+# Verify the server is running and accessible
+mcps=["https://mcp.example.com/mcp?api_key=valid_key"]
+```
+
+**连接超时：**
+
+```python
+# Server may be slow or overloaded
+# CrewAI will log warnings and continue with other servers
+# Check server status or try backup servers
+```
+
+**身份验证失败：**
+
+```python
+# Verify API keys and credentials
+# Check server documentation for required parameters
+# Ensure query parameters are properly URL encoded
+```
+
+## 高级：MCP服务器适配器
+
+对于需要手动连接管理的复杂场景，请使用`crewai-tools` 中的`MCPServerAdapter` 类。建议使用 Python 上下文管理器（`with` 语句），因为它会自动处理启动和停止与 MCP 服务器的连接。

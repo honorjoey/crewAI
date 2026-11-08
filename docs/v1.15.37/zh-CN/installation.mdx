@@ -1,0 +1,337 @@
+---
+title: 安装
+description: 开始使用 CrewAI —— 安装、配置并构建你的第一个 AI crew
+icon: wrench
+mode: "wide"
+---
+
+<div
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    gap: 18,
+    padding: "24px",
+    marginBottom: 32,
+    borderRadius: 12,
+    border: "1px solid rgba(235,102,88,0.28)",
+    background: "linear-gradient(180deg, rgba(235,102,88,0.14) 0%, rgba(235,102,88,0.06) 100%)"
+  }}
+>
+  <div>
+    <p style={{ margin: 0, color: "#EB6658", fontSize: 13, fontWeight: 700, textTransform: "uppercase" }}>
+      Coding agent setup
+    </p>
+    <h2 style={{ margin: "6px 0 8px" }}>在你的 coding agent 中配置 CrewAI</h2>
+    <p style={{ margin: 0, color: "var(--mint-text-2)", maxWidth: 760 }}>
+      复制一段可直接粘贴的配置提示，用于 Claude Code、Codex、Cursor 或任何 coding agent。它会安装官方 CrewAI skills、检查 CLI，并在改代码前让 agent 使用正确文档。
+    </p>
+  </div>
+
+  <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+    <button
+      type="button"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: 42,
+        padding: "0 16px",
+        borderRadius: 8,
+        border: "1px solid #EB6658",
+        background: "#EB6658",
+        color: "#FFFFFF",
+        fontSize: 15,
+        fontWeight: 700,
+        lineHeight: 1,
+        cursor: "pointer",
+        boxShadow: "0 10px 24px rgba(235,102,88,0.22)"
+      }}
+      onClick={async (event) => {
+        const prompt = `Set up this environment so I can build with CrewAI.
+
+First install the official CrewAI coding-agent skills if this environment supports npx:
+
+npx skills add crewaiinc/skills
+
+If npx is missing or the current agent cannot load skills, do not fail the whole setup. Report the exact issue and continue using the CrewAI docs directly.
+
+Use these CrewAI docs as source of truth before making assumptions:
+- https://skills.crewai.com
+- https://docs.crewai.com/llms.txt
+- https://docs.crewai.com/zh-CN/installation
+- https://docs.crewai.com/zh-CN/guides/coding-tools/build-with-ai
+
+Setup steps:
+1. Check python3 --version. CrewAI requires Python >=3.10 and <3.14.
+2. Install uv if missing:
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+3. Source the uv environment if needed:
+   source "$HOME/.local/bin/env"
+4. Install the CrewAI CLI:
+   uv tool install crewai
+5. Verify the CLI:
+   crewai version
+   crewai create --help
+6. Create a project:
+   CREWAI_DMN=true crewai create
+7. After project creation, inspect the generated files before editing.
+8. Run:
+   crewai install
+   crewai run
+
+Do not hardcode API keys. Use .env.
+Do not invent CLI flags. Validate with crewai --help or crewai create --help.
+If a command fails, show the exact command and error, explain the likely cause, fix what you can safely fix, and retry once.`;
+        const button = event.currentTarget;
+        const resetTimeout = button.dataset.resetTimeout;
+        if (resetTimeout) {
+          window.clearTimeout(Number(resetTimeout));
+        }
+        try {
+          await navigator.clipboard.writeText(prompt);
+          button.textContent = "Copied";
+        } catch {
+          button.textContent = "Copy failed";
+        } finally {
+          button.dataset.resetTimeout = String(window.setTimeout(() => {
+            button.textContent = "Copy agent setup prompt";
+            delete button.dataset.resetTimeout;
+          }, 1600));
+        }
+      }}
+    >
+      复制 agent 配置提示
+    </button>
+    <a
+      href="/zh-CN/guides/coding-tools/build-with-ai"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: 42,
+        padding: "0 16px",
+        borderRadius: 8,
+        border: "1px solid rgba(235,102,88,0.36)",
+        color: "#EB6658",
+        fontSize: 15,
+        fontWeight: 700,
+        lineHeight: 1,
+        textDecoration: "none"
+      }}
+    >
+      查看 coding-agent 指南
+    </a>
+  </div>
+</div>
+
+### 观看：使用 Coding Agent Skills 构建 CrewAI Agents 与 Flows
+
+<iframe src="https://www.loom.com/embed/befb9f68b81f42ad8112bfdd95a780af" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style={{width: "100%", height: "400px"}}></iframe>
+
+## 视频教程
+
+观看以下视频，按步骤完成安装：
+
+<iframe
+  className="w-full aspect-video rounded-xl"
+  src="https://www.youtube.com/embed/-kSOTtYzgEw"
+  title="CrewAI 安装指南"
+  frameBorder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowFullScreen
+></iframe>
+
+## 文本教程
+
+<Note>
+  **Python 版本要求**
+
+CrewAI 需要 `Python >=3.10 and <3.14`。你可以这样检查版本：
+
+```bash
+python3 --version
+```
+
+若需升级 Python，请访问 [python.org/downloads](https://python.org/downloads)
+
+</Note>
+
+<Note>
+  **OpenAI SDK 要求**
+
+CrewAI 0.175.0 需要 `openai >= 1.13.3`。如果你自行管理依赖，请确保环境满足此约束，以避免导入或运行时报错。
+
+</Note>
+
+CrewAI 使用 `uv` 进行依赖管理和包处理。它可以简化项目配置与运行体验。
+
+如果你还没安装 `uv`，请先执行 **步骤 1**；如果已安装，可直接跳到 **步骤 2**。
+
+<Steps>
+    <Step title="安装 uv">
+      - **在 macOS/Linux 上：**
+
+        使用 `curl` 下载脚本并通过 `sh` 执行：
+
+        ```shell
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        ```
+        如果系统没有 `curl`，可使用 `wget`：
+
+        ```shell
+        wget -qO- https://astral.sh/uv/install.sh | sh
+        ```
+
+      - **在 Windows 上：**
+
+        使用 `irm` 下载脚本，并用 `iex` 执行：
+
+        ```shell
+        powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+        ```
+        若遇到问题，请参考 [UV 安装指南](https://docs.astral.sh/uv/getting-started/installation/)。
+    </Step>
+
+    <Step title="安装 CrewAI 🚀">
+      - 运行以下命令安装 `crewai` CLI：
+        ```shell
+        uv tool install crewai
+        ```
+          <Warning>
+            如果出现 `PATH` 警告，请运行此命令更新 shell：
+            ```shell
+            uv tool update-shell
+            ```
+          </Warning>
+
+          <Warning>
+            如果你在 Windows 上遇到 `chroma-hnswlib==0.7.6` 构建错误（`fatal error C1083: Cannot open include file: 'float.h'`），请安装 [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/) 并勾选 *Desktop development with C++*。
+          </Warning>
+
+      - 运行以下命令确认 `crewai` 已安装：
+        ```shell
+        uv tool list
+        ```
+      - 你应该看到类似输出：
+        ```shell
+        crewai v0.102.0
+        - crewai
+        ```
+      - 如需升级 `crewai`，运行：
+        ```shell
+        uv tool install crewai --upgrade
+        ```
+      <Note>
+        这只会升级 **全局 `crewai` CLI 工具**。若要升级项目虚拟环境中的 `crewai` 版本，请参见 [在项目中升级 CrewAI](/zh-CN/guides/migration/upgrading-crewai)。
+      </Note>
+      <Check>安装成功！你已准备好创建第一个 crew！🎉</Check>
+    </Step>
+
+</Steps>
+
+# 创建 CrewAI 项目
+
+`crewai create crew` 现在会创建 JSON-first 的 crew 项目。Agents 放在 `agents/*.jsonc`，任务与 crew 级配置放在 `crew.jsonc`，`crewai run` 会直接加载这份 JSON 定义。
+
+<Steps>
+  <Step title="生成项目脚手架">
+    - 运行 `crewai` CLI 命令：
+      ```shell
+      crewai create crew <your_project_name>
+      ```
+
+    - 这将创建如下结构的新项目：
+      ```
+      my_project/
+      ├── .gitignore
+      ├── .env
+      ├── agents/
+      │   └── researcher.jsonc
+      ├── crew.jsonc
+      ├── knowledge/
+      ├── pyproject.toml
+      ├── README.md
+      ├── skills/
+      └── tools/
+      ```
+
+    - 如果你需要旧版 Python/YAML 脚手架（`crew.py`、`config/agents.yaml`、`config/tasks.yaml`），请运行：
+      ```shell
+      crewai create crew <your_project_name> --classic
+      ```
+
+  </Step>
+
+  <Step title="自定义你的项目">
+    - 项目包含以下关键文件：
+      | File | Purpose |
+      | --- | --- |
+      | `crew.jsonc` | 配置 crew、任务顺序、流程与输入默认值 |
+      | `agents/*.jsonc` | 定义各 agent 的角色、目标、背景、LLM、工具和行为 |
+      | `.env` | 存放 API keys 与环境变量 |
+      | `tools/` | 可选，存放 `custom:<name>` Python 工具文件 |
+      | `knowledge/` | 可选，存放 agents 知识文件 |
+      | `skills/` | 可选，存放应用到 crew 的技能文件 |
+
+    - 先编辑 `crew.jsonc` 与 `agents/` 下文件，定义 crew 行为。
+    - 在 agent 与任务文本中使用 `{placeholder}`，并在 `crew.jsonc` 的 `inputs` 中设置默认值。运行 `crewai run` 时，CLI 会提示补全缺失值。
+    - 将 API keys 等敏感信息保存在 `.env`。
+
+  </Step>
+
+  <Step title="运行你的 Crew">
+    - 运行 crew 前，请先执行：
+      ```bash
+      crewai install
+      ```
+    - 若需安装额外包，请使用：
+      ```shell
+      uv add <package-name>
+      ```
+      <Note>
+        作为供应链安全措施，CrewAI 内部包在其 `pyproject.toml` 中使用 `exclude-newer = "3 days"`。这意味着由 CrewAI 拉入的传递依赖不会解析到最近 3 天内发布的版本。你自己的直接依赖不受此策略影响。若发现某传递依赖版本偏旧，可在项目依赖中显式 pin 你需要的版本。
+      </Note>
+    - 在项目根目录执行以下命令运行 crew：
+      ```bash
+      crewai run
+      ```
+  </Step>
+</Steps>
+
+## 企业安装选项
+
+<Note type="info">
+对于团队和组织，CrewAI 提供企业部署选项，可显著降低环境搭建复杂度：
+
+### CrewAI AMP（SaaS）
+
+- 无需安装 —— 直接在 [app.crewai.com](https://app.crewai.com) 免费注册
+- 自动更新与维护
+- 托管基础设施与自动伸缩
+- 无代码构建 Crews
+
+### CrewAI Factory（自托管）
+
+- 适用于你基础设施的容器化部署
+- 支持任意云厂商以及本地部署
+- 可与现有安全系统集成
+
+<Card title="探索企业方案" icon="building" href="https://share.hsforms.com/1Ooo2UViKQ22UOzdr7i77iwr87kg">
+  了解 CrewAI 企业能力并预约演示
+</Card>
+</Note>
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card title="Quickstart: Flow + agent" icon="code" href="/zh-CN/quickstart">
+    跟随快速开始：脚手架一个 Flow，运行一个单 agent crew，并产出报告。
+  </Card>
+  <Card
+    title="加入社区"
+    icon="comments"
+    href="https://community.crewai.com"
+  >
+    与其他开发者交流、获取帮助并分享你的 CrewAI 实践。
+  </Card>
+</CardGroup>

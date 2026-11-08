@@ -1,0 +1,65 @@
+---
+title: 流程
+description: 关于 CrewAI 中通过流程进行工作流管理的详细指南，包含最新的实现细节。
+icon: bars-staggered
+mode: "wide"
+---
+
+## 概述
+
+<Tip>
+  流程负责编排 agent 对 task 的执行，就像人类团队中的项目管理一样。
+  这些流程确保 task 按照预先定义的策略被高效地分配和执行。
+</Tip>
+
+## 流程实现
+
+- **顺序（Sequential）**：按顺序执行 task，确保 task 以有序的方式依次完成。
+- **层级（Hierarchical）**：以管理层级的方式组织 task，task 根据结构化的指挥链进行委派和执行。必须在 crew 中指定管理者语言模型（`manager_llm`）或自定义管理者 agent（`manager_agent`）才能启用层级流程，由管理者负责 task 的创建和管理。
+
+## 流程在团队协作中的作用
+流程使各个 agent 能够作为一个有凝聚力的整体运作，整合它们的工作，以高效、协调的方式达成共同目标。
+
+## 为 Crew 指定流程
+要为 crew 指定流程，请在创建 crew 时指定流程类型以设定执行策略。对于层级流程，请确保为管理者 agent 定义 `manager_llm` 或 `manager_agent`。
+
+```python
+from crewai import Crew, Process
+
+# Example: Creating a crew with a sequential process
+crew = Crew(
+    agents=my_agents,
+    tasks=my_tasks,
+    process=Process.sequential
+)
+
+# Example: Creating a crew with a hierarchical process
+# Ensure to provide a manager_llm or manager_agent
+crew = Crew(
+    agents=my_agents,
+    tasks=my_tasks,
+    process=Process.hierarchical,
+    manager_llm="gpt-4o"
+    # or
+    # manager_agent=my_manager_agent
+)
+```**注意：**请确保在创建 `Crew` 对象之前已定义 `my_agents` 和 `my_tasks`；对于层级流程，还需要提供 `manager_llm` 或 `manager_agent`。
+
+## 顺序流程
+
+这种方式模拟动态的团队工作流，以深思熟虑且系统化的方式推进 task。task 的执行遵循 task 列表中预先定义的顺序，前一个 task 的输出会作为后一个 task 的上下文。
+
+要自定义 task 上下文，可使用 `Task` 类中的 `context` 参数来指定哪些输出应作为后续 task 的上下文。
+
+## 层级流程
+
+层级流程模拟企业层级结构，CrewAI 允许指定自定义管理者 agent，或自动创建一个（此时需要指定管理者语言模型 `manager_llm`）。该 agent 负责监督 task 的执行，包括规划、委派和验证。task 不会被预先分配；管理者会根据各 agent 的能力分配 task、审查输出并评估 task 的完成情况。
+
+## Process 类：详细概览
+
+`Process` 类以枚举（`Enum`）的形式实现，确保类型安全并将流程取值限制为已定义的类型（`sequential`、`hierarchical`）。
+
+## 结语
+
+CrewAI 中由流程促成的结构化协作，对于实现 agent 之间系统化的团队合作至关重要。
+本文档已更新以反映最新的特性和增强功能，确保用户能够获取最新、最全面的信息。

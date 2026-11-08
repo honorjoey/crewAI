@@ -1,0 +1,340 @@
+---
+title: 工具调用挂钩
+description: 了解如何使用工具调用挂钩来拦截、修改和控制 CrewAI 中的工具执行
+mode: "wide"
+---
+
+工具调用挂钩在代理期间提供对工具执行的细粒度控制
+运营。这些钩子允许您拦截工具调用、修改输入、
+转换输出、实施安全检查并添加全面的日志记录或
+监控。
+
+## 概述
+
+工具钩子在两个拦截点执行：
+
+| 观点 | 什么时候 | 钩子接收 |
+|-------|------|---------------|
+| `PRE_TOOL_CALL` | 在每个工具执行之前 | `ToolCallHookContext` |
+| `POST_TOOL_CALL` | 每次工具执行后 | `ToolCallHookContext`（带结果集） |
+
+使用 [`@on` 装饰器](/edge/zh-CN/learn/execution-hooks) 编写它们。这
+[旧版 `@before_tool_call` / `@after_tool_call` 装饰器](#legacy-decorators)
+保持工作不变 - 两种样式在同一引擎上注册并在一个引擎中运行
+订购链。
+
+## 挂钩签名
+
+```python
+from crewai.hooks import on, HookAborted, InterceptionPoint, ToolCallHookContext
+
+@on(InterceptionPoint.PRE_TOOL_CALL)
+def before_hook(ctx: ToolCallHookContext) -> None:
+    # Mutate ctx.tool_input in place, or
+    # raise HookAborted(reason, source) to block the call
+    ...
+
+@on(InterceptionPoint.POST_TOOL_CALL)
+def after_hook(ctx: ToolCallHookContext) -> str | None:
+    # Return a string to replace ctx.tool_result
+    # Return None to keep the original result
+    ...
+```
+
+与边界点和步骤点不同，工具调用点通过丰富的
+`ToolCallHookContext` 直接作为钩子参数（没有单独的
+`ctx.payload`)：在调用之前对 `ctx.tool_input` 进行变异，并返回
+字符串来替换其后面的结果。
+
+当呼叫被阻止时，该工具不会运行，并且代理会收到
+`"Tool execution blocked by hook. Tool: <name>"` 作为结果 — 运行
+继续。 `POST_TOOL_CALL` 钩子仍然会在被阻止的调用上触发，因此进行监控
+钩子会看到每一次尝试。
+
+## 工具钩子上下文
+
+`ToolCallHookContext` 对象提供对工具的全面访问
+执行状态：
+
+```python
+class ToolCallHookContext:
+    tool_name: str                    # Name of the tool being called
+    tool_input: dict[str, Any]        # Mutable tool input parameters
+    tool: CrewStructuredTool          # Tool instance reference
+    agent: Agent | BaseAgent | None   # Agent executing the tool
+    task: Task | None                 # Current task
+    crew: Crew | None                 # Crew instance
+    tool_result: str | None           # Agent-facing result string (POST_TOOL_CALL only)
+    raw_tool_result: Any | None       # Raw Python result (POST_TOOL_CALL only)
+```
+
+对于类型化工具输出，`tool_result` 是代理看到的字符串。默认情况下，
+这是 JSON。如果该工具使用自定义格式，则可以是 Markdown 或其他格式
+细绳。当你的钩子需要类型化对象时使用`raw_tool_result`或者
+字典;它不受结果替换的影响。
+
+上下文还公开了`request_human_input(prompt, default_message)`，其中
+暂停实时控制台更新并收集来自终端的输入 - 对于
+审批门。
+
+### 修改工具输入
+
+**重要提示：** 始终就地修改工具输入：
+
+```python
+# ✅ Correct - modify in-place
+@on(InterceptionPoint.PRE_TOOL_CALL)
+def sanitize_input(ctx: ToolCallHookContext) -> None:
+    ctx.tool_input['query'] = ctx.tool_input['query'].lower()
+
+# ❌ Wrong - replaces dict reference; the tool never sees it
+@on(InterceptionPoint.PRE_TOOL_CALL)
+def wrong_approach(ctx: ToolCallHookContext) -> None:
+    ctx.tool_input = {'query': 'new query'}
+```
+
+## 报名方式
+
+### 1. 全局钩子
+
+适用于所有工作人员的所有工具调用。使用 `tools=` / `agents=` 过滤器
+范围钩子：
+
+```python
+from crewai.hooks import on, HookAborted, InterceptionPoint
+
+@on(InterceptionPoint.PRE_TOOL_CALL)
+def log_tool_call(ctx):
+    print(f"Tool: {ctx.tool_name}, input: {ctx.tool_input}")
+
+@on(InterceptionPoint.PRE_TOOL_CALL, tools=["delete_file", "drop_table"])
+def block_destructive(ctx):
+    raise HookAborted(reason=f"{ctx.tool_name} is not allowed", source="safety-policy")
+
+@on(InterceptionPoint.POST_TOOL_CALL, tools=["web_search"], agents=["Researcher"])
+def log_search_results(ctx):
+    print(f"search returned {len(ctx.tool_result or '')} chars")
+```
+
+### 2. 船员范围的钩子
+
+将相同的装饰器应用于 `@CrewBase` 类中的方法以限定范围
+仅挂钩该船员：
+
+```python
+from crewai.hooks import on, InterceptionPoint
+
+@CrewBase
+class MyProjCrew:
+    @on(InterceptionPoint.PRE_TOOL_CALL)
+    def validate_tool_inputs(self, ctx):
+        # Only applies to this crew
+        if ctx.tool_name == "web_search" and not ctx.tool_input.get("query"):
+            raise HookAborted(reason="empty search query", source="input-validation")
+
+    @crew
+    def crew(self) -> Crew:
+        return Crew(agents=self.agents, tasks=self.tasks, process=Process.sequential)
+```
+
+## 常见用例
+
+### 1. 安全护栏
+
+```python
+@on(InterceptionPoint.PRE_TOOL_CALL)
+def safety_check(ctx: ToolCallHookContext) -> None:
+    destructive = {'delete_file', 'drop_table', 'remove_user', 'system_shutdown'}
+    if ctx.tool_name in destructive:
+        raise HookAborted(reason=f"{ctx.tool_name} is destructive", source="safety-policy")
+```
+
+### 2. 人工审批门
+
+```python
+@on(InterceptionPoint.PRE_TOOL_CALL, tools=["send_email", "make_purchase", "delete_file"])
+def require_approval(ctx: ToolCallHookContext) -> None:
+    response = ctx.request_human_input(
+        prompt=f"Approve {ctx.tool_name}?",
+        default_message=f"Input: {ctx.tool_input}\nType 'yes' to approve:",
+    )
+    if response.lower() != 'yes':
+        raise HookAborted(reason="denied by operator", source="approval-gate")
+```
+
+### 3. 输入验证和清理
+
+```python
+@on(InterceptionPoint.PRE_TOOL_CALL, tools=["web_search"])
+def validate_query(ctx: ToolCallHookContext) -> None:
+    query = ctx.tool_input.get('query', '')
+    if len(query) < 3:
+        raise HookAborted(reason="search query too short", source="input-validation")
+    ctx.tool_input['query'] = query.strip().lower()
+
+@on(InterceptionPoint.PRE_TOOL_CALL, tools=["read_file"])
+def validate_path(ctx: ToolCallHookContext) -> None:
+    path = ctx.tool_input.get('path', '')
+    if '..' in path or path.startswith('/'):
+        raise HookAborted(reason="invalid file path", source="input-validation")
+```
+
+### 4. 结果清理
+
+```python
+import re
+
+@on(InterceptionPoint.POST_TOOL_CALL)
+def sanitize_sensitive_data(ctx: ToolCallHookContext) -> str | None:
+    if not ctx.tool_result:
+        return None
+    result = re.sub(
+        r'(api[_-]?key|token)["\']?\s*[:=]\s*["\']?[\w-]+',
+        r'\1: [REDACTED]',
+        ctx.tool_result,
+        flags=re.IGNORECASE,
+    )
+    return re.sub(
+        r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+        '[EMAIL-REDACTED]',
+        result,
+    )
+```
+
+### 5. 工具使用分析
+
+```python
+import time
+from collections import defaultdict
+
+tool_stats = defaultdict(lambda: {'count': 0, 'total_time': 0})
+
+@on(InterceptionPoint.PRE_TOOL_CALL)
+def start_timer(ctx: ToolCallHookContext) -> None:
+    ctx.tool_input['_start_time'] = time.time()
+
+@on(InterceptionPoint.POST_TOOL_CALL)
+def track_tool_usage(ctx: ToolCallHookContext) -> None:
+    start_time = ctx.tool_input.pop('_start_time', time.time())
+    tool_stats[ctx.tool_name]['count'] += 1
+    tool_stats[ctx.tool_name]['total_time'] += time.time() - start_time
+```
+
+### 6. 速率限制
+
+```python
+from collections import defaultdict
+from datetime import datetime, timedelta
+
+tool_call_history = defaultdict(list)
+
+@on(InterceptionPoint.PRE_TOOL_CALL)
+def rate_limit_tools(ctx: ToolCallHookContext) -> None:
+    now = datetime.now()
+    history = tool_call_history[ctx.tool_name]
+    history[:] = [t for t in history if now - t < timedelta(minutes=1)]
+    if len(history) >= 10:
+        raise HookAborted(reason=f"rate limit exceeded for {ctx.tool_name}",
+                          source="rate-limiter")
+    history.append(now)
+```
+
+## 挂钩管理
+
+```python
+from crewai.hooks import (
+    InterceptionPoint,
+    clear_all_hooks,
+    clear_hooks,
+    get_hooks,
+    unregister_hook,
+)
+
+# Unregister a specific hook
+unregister_hook(InterceptionPoint.PRE_TOOL_CALL, my_hook)
+
+# Clear one point, or everything (e.g. between tests)
+clear_hooks(InterceptionPoint.POST_TOOL_CALL)
+clear_all_hooks()
+
+# Inspect what's registered
+print(len(get_hooks(InterceptionPoint.PRE_TOOL_CALL)))
+```
+
+遗留管理 API (`register_before_tool_call_hook`,
+`unregister_before_tool_call_hook`、`clear_before_tool_call_hooks`、
+`clear_all_tool_call_hooks`、`get_before_tool_call_hooks` 和他们的 `after_`
+对应方）在相同的底层注册表上运行，因此任一 API 都可以
+管理对方注册的钩子。
+
+## 遗留装饰器
+
+原始的每点装饰器保持工作不变并在相同的环境中运行
+注册顺序链为 `@on` 钩子：
+
+```python
+from crewai.hooks import before_tool_call, after_tool_call
+
+@before_tool_call
+def block_dangerous_tools(context):
+    if context.tool_name in ('delete_database', 'drop_table'):
+        return False  # Block execution
+    return None
+
+@after_tool_call(tools=["web_search"])
+def sanitize_results(context):
+    if context.tool_result and "password" in context.tool_result.lower():
+        return context.tool_result.replace("password", "[REDACTED]")
+    return None
+```
+
+与`@on`的区别：
+
+- **阻塞**是来自 before hook 的 `return False` — 相当于加注
+`HookAborted`，但没有自定义原因或遥测来源。代理
+看到相同的`"Tool execution blocked by hook"`消息。
+- **签名**是特定于点的：在钩子返回`bool | None`之前，在之后
+钩子返回`str | None`。上下文对象是相同的
+`ToolCallHookContext`。
+- **过滤器和人员范围**的工作方式相同：
+`@before_tool_call(tools=[...], agents=[...])`，并将装饰器应用到
+`@CrewBase` 方法将其范围限定为该人员。
+
+对于新代码，首选`@on`；保留已使用的遗留样式 -
+没有行为处罚。
+
+## 最佳实践
+
+1. **保持钩子集中且快速** - 它们在每个工具调用上运行
+2. **就地修改** - 始终改变`ctx.tool_input`，从不替换字典
+3. **优先使用过滤器而不是条件** - `tools=` / `agents=` 保持钩体较小
+4. **大声中止** — 用有意义的理由和来源提出`HookAborted`；
+任何其他异常都会被吞掉（失败打开）
+5. **使用类型提示** — 使用 `ToolCallHookContext` 进行注释以获得 IDE 支持
+6. **清除测试中的钩子** - 在测试运行之间调用`clear_all_hooks()`
+
+## 故障排除
+
+### 钩子不执行
+- 在船员执行之前验证钩子是否已注册
+- 检查较早的挂钩是否阻止了调用（后续的前置挂钩不会运行）
+- 根据实际工具名称和代理角色检查 `tools=` / `agents=` 过滤器
+
+### 输入修改不起作用
+- 使用就地修改：`ctx.tool_input['key'] = value`
+- 不要替换字典：`ctx.tool_input = {}`
+
+### 结果修改不起作用
+- 从 `POST_TOOL_CALL` 钩子返回修改后的字符串
+- 返回`None` 保留原始结果
+
+### 工具意外阻塞
+- 检查所有预挂钩的 `HookAborted` / `return False` 条件
+- 中止原因和来源出现在 `HookDispatchedEvent` 遥测数据上
+
+## 相关文档
+
+- [执行挂钩概述 →](/edge/zh-CN/learn/execution-hooks)
+- [LLM呼叫挂钩 →](/edge/zh-CN/learn/llm-hooks)
+- [执行边界挂钩→](/edge/zh-CN/learn/execution-boundary-hooks)
+- [阶梯挂钩→](/edge/zh-CN/learn/step-hooks)

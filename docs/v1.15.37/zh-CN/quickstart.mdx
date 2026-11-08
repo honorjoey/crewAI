@@ -1,0 +1,262 @@
+---
+title: 快速开始
+description: 几分钟构建你的第一个 CrewAI Flow —— 编排、状态管理，以及可产出真实报告的 agent crew。
+icon: rocket
+mode: "wide"
+---
+
+### 观看：使用 Coding Agent Skills 构建 CrewAI Agents 与 Flows
+
+安装我们的 coding agent skills（Claude Code、Codex 等），即可快速让你的 coding agents 与 CrewAI 跑起来。
+
+你可以使用 `npx skills add crewaiinc/skills` 进行安装
+
+<iframe src="https://www.loom.com/embed/befb9f68b81f42ad8112bfdd95a780af" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style={{width: "100%", height: "400px"}}></iframe>
+
+在本指南中，你将 **创建一个 Flow**：设置研究主题，运行一个 **仅含一个 agent 的 crew**（使用网页搜索的研究员），并最终在磁盘上生成一份 **Markdown 报告**。Flow 是构建生产应用的推荐方式：它负责 **状态** 与 **执行顺序**，而 **agents** 在 crew 步骤中完成具体工作。
+
+如果你还未安装 CrewAI，请先参考[安装指南](/zh-CN/installation)。
+
+## 前置条件
+
+- Python 环境和 CrewAI CLI（见[安装](/zh-CN/installation)）
+- 已配置 API keys 的 LLM —— 见 [LLMs](/zh-CN/concepts/llms#setting-up-your-llm)
+- 一个 [Serper.dev](https://serper.dev/) API key（`SERPER_API_KEY`），用于本教程中的网页搜索
+
+## 构建你的第一个 Flow
+
+<Steps>
+  <Step title="创建一个 Flow 项目">
+  在终端中脚手架创建 Flow 项目（文件夹名使用下划线，如 `latest_ai_flow`）：
+
+    <CodeGroup>
+      ```shell Terminal
+      crewai create flow latest-ai-flow
+      cd latest_ai_flow
+      ```
+    </CodeGroup>
+
+  当 `crewai create` 询问 `Run it now?` 时，回答 `n`。本指南会先修改 flow 再运行。
+
+  这会在 `src/latest_ai_flow/` 下创建 Flow 应用，并附带位于 `crews/content_crew/` 的 starter crew。你会在后续步骤将其替换为最小化的 **单 agent** 研究 crew。
+  </Step>
+
+  <Step title="在 JSONC 中配置一个 agent">
+  创建 `src/latest_ai_flow/crews/content_crew/agents/researcher.jsonc`（必要时先创建 `agents/` 目录）。像 `{topic}` 这样的变量会从 `crew.kickoff(inputs=...)` 填充。
+
+    ```jsonc agents/researcher.jsonc
+    {
+      "role": "{topic} Senior Data Researcher",
+      "goal": "Uncover cutting-edge developments in {topic}",
+      "backstory": "You're a seasoned researcher who finds relevant information and presents it clearly.",
+      "tools": ["SerperDevTool"],
+      "settings": {
+        "verbose": true
+      }
+    }
+    ```
+
+  </Step>
+
+  <Step title="在 `crew.jsonc` 中配置 crew">
+  创建 `src/latest_ai_flow/crews/content_crew/crew.jsonc`：
+
+    ```jsonc crew.jsonc
+    {
+      "name": "Research Crew",
+      "agents": ["researcher"],
+      "tasks": [
+        {
+          "name": "research_task",
+          "description": "Conduct thorough research about {topic}. Use web search to find recent, credible information.",
+          "expected_output": "A markdown report with clear sections: key trends, notable tools or companies, and implications. Aim for 800-1200 words. No fenced code blocks around the whole document.",
+          "agent": "researcher",
+          "output_file": "output/report.md",
+          "markdown": true
+        }
+      ],
+      "process": "sequential",
+      "verbose": true
+    }
+    ```
+
+  </Step>
+
+  <Step title="加载 JSON crew（`content_crew.py`）">
+  用一个小加载器替换生成的 `content_crew.py`，将 `crew.jsonc` 转为 `Crew`。
+
+    ```python content_crew.py
+    # src/latest_ai_flow/crews/content_crew/content_crew.py
+    from pathlib import Path
+
+    from crewai.project import load_crew
+
+
+    def kickoff_content_crew(inputs: dict):
+      crew, default_inputs = load_crew(Path(__file__).with_name("crew.jsonc"))
+      return crew.kickoff(inputs={**default_inputs, **inputs})
+    ```
+
+  </Step>
+
+  <Step title="在 `main.py` 中定义 Flow">
+  将 crew 连接到 Flow：`@start()` 步骤在 **state** 中设置主题，`@listen` 步骤运行 crew。任务的 `output_file` 仍会写入 `output/report.md`。
+
+    ```python main.py
+    # src/latest_ai_flow/main.py
+    from pydantic import BaseModel
+
+    from crewai.flow import Flow, listen, start
+
+    from latest_ai_flow.crews.content_crew.content_crew import kickoff_content_crew
+
+
+    class ResearchFlowState(BaseModel):
+      topic: str = ""
+      report: str = ""
+
+
+    class LatestAiFlow(Flow[ResearchFlowState]):
+      @start()
+      def prepare_topic(self, crewai_trigger_payload: dict | None = None):
+        if crewai_trigger_payload:
+          self.state.topic = crewai_trigger_payload.get("topic", "AI Agents")
+        else:
+          self.state.topic = "AI Agents"
+        print(f"Topic: {self.state.topic}")
+
+      @listen(prepare_topic)
+      def run_research(self):
+        result = kickoff_content_crew(inputs={"topic": self.state.topic})
+        self.state.report = result.raw
+        print("Research crew finished.")
+
+      @listen(run_research)
+      def summarize(self):
+        print("Report path: output/report.md")
+
+
+    def kickoff():
+      LatestAiFlow().kickoff()
+
+
+    def plot():
+      LatestAiFlow().plot()
+
+
+    if __name__ == "__main__":
+      kickoff()
+    ```
+
+  <Tip>
+  如果你的包名不是 `latest_ai_flow`，请将 `kickoff_content_crew` 的 import 改为项目实际模块路径。
+  </Tip>
+  </Step>
+
+  <Step title="设置环境变量">
+  在项目根目录的 `.env` 中设置：
+
+    - `SERPER_API_KEY` —— 来自 [Serper.dev](https://serper.dev/)
+    - 你的模型提供方 API key（若你在 `crewai create flow` 时尚未填写）—— 见 [LLM setup](/zh-CN/concepts/llms#setting-up-your-llm)
+  </Step>
+
+  <Step title="安装并运行">
+    <CodeGroup>
+      ```shell Terminal
+      crewai install
+      crewai run
+      ```
+    </CodeGroup>
+
+  `crewai run` 会执行项目中定义的 Flow 入口（命令与 crews 相同；项目类型在 `pyproject.toml` 中为 `"flow"`）。
+  </Step>
+
+
+
+
+  <Step title="检查输出">
+  你应看到来自 Flow 与 crew 的日志。打开生成报告 **`output/report.md`**（节选）：
+
+  <CodeGroup>
+    ```markdown output/report.md
+    # AI Agents: Recent Landscape and Trends
+
+    ## Executive summary
+    …
+
+    ## Key trends
+    - **Tool use and orchestration** — …
+    - **Enterprise adoption** — …
+
+    ## Implications
+    …
+    ```
+  </CodeGroup>
+
+  实际输出会更长，并反映实时搜索结果。
+  </Step>
+</Steps>
+
+## 本次运行如何协同
+
+1. **Flow** — `LatestAiFlow` 先运行 `prepare_topic`，再运行 `run_research`，最后运行 `summarize`。状态（`topic`、`report`）保存在 Flow 上。
+2. **Crew** — `kickoff_content_crew` 加载 `crew.jsonc` 并用一个 agent 执行一个任务：研究员通过 **Serper** 搜索网页并写出结构化报告。
+3. **Artifact** — 任务的 `output_file` 会将报告写入 `output/report.md`。
+
+若要深入了解 Flow 模式（路由、持久化、人在环），请参见 [Build your first Flow](/zh-CN/guides/flows/first-flow) 和 [Flows](/zh-CN/concepts/flows)。若要在无 Flow 情况下使用 crews，请参见 [Crews](/zh-CN/concepts/crews)。若要在不使用任务时以单个 `Agent` 和 `kickoff()` 运行，请参见 [Agents](/zh-CN/concepts/agents#direct-agent-interaction-with-kickoff)。
+
+<Check>
+你现在已经拥有一个端到端 Flow：包含 agent crew 并保存了报告。这是继续添加更多步骤、crews 或工具的坚实基础。
+</Check>
+
+### 命名一致性
+
+`crew.jsonc` 中的名称必须与你使用的文件名和任务引用一致：
+
+- `agents: ["researcher"]` 会加载 `agents/researcher.jsonc`
+- `tasks[].agent: "researcher"` 会将任务分配给该 agent
+
+## 部署
+
+在本地跑通后，将 Flow 推送到 **[CrewAI AMP](https://app.crewai.com)**。如果项目配置了 git `origin`，AMP 会从该仓库部署（在 **GitHub** 上，AMP 的 GitHub 集成必须能访问该仓库）；若没有 `origin`，`crewai deploy create` 会以 ZIP 上传项目。即使存在 `origin`，`crewai deploy create --zip` 也会改用 ZIP 上传。在项目根目录执行：
+
+<CodeGroup>
+```bash Authenticate
+crewai login
+```
+
+```bash Create deployment
+crewai deploy create
+```
+
+```bash Check status & logs
+crewai deploy status
+crewai deploy logs
+```
+
+```bash Ship updates after you change code
+crewai deploy push
+```
+
+```bash List or remove deployments
+crewai deploy list
+crewai deploy remove -u <deployment_uuid>
+```
+</CodeGroup>
+
+<Tip>
+  首次部署通常需要 **约 1 分钟**。完整前置条件和 Web UI 流程请参见 [Deploy to AMP](https://docs-platform.crewai.com/platform/zh-CN/guides/deploy-to-amp)。
+</Tip>
+
+<CardGroup cols={2}>
+  <Card title="部署指南" icon="book" href="https://docs-platform.crewai.com/platform/zh-CN/guides/deploy-to-amp">
+    AMP 部署分步说明（CLI 与控制台）。
+  </Card>
+  <Card
+    title="加入社区"
+    icon="comments"
+    href="https://community.crewai.com"
+  >
+    交流想法、分享项目，并与其他 CrewAI 开发者建立连接。
+  </Card>
+</CardGroup>

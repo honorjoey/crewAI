@@ -1,0 +1,64 @@
+---
+title: "概述"
+description: "利用人工智能服务，生成图像、处理视觉并构建智能系统"
+icon: "face-smile"
+mode: "wide"
+---
+
+这些工具与人工智能和机器学习服务集成，可通过图像生成、视觉处理和智能代码执行等高级功能增强您的代理。
+
+## **可用工具**
+
+<CardGroup cols={2}>
+  <Card title="DALL-E工具" icon="image" href="/zh-CN/tools/ai-ml/dalletool">
+    使用 OpenAI 的 DALL-E 模型生成 AI 图像。
+  </Card>
+
+  <Card title="视觉工具" icon="eye" href="/zh-CN/tools/ai-ml/visiontool">
+    使用计算机视觉功能处理和分析图像。
+  </Card>
+
+  <Card title="人工智能思维工具" icon="brain" href="/zh-CN/tools/ai-ml/aimindtool">
+    先进的人工智能推理和决策能力。
+  </Card>
+
+  <Card title="骆驼索引工具" icon="llama" href="/zh-CN/tools/ai-ml/llamaindextool">
+    使用 LlamaIndex 构建知识库和检索系统。
+  </Card>
+
+  <Card title="浪链工具" icon="link" href="/zh-CN/tools/ai-ml/langchaintool">
+    与 LangChain 集成以实现复杂的 AI 工作流程。
+  </Card>
+
+  <Card title="拉格工具" icon="database" href="/zh-CN/tools/ai-ml/ragtool">
+    实施检索增强生成系统。
+  </Card>
+
+  <Card title="代码解释器工具" icon="code" href="/zh-CN/tools/ai-ml/codeinterpretertool">
+    执行Python代码并进行数据分析。
+  </Card>
+
+
+</CardGroup>
+
+## **常见用例**
+
+- **内容生成**：创建图像、文本和多媒体内容
+- **数据分析**：执行代码并分析复杂的数据集
+- **知识系统**：构建RAG系统和智能数据库
+- **计算机视觉**：处理和理解视觉内容
+- **人工智能安全**：实施内容审核和安全检查
+
+```python
+from crewai_tools import DallETool, VisionTool
+
+# Create AI tools
+image_generator = DallETool()
+vision_processor = VisionTool()
+
+# Add to your agent
+agent = Agent(
+    role="AI Specialist",
+    tools=[image_generator, vision_processor],
+    goal="Create and analyze content using AI capabilities"
+)

@@ -1,0 +1,444 @@
+---
+title: 带上自己的经纪人
+description: 了解如何带上自己的特工在 Crew 中工作。
+icon: robots
+mode: "wide"
+---
+
+互操作性是 CrewAI 的核心概念。本指南将向您展示如何携带自己的特工在 Crew 中工作。
+
+
+## 自带代理的适配器指南（Langgraph 代理、OpenAI 代理等...）
+我们需要 3 个适配器来将不同框架中的任何代理转变为在团队中工作。
+
+1. 基本代理适配器
+2. 基础工具适配器
+3. 基础转换器
+
+
+## 基本代理适配器
+这个抽象类定义了所有的通用接口和功能
+代理适配器必须实现。它扩展了 BaseAgent 以保持兼容性
+使用 CrewAI 框架，同时添加特定于适配器的要求。
+
+所需方法：
+
+1. `def configure_tools`
+2. `def configure_structured_output`
+
+## 创建您自己的适配器
+要将来自不同框架（例如 LangGraph、Autogen、OpenAI Assistants）的代理集成到 CrewAI 中，您需要通过继承 `BaseAgentAdapter` 来创建自定义适配器。该适配器充当兼容性层，在 CrewAI 接口和外部代理的特定要求之间进行转换。
+
+以下是实现自定义适配器的方法：
+
+1.  **继承自`BaseAgentAdapter`**：
+    ```python
+    from crewai.agents.agent_adapters.base_agent_adapter import BaseAgentAdapter
+    from crewai.tools import BaseTool
+    from typing import List, Optional, Any, Dict
+
+    class MyCustomAgentAdapter(BaseAgentAdapter):
+        # ... implementation details ...
+    ```
+
+2.  **实施`__init__`**：
+构造函数应调用父类构造函数 `super().__init__(**kwargs)` 并执行特定于外部代理的任何初始化。您可以使用在 CrewAI 的 `Agent` 初始化期间传递的可选 `agent_config` 字典来配置您的适配器和底层代理。
+
+    ```python
+    def __init__(self, agent_config: Optional[Dict[str, Any]] = None, **kwargs: Any):
+        super().__init__(agent_config=agent_config, **kwargs)
+        # Initialize your external agent here, possibly using agent_config
+        # Example: self.external_agent = initialize_my_agent(agent_config)
+        print(f"Initializing MyCustomAgentAdapter with config: {agent_config}")
+    ```
+
+3.  **实施`configure_tools`**：
+这种抽象方法至关重要。它接收 CrewAI `BaseTool` 实例的列表。您的实现必须将这些工具转换或调整为外部代理框架所需的格式。这可能涉及包装它们、提取特定属性或将它们注册到外部代理实例。
+
+    ```python
+    def configure_tools(self, tools: Optional[List[BaseTool]] = None) -> None:
+        if tools:
+            adapted_tools = []
+            for tool in tools:
+                # Adapt CrewAI BaseTool to the format your agent expects
+                # Example: adapted_tool = adapt_to_my_framework(tool)
+                # adapted_tools.append(adapted_tool)
+                pass # Replace with your actual adaptation logic
+
+            # Configure the external agent with the adapted tools
+            # Example: self.external_agent.set_tools(adapted_tools)
+            print(f"Configuring tools for MyCustomAgentAdapter: {adapted_tools}") # Placeholder
+        else:
+            # Handle the case where no tools are provided
+            # Example: self.external_agent.set_tools([])
+            print("No tools provided for MyCustomAgentAdapter.")
+    ```
+
+4.  **实施`configure_structured_output`**：
+当 CrewAI `Agent` 配置了结构化输出要求（例如 `output_json` 或 `output_pydantic`）时，将调用此方法。您的适配器需要确保外部代理的设置符合这些要求。这可能涉及在外部代理上设置特定参数或确保其底层模型支持请求的格式。如果外部代理不支持与 CrewAI 期望兼容的结构化输出，您可能需要处理转换或引发适当的错误。
+
+    ```python
+    def configure_structured_output(self, structured_output: Any) -> None:
+        # Configure your external agent to produce output in the specified format
+        # Example: self.external_agent.set_output_format(structured_output)
+        self.adapted_structured_output = True # Signal that structured output is handled
+        print(f"Configuring structured output for MyCustomAgentAdapter: {structured_output}")
+    ```
+
+通过实现这些方法，您的 `MyCustomAgentAdapter` 将允许您的自定义代理实现在 CrewAI 团队中正确运行，与任务和工具无缝交互。请记住将示例注释和打印语句替换为特定于您正在集成的外部代理框架的实际适应逻辑。
+
+## 基础工具适配器实现
+`BaseToolAdapter` 类负责将 CrewAI 的本机 `BaseTool` 对象转换为您的特定外部代理框架可以理解和使用的格式。不同的代理框架（如 LangGraph、OpenAI Assistants 等）有自己独特的定义和处理工具的方式，`BaseToolAdapter` 充当翻译器。
+
+以下是实现自定义工具适配器的方法：
+
+1.  **继承自`BaseToolAdapter`**：
+    ```python
+    from crewai.agents.agent_adapters.base_tool_adapter import BaseToolAdapter
+    from crewai.tools import BaseTool
+    from typing import List, Any
+
+    class MyCustomToolAdapter(BaseToolAdapter):
+        # ... implementation details ...
+    ```
+
+2.  **实施`configure_tools`**：
+这是您必须实现的核心抽象方法。它接收提供给代理的 CrewAI `BaseTool` 实例列表。您的任务是迭代此列表，将每个 `BaseTool` 调整为外部框架所需的格式，并将转换后的工具存储在 `self.converted_tools` 列表中（在基类构造函数中初始化）。
+
+    ```python
+    def configure_tools(self, tools: List[BaseTool]) -> None:
+        """Configure and convert CrewAI tools for the specific implementation."""
+        self.converted_tools = [] # Reset in case it's called multiple times
+        for tool in tools:
+            # Sanitize the tool name if required by the target framework
+            sanitized_name = self.sanitize_tool_name(tool.name)
+
+            # --- Your Conversion Logic Goes Here ---
+            # Example: Convert BaseTool to a dictionary format for LangGraph
+            # converted_tool = {
+            #     "name": sanitized_name,
+            #     "description": tool.description,
+            #     "parameters": tool.args_schema.schema() if tool.args_schema else {},
+            #     # Add any other framework-specific fields
+            # }
+
+            # Example: Convert BaseTool to an OpenAI function definition
+            # converted_tool = {
+            #     "type": "function",
+            #     "function": {
+            #         "name": sanitized_name,
+            #         "description": tool.description,
+            #         "parameters": tool.args_schema.schema() if tool.args_schema else {"type": "object", "properties": {}},
+            #     }
+            # }
+
+            # --- Replace above examples with your actual adaptation ---
+            converted_tool = self.adapt_tool_to_my_framework(tool, sanitized_name) # Placeholder
+
+            self.converted_tools.append(converted_tool)
+            print(f"Adapted tool '{tool.name}' to '{sanitized_name}' for MyCustomToolAdapter") # Placeholder
+
+        print(f"MyCustomToolAdapter finished configuring tools: {len(self.converted_tools)} adapted.") # Placeholder
+
+    # --- Helper method for adaptation (Example) ---
+    def adapt_tool_to_my_framework(self, tool: BaseTool, sanitized_name: str) -> Any:
+        # Replace this with the actual logic to convert a CrewAI BaseTool
+        # to the format needed by your specific external agent framework.
+        # This will vary greatly depending on the target framework.
+        adapted_representation = {
+            "framework_specific_name": sanitized_name,
+            "framework_specific_description": tool.description,
+            "inputs": tool.args_schema.schema() if tool.args_schema else None,
+            "implementation_reference": tool.run # Or however the framework needs to call it
+        }
+        # Also ensure the tool works both sync and async
+        async def async_tool_wrapper(*args, **kwargs):
+            output = tool.run(*args, **kwargs)
+            if inspect.isawaitable(output):
+                return await output
+            else:
+                return output
+
+        adapted_tool = MyFrameworkTool(
+            name=sanitized_name,
+            description=tool.description,
+            inputs=tool.args_schema.schema() if tool.args_schema else None,
+            implementation_reference=async_tool_wrapper
+        )
+        
+        return adapted_representation
+
+    ```
+
+3.  **使用适配器**：
+通常，您会在 `MyCustomAgentAdapter` 的 `configure_tools` 方法中实例化 `MyCustomToolAdapter`，并在配置外部代理之前使用它来处理工具。
+
+    ```python
+    # Inside MyCustomAgentAdapter.configure_tools
+    def configure_tools(self, tools: Optional[List[BaseTool]] = None) -> None:
+        if tools:
+            tool_adapter = MyCustomToolAdapter() # Instantiate your tool adapter
+            tool_adapter.configure_tools(tools)  # Convert the tools
+            adapted_tools = tool_adapter.tools() # Get the converted tools
+
+            # Now configure your external agent with the adapted_tools
+            # Example: self.external_agent.set_tools(adapted_tools)
+            print(f"Configuring external agent with adapted tools: {adapted_tools}") # Placeholder
+        else:
+            # Handle no tools case
+            print("No tools provided for MyCustomAgentAdapter.")
+    ```
+
+通过创建`BaseToolAdapter`，您可以将工具转换逻辑与代理适配解耦，从而使集成更清晰、更模块化。请记住将占位符示例替换为特定外部代理框架所需的实际转换逻辑。
+
+## 基础转换器
+当 CrewAI `Task` 需要代理以特定的结构化格式（例如 JSON 或 Pydantic 模型）返回其最终输出时，`BaseConverterAdapter` 发挥着至关重要的作用。它弥合了 CrewAI 的结构化输出要求与外部代理的能力之间的差距。
+
+其主要职责是：
+1.  **为结构化输出配置代理：** 根据`Task` 的要求（`output_json` 或`output_pydantic`），它指示关联的`BaseAgentAdapter`（以及间接的外部代理）所需的格式。
+2.  **增强系统提示：** 它修改代理的系统提示，以包含有关*如何*以所需结构生成输出的明确说明。
+3.  **后处理结果：** 它从代理获取原始输出，并尝试根据所需的结构对其进行解析、验证和格式化，最终返回字符串表示形式（例如 JSON 字符串）。
+
+以下是实现自定义转换器适配器的方法：
+
+1.  **继承自`BaseConverterAdapter`**：
+    ```python
+    from crewai.agents.agent_adapters.base_converter_adapter import BaseConverterAdapter
+    # Assuming you have your MyCustomAgentAdapter defined
+    # from .my_custom_agent_adapter import MyCustomAgentAdapter
+    from crewai.task import Task
+    from typing import Any
+
+    class MyCustomConverterAdapter(BaseConverterAdapter):
+        # Store the expected output type (e.g., 'json', 'pydantic', 'text')
+        _output_type: str = 'text' 
+        _output_schema: Any = None # Store JSON schema or Pydantic model
+
+        # ... implementation details ...
+    ```
+
+2.  **实施`__init__`**：
+构造函数必须接受它将使用的相应`agent_adapter` 实例。
+
+    ```python
+    def __init__(self, agent_adapter: Any): # Use your specific AgentAdapter type hint
+        self.agent_adapter = agent_adapter
+        print(f"Initializing MyCustomConverterAdapter for agent adapter: {type(agent_adapter).__name__}")
+    ```
+
+3.  **实施`configure_structured_output`**：
+此方法接收 CrewAI `Task` 对象。您需要检查任务的`output_json` 和`output_pydantic` 属性以确定所需的输出结构。存储此信息（例如，在 `_output_type` 和 `_output_schema` 中），如果外部代理需要结构化输出的特定设置（可能已在代理适配器的 `configure_structured_output` 中部分处理），则可能会调用 `self.agent_adapter` 上的配置方法。
+
+    ```python
+    def configure_structured_output(self, task: Task) -> None:
+        """Configure the expected structured output based on the task."""
+        if task.output_pydantic:
+            self._output_type = 'pydantic'
+            self._output_schema = task.output_pydantic
+            print(f"Converter: Configured for Pydantic output: {self._output_schema.__name__}")
+        elif task.output_json:
+            self._output_type = 'json'
+            self._output_schema = task.output_json
+            print(f"Converter: Configured for JSON output with schema: {self._output_schema}")
+        else:
+            self._output_type = 'text'
+            self._output_schema = None
+            print("Converter: Configured for standard text output.")
+
+        # Optionally, inform the agent adapter if needed
+        # self.agent_adapter.set_output_mode(self._output_type, self._output_schema)
+    ```
+
+4.  **实施`enhance_system_prompt`**：
+此方法采用代理的基本系统提示字符串，并应附加针对当前配置的`_output_type` 和`_output_schema` 定制的指令。目标是指导 LLM 为代理提供支持，以正确的格式生成输出。
+
+    ```python
+    def enhance_system_prompt(self, base_prompt: str) -> str:
+        """Enhance the system prompt with structured output instructions."""
+        if self._output_type == 'text':
+            return base_prompt # No enhancement needed for plain text
+
+        instructions = "\n\nYour final answer MUST be formatted as "
+        if self._output_type == 'json':
+            schema_str = json.dumps(self._output_schema, indent=2)
+            instructions += f"a JSON object conforming to the following schema:\n```json\n{schema_str}\n```"
+        elif self._output_type == 'pydantic':
+            schema_str = json.dumps(self._output_schema.model_json_schema(), indent=2)
+            instructions += f"a JSON object conforming to the Pydantic model '{self._output_schema.__name__}' with the following schema:\n```json\n{schema_str}\n```"
+
+        instructions += "\nEnsure your entire response is ONLY the valid JSON object, without any introductory text, explanations, or concluding remarks."
+        
+        print(f"Converter: Enhancing prompt for {self._output_type} output.")
+        return base_prompt + instructions
+    ```
+*注意：确切的提示工程可能需要根据所使用的代理/LLM 进行调整。*
+
+5.  **实施`post_process_result`**：
+此方法接收代理输出的原始字符串。如果请求结构化输出（`json` 或`pydantic`），您应该尝试将字符串解析为预期格式。处理潜在的解析错误（例如，记录它们、尝试简单的修复或引发异常）。至关重要的是，该方法必须**始终返回一个字符串**，即使中间格式是字典或 Pydantic 对象（例如，通过将其序列化回 JSON 字符串）。
+
+    ```python
+    import json
+    from pydantic import ValidationError
+
+    def post_process_result(self, result: str) -> str:
+        """Post-process the agent's result to ensure it matches the expected format."""
+        print(f"Converter: Post-processing result for {self._output_type} output.")
+        if self._output_type == 'json':
+            try:
+                # Attempt to parse and re-serialize to ensure validity and consistent format
+                parsed_json = json.loads(result)
+                # Optional: Validate against self._output_schema if it's a JSON schema dictionary
+                # from jsonschema import validate
+                # validate(instance=parsed_json, schema=self._output_schema)
+                return json.dumps(parsed_json)
+            except json.JSONDecodeError as e:
+                print(f"Error: Failed to parse JSON output: {e}\nRaw output:\n{result}")
+                # Handle error: return raw, raise exception, or try to fix
+                return result # Example: return raw output on failure
+            # except Exception as e: # Catch validation errors if using jsonschema
+            #     print(f"Error: JSON output failed schema validation: {e}\nRaw output:\n{result}")
+            #     return result
+        elif self._output_type == 'pydantic':
+            try:
+                # Attempt to parse into the Pydantic model
+                model_instance = self._output_schema.model_validate_json(result)
+                # Return the model serialized back to JSON
+                return model_instance.model_dump_json()
+            except ValidationError as e:
+                print(f"Error: Failed to validate Pydantic output: {e}\nRaw output:\n{result}")
+                # Handle error
+                return result # Example: return raw output on failure
+            except json.JSONDecodeError as e:
+                 print(f"Error: Failed to parse JSON for Pydantic model: {e}\nRaw output:\n{result}")
+                 return result
+        else: # 'text'
+            return result # No processing needed for plain text
+    ```
+
+通过实施这些方法，`MyCustomConverterAdapter` 可确保集成外部代理正确处理来自 CrewAI 任务的结构化输出请求，从而提高 CrewAI 框架内自定义代理的可靠性和可用性。
+
+## 开箱即用的适配器
+
+我们为以下框架提供开箱即用的适配器：
+1. 郎图
+2. OpenAI 代理
+
+## 使用经过调整的代理启动工作人员：
+
+```python
+import json
+import os
+from typing import List
+
+from crewai_tools import SerperDevTool
+from src.crewai import Agent, Crew, Task
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel
+
+from crewai.agents.agent_adapters.langgraph.langgraph_adapter import (
+    LangGraphAgentAdapter,
+)
+from crewai.agents.agent_adapters.openai_agents.openai_adapter import OpenAIAgentAdapter
+
+# CrewAI Agent
+code_helper_agent = Agent(
+    role="Code Helper",
+    goal="Help users solve coding problems effectively and provide clear explanations.",
+    backstory="You are an experienced programmer with deep knowledge across multiple programming languages and frameworks. You specialize in solving complex coding challenges and explaining solutions clearly.",
+    allow_delegation=False,
+    verbose=True,
+)
+# OpenAI Agent Adapter
+link_finder_agent = OpenAIAgentAdapter(
+    role="Link Finder",
+    goal="Find the most relevant and high-quality resources for coding tasks.",
+    backstory="You are a research specialist with a talent for finding the most helpful resources. You're skilled at using search tools to discover documentation, tutorials, and examples that directly address the user's coding needs.",
+    tools=[SerperDevTool()],
+    allow_delegation=False,
+    verbose=True,
+)
+
+# LangGraph Agent Adapter
+reporter_agent = LangGraphAgentAdapter(
+    role="Reporter",
+    goal="Report the results of the tasks.",
+    backstory="You are a reporter who reports the results of the other tasks",
+    llm=ChatOpenAI(model="gpt-4o"),
+    allow_delegation=True,
+    verbose=True,
+)
+
+
+class Code(BaseModel):
+    code: str
+
+
+task = Task(
+    description="Give an answer to the coding question: {task}",
+    expected_output="A thorough answer to the coding question: {task}",
+    agent=code_helper_agent,
+    output_json=Code,
+)
+task2 = Task(
+    description="Find links to resources that can help with coding tasks. Use the serper tool to find resources that can help.",
+    expected_output="A list of links to resources that can help with coding tasks",
+    agent=link_finder_agent,
+)
+
+
+class Report(BaseModel):
+    code: str
+    links: List[str]
+
+
+task3 = Task(
+    description="Report the results of the tasks.",
+    expected_output="A report of the results of the tasks. this is the code produced and then the links to the resources that can help with the coding task.",
+    agent=reporter_agent,
+    output_json=Report,
+)
+# Use in CrewAI
+crew = Crew(
+    agents=[code_helper_agent, link_finder_agent, reporter_agent],
+    tasks=[task, task2, task3],
+    verbose=True,
+)
+
+result = crew.kickoff(
+    inputs={"task": "How do you implement an abstract class in python?"}
+)
+
+# Print raw result first
+print("Raw result:", result)
+
+# Handle result based on its type
+if hasattr(result, "json_dict") and result.json_dict:
+    json_result = result.json_dict
+    print("\nStructured JSON result:")
+    print(f"{json.dumps(json_result, indent=2)}")
+
+    # Access fields safely
+    if isinstance(json_result, dict):
+        if "code" in json_result:
+            print("\nCode:")
+            print(
+                json_result["code"][:200] + "..."
+                if len(json_result["code"]) > 200
+                else json_result["code"]
+            )
+
+        if "links" in json_result:
+            print("\nLinks:")
+            for link in json_result["links"][:5]:  # Print first 5 links
+                print(f"- {link}")
+            if len(json_result["links"]) > 5:
+                print(f"...and {len(json_result['links']) - 5} more links")
+elif hasattr(result, "pydantic") and result.pydantic:
+    print("\nPydantic model result:")
+    print(result.pydantic.model_dump_json(indent=2))
+else:
+    # Fallback to raw output
+    print("\nNo structured result available, using raw output:")
+    print(result.raw[:500] + "..." if len(result.raw) > 500 else result.raw)
+
+```

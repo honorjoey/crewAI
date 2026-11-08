@@ -1,0 +1,175 @@
+---
+title: "NL2SQL工具"
+description: "NL2SQL工具 工具文档。"
+icon: language
+mode: "wide"
+---
+
+## 概述
+
+
+该工具用于将自然语言转换为 SQL 查询。当传递给代理时，它将生成查询，然后使用它们与数据库交互。
+
+这使得多个工作流程成为可能，例如让代理访问数据库并根据目标获取信息，然后使用该信息生成响应、报告或任何其他输出。
+除此之外，代理还能够根据其目标更新数据库。
+
+**注意力**：默认情况下，该工具是只读的（仅限 SELECT/SHOW/DESCRIBE/EXPLAIN）。写操作需要`allow_dml=True` 或`CREWAI_NL2SQL_ALLOW_DML=true` 环境变量。启用写访问时，请确保代理在可能的情况下使用限定范围的数据库用户或只读副本。
+
+## 安全模型
+
+`NL2SQLTool` 是一个具有执行能力的工具。它直接针对配置的数据库连接运行模型生成的 SQL。
+
+这意味着风险取决于您的部署选择：
+
+- 您提供哪些凭证`db_uri`
+- 不受信任的输入是否会影响提示
+- 是否在执行前添加工具调用护栏
+
+如果您使用此工具将不受信任的输入路由到代理，请将其视为高风险集成。
+
+## 强化建议
+
+在生产中使用以下所有内容：
+
+- 尽可能使用只读数据库用户
+- 首选用于分析/检索工作负载的只读副本
+- 授予最低权限（无超级用户/管理员角色，无文件/系统级功能）
+- 应用数据库端资源限制（语句超时、锁定超时、成本/行限制）
+- 添加`before_tool_call` 用于强制执行允许的查询模式的挂钩
+- 启用查询日志记录并针对破坏性语句发出警报
+
+## 只读模式和 DML 配置
+
+`NL2SQLTool` 在**默认为只读模式**中运营。仅允许以下语句类型，无需额外配置：
+
+- `SELECT`
+- `SHOW`
+- `DESCRIBE`
+- `EXPLAIN`
+
+任何执行写操作的尝试（`INSERT`, `UPDATE`, `DELETE`, `DROP`, `CREATE`, `ALTER`, `TRUNCATE`等）将引发错误，除非显式启用 DML。
+
+包含分号的多语句查询（例如`SELECT 1; DROP TABLE users`) are also blocked in read-only mode to prevent injection attacks.
+
+### 启用写操作
+
+您可以通过两种方式启用 DML（数据操作语言）：
+
+**选项 1 — 构造函数参数：**
+
+```python
+from crewai_tools import NL2SQLTool
+
+nl2sql = NL2SQLTool(
+    db_uri="postgresql://example@localhost:5432/test_db",
+    allow_dml=True,
+)
+```
+
+**选项 2 — 环境变量：**
+
+```bash
+CREWAI_NL2SQL_ALLOW_DML=true
+```
+
+```python
+from crewai_tools import NL2SQLTool
+
+# DML enabled via environment variable
+nl2sql = NL2SQLTool(db_uri="postgresql://example@localhost:5432/test_db")
+```
+
+### 使用示例
+
+**只读（默认）——可安全用于分析和报告：**
+
+```python
+from crewai_tools import NL2SQLTool
+
+# Only SELECT/SHOW/DESCRIBE/EXPLAIN are permitted
+nl2sql = NL2SQLTool(db_uri="postgresql://example@localhost:5432/test_db")
+```
+
+**启用 DML — 写入工作负载所需：**
+
+```python
+from crewai_tools import NL2SQLTool
+
+# INSERT, UPDATE, DELETE, DROP, etc. are permitted
+nl2sql = NL2SQLTool(
+    db_uri="postgresql://example@localhost:5432/test_db",
+    allow_dml=True,
+)
+```
+
+<Warning>
+启用 DML 使代理能够修改或销毁数据。仅当您的用例明确需要写入访问权限时才启用此功能，并确保数据库凭据的范围为所需的最低权限。
+</Warning>
+
+## 要求
+
+- SqlAlchemy
+- 任何数据库兼容库（例如 psycopg2、mysql-connector-python）
+
+## 安装
+
+安装crewai_tools包
+
+```shell
+pip install 'crewai[tools]'
+```
+
+## 用法
+
+为了使用 NL2SQLTool，您需要将数据库 URI 传递给该工具。 URI 的格式应为`dialect+driver://username:password@host:port/database`.
+
+
+```python Code
+from crewai_tools import NL2SQLTool
+
+# psycopg2 was installed to run this example with PostgreSQL
+nl2sql = NL2SQLTool(db_uri="postgresql://example@localhost:5432/test_db")
+
+@agent
+def researcher(self) -> Agent:
+    return Agent(
+        config=self.agents_config["researcher"],
+        allow_delegation=False,
+        tools=[nl2sql]
+    )
+```
+
+## 例子
+
+主要任务目标是：
+
+“检索每个城市的平均、最大和最小月收入，但仅包括拥有超过 1 个用户的城市。同时，统计每个城市的用户数量，
+按月平均收入降序对结果进行排序"
+
+因此，代理尝试从数据库获取信息，第一个错误，因此代理再次尝试并获取正确的信息并传递给下一个代理。
+
+![替代文本](https://github.com/crewAIInc/crewAI-tools/blob/main/crewai_tools/tools/nl2sql/images/image-2.png?raw=true)
+![替代文本](https://github.com/crewAIInc/crewAI-tools/raw/main/crewai_tools/tools/nl2sql/images/image-3.png)
+
+
+第二个任务目标是：
+
+“查看数据并创建详细报告，然后在数据库中创建包含基于所提供数据的字段的表。
+包括每个城市的平均、最大和最小月收入信息，但仅包括拥有多个用户的城市。另外，统计每个城市的用户数量，并按月平均收入降序对结果进行排序。”
+
+现在事情开始变得有趣了，代理生成 SQL 查询，不仅创建表，还将数据插入表中。最后，代理仍然返回最终报告，该报告与数据库中的内容完全相同。
+
+![替代文本](https://github.com/crewAIInc/crewAI-tools/raw/main/crewai_tools/tools/nl2sql/images/image-4.png)
+![替代文本](https://github.com/crewAIInc/crewAI-tools/raw/main/crewai_tools/tools/nl2sql/images/image-5.png)
+
+![替代文本](https://github.com/crewAIInc/crewAI-tools/raw/main/crewai_tools/tools/nl2sql/images/image-9.png)
+![替代文本](https://github.com/crewAIInc/crewAI-tools/raw/main/crewai_tools/tools/nl2sql/images/image-7.png)
+
+
+这是一个简单的示例，说明如何使用 NL2SQL 工具与数据库交互并根据数据库中的数据生成报告。
+
+该工具为代理的逻辑以及它如何与数据库交互提供了无限的可能性。
+
+```md
+ DB -> Agent -> ... -> Agent -> DB
+```

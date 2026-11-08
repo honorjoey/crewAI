@@ -1,0 +1,119 @@
+---
+title: 人工智能思维工具
+description: “AIMindTool”旨在以自然语言查询数据源。
+icon: brain
+mode: "wide"
+---
+
+# `AIMindTool`
+
+## 描述
+
+这`AIMindTool` 是 [思维数据库](https://mindsdb.com/) 提供的 [人工智能思维](https://mindsdb.com/minds) 的包装。它允许您通过简单地配置数据源的连接参数来以自然语言查询数据源。当您需要从存储在各种数据源（包括 PostgreSQL、MySQL、MariaDB、ClickHouse、Snowflake 和 Google BigQuery）中的数据中找到问题的答案时，此工具非常有用。
+
+思维是一种人工智能系统，其工作原理与大型语言模型 (LLM) 类似，但可以通过任何数据回答任何问题。这是通过以下方式完成的：
+- 使用参数搜索为答案选择最相关的数据
+- 通过语义搜索理解含义并在正确的上下文中提供响应
+- 通过分析数据和使用机器学习 (ML) 模型提供精确的答案
+
+## 安装
+
+要将这个工具合并到您的项目中，您需要安装 Minds SDK：
+
+```shell
+uv add minds-sdk
+```
+
+## 开始步骤
+
+为了有效地利用`AIMindTool`，请按照下列步骤操作：
+
+1. **包安装**：确认`crewai[tools]` 和`minds-sdk` 软件包已安装在您的 Python 环境中。
+2. **API密钥获取**：注册 Minds 帐户[这里](https://mdb.ai/register)，并获取 API 密钥。
+3. **环境配置**：将您获得的 API 密钥存储在名为的环境变量中`MINDS_API_KEY` 以方便该工具的使用。
+
+## 例子
+
+以下示例演示了如何初始化该工具并执行查询：
+
+```python Code
+from crewai_tools import AIMindTool
+
+# Initialize the AIMindTool
+aimind_tool = AIMindTool(
+    datasources=[
+        {
+            "description": "house sales data",
+            "engine": "postgres",
+            "connection_data": {
+                "user": "demo_user",
+                "password": "demo_password",
+                "host": "samples.mindsdb.com",
+                "port": 5432,
+                "database": "demo",
+                "schema": "demo_data"
+            },
+            "tables": ["house_sales"]
+        }
+    ]
+)
+
+# Run a natural language query
+result = aimind_tool.run("How many 3 bedroom houses were sold in 2008?")
+print(result)
+```
+
+## 参数
+
+这`AIMindTool` 接受以下参数：
+
+- **api_key**: Optional.你的想法 API 密钥。如果没有提供，将从`MINDS_API_KEY` 环境变量。
+- **数据源**：字典列表，每个字典包含以下键：
+  - **描述**：数据源中包含的数据的描述。
+  - **引擎**：数据源的引擎（或类型）。
+  - **连接数据**：包含数据源连接参数的字典。
+  - **桌子**：数据源将使用的表的列表。这是可选的，如果要使用数据源中的所有表，则可以省略。
+
+可以在[这里](https://docs.mdb.ai/docs/anton_onboarding#connect-data-sources)中找到支持的数据源及其连接参数的列表。
+
+## 代理集成示例
+
+以下是如何集成`AIMindTool` 使用 CrewAI 代理：
+
+```python Code
+from crewai import Agent
+from crewai.project import agent
+from crewai_tools import AIMindTool
+
+# Initialize the tool
+aimind_tool = AIMindTool(
+    datasources=[
+        {
+            "description": "sales data",
+            "engine": "postgres",
+            "connection_data": {
+                "user": "your_user",
+                "password": "your_password",
+                "host": "your_host",
+                "port": 5432,
+                "database": "your_db",
+                "schema": "your_schema"
+            },
+            "tables": ["sales"]
+        }
+    ]
+)
+
+# Define an agent with the AIMindTool
+@agent
+def data_analyst(self) -> Agent:
+    return Agent(
+        config=self.agents_config["data_analyst"],
+        allow_delegation=False,
+        tools=[aimind_tool]
+    )
+```
+
+## 结论
+
+这`AIMindTool` 提供了一种使用自然语言查询数据源的强大方法，使您可以更轻松地提取见解，而无需编写复杂的 SQL 查询。通过连接各种数据源并利用 AI-Minds 技术，该工具使代理能够有效地访问和分析数据。

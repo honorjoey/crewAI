@@ -1,0 +1,127 @@
+---
+title: A2UI
+description: 生成式 UI 的声明层 — 代理从您拥有的组件目录中组装一个表面。
+icon: table-cells
+mode: "wide"
+---
+
+## 代理组装 UI
+
+[基于工具的渲染](/edge/zh-CN/guides/frontend/tool-based-generative-ui) 将一种工具映射到一个组件：代理选择一个组件，您绘制它。 A2UI 是 [生成 UI 谱](/edge/zh-CN/guides/frontend/generative-ui#declarative) 的 **声明性** 层 - 而不是选择单个组件中，代理通过组合您定义的目录中的构建块来**组装表面**。
+
+您仍然拥有这些组件。代理只能使用您目录中的内容，因此它永远无法渲染您未发布的内容。代理决定的是 **布局和数据**——这些构建块是如何产生的一起形成一个面板，以及其中的内容。
+
+<Note>
+A2UI 可与 [Flows](/zh-CN/concepts/flows) 配合使用。下面的两种模式（动态模式和固定模式）都作为通过 AG-UI 提供服务的 Flows 运行，与本节的其余部分完全相同。
+</Note>
+
+## 目录（每种模式都相同）
+
+无论您使用哪种后端模式，前端接线都是相同的：您使用 `a2ui` 属性在 `<CopilotKit>` 提供程序上注册 **catalog**。
+
+```tsx
+import { CopilotKit } from "@copilotkit/react-core";
+import { catalog } from "@/a2ui-catalog";
+
+<CopilotKit runtimeUrl="/api/copilotkit" agent="assistant" a2ui={{ catalog }}>
+  {/* ... */}
+</CopilotKit>
+```
+
+目录是一组由目录 id 键入的 React 组件 - `FlightCard`、`HotelCard`、`Chart`，无论您的应用程序需要什么。代理引用目录 ID； CopilotKit 使用代理的数据绘制您的组件补给品。
+
+<Note>
+创作目录本身——id 模式、prop 映射和组合规则——比本页所涵盖的内容更深入。请参阅 [CopilotKit A2UI 文档](https://docs.copilotkit.ai) 了解完整的创作参考。这里我们重点关注两个后端模式以及何时使用每种模式。
+</Note>
+
+## 两种后端模式
+
+A2UI 后端有两种形式。在 **动态** 模式下，代理设计表面；在**固定架构** 模式下，您预先创作布局，代理仅填充数据。
+
+| 模式 | 布局由谁设计 | 后端 | 可预测性 |
+| --- | --- | --- | --- |
+|**[动态](#dynamic)**| 经纪人，从谈话中 | 没有 A2UI 工具 — 自动注入 | 新颖的布局，LLM布局步骤 |
+|**[固定架构](#fixed-schema)**| 你，在前面 | 后端工具返回一个信封 | 确定性，无布局步骤 |
+
+### 动态
+
+Flowwire **无** A2UI 工具。在运行时为此代理启用 A2UI，它会自动获得 `generate_a2ui` 工具。子代理根据您的目录的对话设计一个界面，并将其流式传输到前端逐步进行，并通过“验证然后重试”恢复过程自我修复无效输出。您编写一个普通的代理聊天流程；该工具已为您注入。
+
+<Steps>
+
+<Step title="在提供商处注册目录">
+
+与上面相同 - 通过 `a2ui` 属性传递你的目录：
+
+```tsx
+<CopilotKit runtimeUrl="/api/copilotkit" agent="assistant" a2ui={{ catalog }}>
+  {/* ... */}
+</CopilotKit>
+```
+
+</Step>
+
+<Step title="提供正常流量">
+
+您的后端是一个简单的代理聊天流程。您无需定义 A2UI 工具 - 当为代理启用 A2UI 时，运行时会注入 `generate_a2ui`，并且子代理会根据对话发明布局。
+
+</Step>
+
+<Step title="让代理撰写">
+
+当回合需要 UI 时，代理会从目录中组装表面，在设计组件时将其流式传输，并在到达屏幕之前修复任何无效输出。您注册的组件呈现在代理选择的布局。
+
+</Step>
+
+</Steps>
+
+### 固定模式
+
+当您已经知道布局并且只知道每次调用的数据更改时，请预先创作表面并让代理填充它。 Flow 线后端工具（例如 `search_flights`、`search_hotels`）。每个工具都会返回一个 **A2UI 操作信封** 作为其结果 — `createSurface` -> `updateComponents` -> `updateDataModel` — 由前端绘制。没有子代理，没有生成，也没有恢复过程：布局 JSON 由您编写，只有数据有所不同。
+
+安装提供信封助手的工具包：
+
+```bash
+pip install ag-ui-a2ui-toolkit
+```
+
+使用工具包助手构建信封并将其作为工具结果发出：
+
+```python
+from ag_ui_a2ui_toolkit import (
+    A2UI_OPERATIONS_KEY,
+    create_surface,
+    update_components,
+    update_data_model,
+)
+from ag_ui_crewai.sdk import copilotkit_emit_tool_result, copilotkit_stream
+```
+
+该工具将 `createSurface` -> `updateComponents` -> `updateDataModel` 操作组装到由 `A2UI_OPERATIONS_KEY` 键控的信封中，然后使用 `copilotkit_emit_tool_result(...)` 将其交回。因为布局是固定的，所以相同的工具总是产生相同的形状——只是各个呼叫的值有所不同。
+
+## 何时使用哪个
+
+<CardGroup cols={2}>
+ <Card title="动态" icon="wand-magic-sparkles">
+布局是提前未知的，并且您希望代理根据您的图元组成新颖的表面。您可以获得灵活性并支付LLM布局步骤的费用。
+ </Card>
+ <Card title="固定模式" icon="table-cells">
+布局是已知的，只有数据有所不同。更具可预测性和确定性——布局路径中没有生成、没有恢复、没有LLM。
+ </Card>
+</CardGroup>
+
+两种模式共享相同的前端：一个目录，在提供商上注册一次。当您的表面稳定时，从固定模式开始；当您希望代理设计您没有设计的布局时，则采用动态模式预料。
+
+## 有关的
+
+<CardGroup cols={3}>
+ <Card title="生成式用户界面" icon="wand-magic-sparkles" href="/edge/zh-CN/guides/frontend/generative-ui">
+全方位——A2UI 是其声明层。
+ </Card>
+ <Card title="基于工具的生成式 UI" icon="puzzle-piece" href="/edge/zh-CN/guides/frontend/tool-based-generative-ui">
+将一种工具映射到一个组件（受控）。
+ </Card>
+ <Card title="代理生成 UI" icon="list-check" href="/edge/zh-CN/guides/frontend/agentic-generative-ui">
+渲染实时代理状态（受控）。
+ </Card>
+</CardGroup>

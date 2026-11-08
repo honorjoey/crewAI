@@ -1,0 +1,190 @@
+---
+title: "升级 CrewAI"
+description: "了解如何在项目中升级 CrewAI，并适配版本升级中的破坏性变更。"
+icon: "arrow-up-circle"
+---
+
+## 概览
+
+CrewAI 会持续发布新能力。本文将带你完成保持安装为最新版本的实操步骤——包括 CLI 和项目虚拟环境两部分。
+
+如果你是全新开始，请参阅[安装](/zh-CN/installation)。如果你是从其他框架迁移，请参阅[从 LangGraph 迁移](/zh-CN/guides/migration/migrating-from-langgraph)。
+
+---
+
+## 你可能要升级的两部分
+
+CrewAI 在你的机器上有两个位置，并且它们彼此独立升级：
+
+| 内容 | 安装方式 | 升级方式 |
+|---|---|---|
+| 全局 **`crewai` CLI** | `uv tool install crewai` | `uv tool install crewai --upgrade` |
+| **项目虚拟环境**（你的代码实际运行环境） | `crewai install` / `uv sync` | `uv add "crewai[...]>=X.Y.Z"` 然后 `crewai install` |
+
+这两者可能（而且经常会）不同步。运行 `crewai --version` 可查看 CLI 版本；在项目中运行 `uv pip show crewai` 可查看虚拟环境版本。两者不一致是正常的；对运行中代码真正关键的是虚拟环境版本。
+
+## 为什么仅运行 `crewai install` 不会升级
+
+`crewai install` 本质上是对 `uv sync` 的轻量封装。它只会安装当前 `uv.lock` 中已锁定的版本——**不会**提升任何版本约束。
+
+如果你的 `pyproject.toml` 写的是 `crewai>=1.11.1`，并且锁文件当前解析到 `1.11.1`，那么即使 `1.14.4` 已发布，运行 `crewai install` 仍会一直停留在 `1.11.1`。
+
+要真正完成升级，你需要：
+
+1. 更新 `pyproject.toml` 中的版本约束
+2. 重新解析 lock 文件
+3. 同步虚拟环境
+
+`uv add` 可以一次完成这三步。
+
+## 如何升级你的项目
+
+```bash
+# Bump the constraint and re-lock in one command
+uv add "crewai[tools]>=1.14.4"
+
+# Sync the venv (crewai install calls uv sync under the hood)
+crewai install
+
+# Verify
+uv pip show crewai
+# → Version: 1.14.4
+```
+
+请将 `[tools]` 替换为你项目实际使用的 extras（例如 `[tools,anthropic]`）。如果不确定，请检查 `pyproject.toml` 的 `dependencies` 列表。
+
+<Note>
+  `uv add` 会以原子方式同时更新 `pyproject.toml` **和** `uv.lock`。如果你手动编辑了 `pyproject.toml`，在 `crewai install` 之前仍需执行 `uv lock --upgrade-package crewai` 以重新解析 lock 文件，才能应用新版本。
+</Note>
+
+## 升级全局 CLI
+
+全局 CLI 与你的项目相互独立。可通过以下命令升级：
+
+```bash
+uv tool install crewai --upgrade
+```
+
+如果升级后 shell 提示 `PATH` 相关警告，请刷新：
+
+```bash
+uv tool update-shell
+```
+
+这**不会**修改项目虚拟环境——你仍需要在项目内执行 `uv add` + `crewai install`。
+
+## 验证两者是否同步
+
+```bash
+# Global CLI version
+crewai --version
+
+# Project venv version
+uv pip show crewai | grep Version
+```
+
+它们不必完全一致——但项目虚拟环境版本才决定运行时行为。
+
+<Note>
+  CrewAI 要求 `Python >=3.10, <3.14`。如果 `uv` 是基于较旧解释器安装的，请先使用受支持的 Python 重建项目虚拟环境，再运行 `crewai install`。
+</Note>
+
+---
+
+## 破坏性变更与迁移说明
+
+大多数升级只需少量调整。下面这些区域最容易出现“静默错误”或难以理解的 traceback。
+
+### 导入路径：tools 与 `BaseTool`
+
+工具的规范导入路径是 `crewai.tools`。旧路径在一些教程中仍可见，但建议尽快更新。
+
+```python
+# Before
+from crewai_tools import BaseTool
+from crewai.agents.tools import tool
+
+# After
+from crewai.tools import BaseTool, tool
+```
+
+`@tool` 装饰器和 `BaseTool` 子类都位于 `crewai.tools`。`AgentFinish` 及其他内部 agent 符号不再属于公共 API——如果你此前在导入它们，请改用事件监听器或 `Task` 回调。
+
+### `Agent` 参数变更
+
+```python
+from crewai import Agent
+
+agent = Agent(
+    role="Researcher",
+    goal="Find authoritative sources on {topic}",
+    backstory="You are a careful, source-driven researcher.",
+    llm="gpt-4o-mini",   # string model name OR an LLM object
+    verbose=True,        # bool, not an int level
+    max_iter=15,         # default has changed across versions — set explicitly
+    allow_delegation=False,
+)
+```
+
+- `llm` 支持字符串模型名（通过配置的 provider 解析）或 `LLM` 对象（用于更细粒度控制）。
+- `verbose` 是普通 `bool`。传整数已不再用于切换日志级别。
+- `max_iter` 的默认值在不同版本间有变动。如果你的 agent 在第一次工具调用后就停止循环，请显式设置 `max_iter`。
+
+### `Crew` 参数
+
+```python
+from crewai import Crew, Process
+
+crew = Crew(
+    agents=[...],
+    tasks=[...],
+    process=Process.sequential,   # or Process.hierarchical
+    memory=True,
+    cache=True,
+    embedder={"provider": "openai", "config": {"model": "text-embedding-3-large"}},
+)
+```
+
+- `process=Process.hierarchical` 需要提供 `manager_llm=` 或 `manager_agent=` 之一。否则 kickoff 会在校验阶段抛错。
+- 非默认 embedding provider 下使用 `memory=True` 时，需要提供 `embedder` 字典——见下文 [Memory & embedder config](#memory-embedder-config)。
+
+### `Task` 结构化输出
+
+使用 `output_pydantic`、`output_json` 或 `output_file` 可以将任务结果约束为结构化形态：
+
+```python
+from pydantic import BaseModel
+from crewai import Task
+
+class Article(BaseModel):
+    title: str
+    body: str
+
+write = Task(
+    description="Write an article about {topic}",
+    expected_output="A short article with a title and body",
+    agent=writer,
+    output_pydantic=Article,        # the class, NOT an instance
+    output_file="output/article.md",
+)
+```
+
+`output_pydantic` 需要传入**类本身**。传入 `Article(title="", body="")` 这种实例是常见错误，会触发容易混淆的校验异常。
+
+### Memory & embedder config {#memory-embedder-config}
+
+如果 `memory=True` 且你未使用默认 OpenAI `text-embedding-3-large` 向量模型，则必须传入 `embedder`：
+
+```python
+crew = Crew(
+    agents=[...],
+    tasks=[...],
+    memory=True,
+    embedder={
+        "provider": "ollama",
+        "config": {"model": "nomic-embed-text"},
+    },
+)
+```
+
+请在 `.env` 中设置对应 provider 凭证（如 `OPENAI_API_KEY`、`OLLAMA_HOST` 等）。内存存储路径默认位于项目本地。此前使用 1536 维 embedding 创建的本地 memory 存储，可能与默认 OpenAI `text-embedding-3-large`（3072 维）不兼容。如果出现维度不匹配，请删除项目 memory 目录、执行 `crewai reset-memories -m`，或在迁移完成前显式配置旧 embedding 模型。

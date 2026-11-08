@@ -1,0 +1,344 @@
+---
+title: 代理到 UI (A2UI) 协议
+description: 使代理能够通过 A2UI 扩展生成用于富客户端渲染的声明式 UI 界面。
+icon: window-restore
+mode: "wide"
+---
+
+## A2UI概述
+
+A2UI 是 [A2A](/zh-CN/learn/a2a-agent-delegation) 的声明式 UI 协议扩展，它允许代理发出描述交互界面的结构化 JSON 消息。客户端接收这些消息并将它们渲染为丰富的 UI 组件（表单、卡片、列表、模态等），而代理无需了解有关客户端渲染堆栈的任何信息。
+
+A2UI 建立在 A2A 扩展机制之上，并由 URI `https://a2ui.org/a2a-extension/a2ui/v0.8` 标识。
+
+<Note>
+A2UI 需要`a2a-sdk` 包。安装方式：`uv add 'crewai[a2a]'` 或`pip install 'crewai[a2a]'`
+</Note>
+
+## 它是如何运作的
+
+1. **服务器扩展**扫描代理输出中的 A2UI JSON 对象
+2. 有效消息包装为 `DataPart` 条目，具有 `application/json+a2ui` MIME 类型
+3. **客户端扩展**使用 A2UI 指令和组件目录增强代理的系统提示
+4. 客户端跟踪对话轮次的表面状态（活动表面和数据模型）
+
+## 服务器设置
+
+将 `A2UIServerExtension` 添加到 `A2AServerConfig` 以启用 A2UI 输出：
+
+```python Code
+from crewai import Agent
+from crewai.a2a import A2AServerConfig
+from crewai.a2a.extensions.a2ui import A2UIServerExtension
+
+agent = Agent(
+    role="Dashboard Agent",
+    goal="Present data through interactive UI surfaces",
+    backstory="Expert at building clear, actionable dashboards",
+    llm="gpt-4o",
+    a2a=A2AServerConfig(
+        url="https://your-server.com",
+        server_extensions=[A2UIServerExtension()],
+    ),
+)
+```
+
+### 服务器扩展选项
+
+<ParamField path="catalog_ids" type="list[str] | None" default="None">
+服务器支持的组件目录标识符。设置后，仅将这些目录广告给客户端。
+</ParamField>
+
+<ParamField path="accept_inline_catalogs" type="bool" default="False">
+除了命名目录之外，是否接受来自客户端的内联目录定义。
+</ParamField>
+
+## 客户端设置
+
+将 `A2UIClientExtension` 添加到 `A2AClientConfig` 以启用 A2UI 渲染：
+
+```python Code
+from crewai import Agent
+from crewai.a2a import A2AClientConfig
+from crewai.a2a.extensions.a2ui import A2UIClientExtension
+
+agent = Agent(
+    role="UI Coordinator",
+    goal="Coordinate tasks and render agent responses as rich UI",
+    backstory="Expert at presenting agent output in interactive formats",
+    llm="gpt-4o",
+    a2a=A2AClientConfig(
+        endpoint="https://dashboard-agent.example.com/.well-known/agent-card.json",
+        client_extensions=[A2UIClientExtension()],
+    ),
+)
+```
+
+### 客户端扩展选项
+
+<ParamField path="catalog_id" type="str | None" default="None">
+首选组件目录标识符。未设置时默认为`"standard (v0.8)"`。
+</ParamField>
+
+<ParamField path="allowed_components" type="list[str] | None" default="None">
+限制代理可以使用哪些组件。当 `None` 时，所有 18 个标准目录组件均可用。
+</ParamField>
+
+## 消息类型
+
+A2UI 定义了四种服务器到客户端的消息类型。每条消息的目标都是由 `surfaceId` 标识的 **表面**。
+
+<Tabs>
+  <Tab title="beginRendering">
+使用根组件和可选样式初始化新表面。
+
+  ```json
+  {
+    "beginRendering": {
+      "surfaceId": "dashboard-1",
+      "root": "main-column",
+      "catalogId": "standard (v0.8)",
+      "styles": {
+        "primaryColor": "#EB6658"
+      }
+    }
+  }
+  ```
+  </Tab>
+
+  <Tab title="surfaceUpdate">
+发送或更新现有表面上的一个或多个组件。
+
+  ```json
+  {
+    "surfaceUpdate": {
+      "surfaceId": "dashboard-1",
+      "components": [
+        {
+          "id": "main-column",
+          "component": {
+            "Column": {
+              "children": { "explicitList": ["title", "content"] },
+              "alignment": "start"
+            }
+          }
+        },
+        {
+          "id": "title",
+          "component": {
+            "Text": {
+              "text": { "literalString": "Dashboard" },
+              "usageHint": "h1"
+            }
+          }
+        }
+      ]
+    }
+  }
+  ```
+  </Tab>
+
+  <Tab title="dataModelUpdate">
+更新绑定到表面的数据模型，支持动态内容。
+
+  ```json
+  {
+    "dataModelUpdate": {
+      "surfaceId": "dashboard-1",
+      "path": "/data/model",
+      "contents": [
+        {
+          "key": "userName",
+          "valueString": "Alice"
+        },
+        {
+          "key": "score",
+          "valueNumber": 42
+        }
+      ]
+    }
+  }
+  ```
+  </Tab>
+
+  <Tab title="deleteSurface">
+移除表面及其所有组件。
+
+  ```json
+  {
+    "deleteSurface": {
+      "surfaceId": "dashboard-1"
+    }
+  }
+  ```
+  </Tab>
+</Tabs>
+
+## 组件目录
+
+A2UI 附带 18 个标准组件，分为三类：
+
+### 内容
+
+| 成分 | 描述 | 必填字段 |
+|-----------|-------------|-----------------|
+| **文本** | 使用可选的标题/正文提示呈现文本 | `text`（字符串绑定） |
+| **图像** | 显示带有适合和尺寸选项的图像 | `url`（字符串绑定） |
+| **图标** | 从 47 个图标集中渲染一个命名图标 | `name`（图标绑定） |
+| **视频** | 嵌入视频播放器 | `url`（字符串绑定） |
+| **音频播放器** | 嵌入带有可选描述的音频播放器 | `url`（字符串绑定） |
+
+### 布局
+
+| 成分 | 描述 | 必填字段 |
+|-----------|-------------|-----------------|
+| **排** | 水平柔性容器 | `children` (ChildrenDef) |
+| **柱子** | 垂直柔性容器 | `children` (ChildrenDef) |
+| **列表** | 可滚动列表（垂直或水平） | `children` (ChildrenDef) |
+| **卡片** | 适合单个儿童的高架容器 | `child`（字符串） |
+| **标签** | 选项卡式容器 | `tabItems`（TabItem列表） |
+| **分频器** | 视觉分离器（水平或垂直） | — |
+| **莫代尔** | 由入口点触发的叠加 | `entryPointChild`、`contentChild`（字符串） |
+
+### 交互的
+
+| 成分 | 描述 | 必填字段 |
+|-----------|-------------|-----------------|
+| **按钮** | 触发操作的可点击按钮 | `child`（字符串），`action`（动作） |
+| **复选框** | 带标签的布尔切换 | `label`（字符串绑定）、`value`（布尔绑定） |
+| **文本字段** | 带有类型和验证选项的文本输入 | `label`（字符串绑定） |
+| **日期时间输入** | 日期和/或时间选择器 | `value`（字符串绑定） |
+| **多项选择** | 从选项列表中选择 | `selections`（数组绑定）、`options`（列表） |
+| **滑块** | 数字范围滑块 | `value`（数字绑定） |
+
+## 数据绑定
+
+组件通过**绑定**而不是原始文字来引用值。这允许表面在数据模型发生变化时动态更新。
+
+绑定值有两种方法：
+
+- **文字值** — 直接硬编码在组件定义中
+- **路径引用** — 指向表面数据模型中的键
+
+```json
+{
+  "surfaceUpdate": {
+    "surfaceId": "profile-1",
+    "components": [
+      {
+        "id": "greeting",
+        "component": {
+          "Text": {
+            "text": { "path": "/data/model/userName" },
+            "usageHint": "h2"
+          }
+        }
+      },
+      {
+        "id": "status",
+        "component": {
+          "Text": {
+            "text": { "literalString": "Online" },
+            "usageHint": "caption"
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+在此示例中，`greeting` 从数据模型中读取用户名（通过 `dataModelUpdate` 更新），而 `status` 使用硬编码文字。
+
+## 处理用户操作
+
+`Button` 等交互式组件会触发流回服务器的 `userAction` 事件。每个操作包括`name`、原始`surfaceId` 和`sourceComponentId`，以及带有键值对的可选`context`。
+
+```json
+{
+  "userAction": {
+    "name": "submitForm",
+    "surfaceId": "form-1",
+    "sourceComponentId": "submit-btn",
+    "timestamp": "2026-03-12T10:00:00Z",
+    "context": {
+      "selectedOption": "optionA"
+    }
+  }
+}
+```
+
+操作上下文值还可以使用路径绑定将当前数据模型值发送回服务器：
+
+```json
+{
+  "Button": {
+    "child": "confirm-label",
+    "action": {
+      "name": "confirm",
+      "context": [
+        {
+          "key": "currentScore",
+          "value": { "path": "/data/model/score" }
+        }
+      ]
+    }
+  }
+}
+```
+
+## 验证
+
+使用 `validate_a2ui_message` 验证服务器到客户端的消息，使用 `validate_a2ui_event` 验证客户端到服务器的事件：
+
+```python Code
+from crewai.a2a.extensions.a2ui import validate_a2ui_message
+from crewai.a2a.extensions.a2ui.validator import (
+    validate_a2ui_event,
+    A2UIValidationError,
+)
+
+# Validate a server message
+try:
+    msg = validate_a2ui_message({"beginRendering": {"surfaceId": "s1", "root": "r1"}})
+except A2UIValidationError as exc:
+    print(exc.errors)
+
+# Validate a client event
+try:
+    event = validate_a2ui_event({
+        "userAction": {
+            "name": "click",
+            "surfaceId": "s1",
+            "sourceComponentId": "btn-1",
+            "timestamp": "2026-03-12T10:00:00Z",
+        }
+    })
+except A2UIValidationError as exc:
+    print(exc.errors)
+```
+
+## 最佳实践
+
+<CardGroup cols={2}>
+  <Card title="Start Simple" icon="play">
+以`beginRendering` 消息和单个`surfaceUpdate` 开始。一旦基本流程正常运行，就添加数据绑定和交互性。
+  </Card>
+
+  <Card title="Use Data Binding for Dynamic Content" icon="arrows-rotate">
+对于更改的内容，优先选择路径绑定而不是文字值。使用 `dataModelUpdate` 推送新值，而无需重新发送完整的组件树。
+  </Card>
+
+  <Card title="Filter Components" icon="filter">
+使用 `A2UIClientExtension` 上的 `allowed_components` 选项来限制代理可以发出的组件，从而减少提示大小并保持输出可预测。
+  </Card>
+
+  <Card title="Validate Messages" icon="check">
+使用 `validate_a2ui_message` 和 `validate_a2ui_event` 尽早捕获格式错误的有效负载，尤其是在构建自定义集成时。
+  </Card>
+</CardGroup>
+
+## 了解更多
+
+- [A2A 代理委派](/zh-CN/learn/a2a-agent-delegation) — 通过 A2A 协议配置远程委派代理
+- [A2A协议文档](https://a2a-protocol.org) — 官方协议规范

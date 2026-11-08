@@ -1,0 +1,235 @@
+---
+title: 基于工具的生成式 UI
+description: 将 CrewAI 代理的工具调用映射到 React 组件，并在参数到达时将其流式传输。
+icon: puzzle-piece
+mode: "wide"
+---
+
+## 将渲染工具调用作为组件
+
+当您的 Crew 或 Flow 调用工具时，您很少希望将原始参数转储到聊天中。基于工具的生成 UI 将代理调用的每个工具映射到您拥有的 React 组件。代理决定*何时*致电工具;您决定用户看到什么。
+
+由于 CopilotKit 在模型生成时将工具调用流式传输到前端，因此参数会逐渐填充。您的组件可以在第一个字段到达时进行绘制，并随着其余字段的流入而更新。
+
+本指南构建了一个俳句生成器：代理调用 `generate_haiku` 工具，前端将每个俳句渲染为一张卡片。它假设您已经有一个 Crew 或 Flow 与 Next.js 应用程序进行对话。如果没有，请从[前端概述](/edge/zh-CN/guides/frontend/overview) 了解完整的服务器、运行时和提供程序设置。
+
+<Note>
+工具渲染适用于 Crews 和 Flows。下面的示例使用 Flow，但两种方式的前端接线都是相同的。
+</Note>
+
+## 演练
+
+<Steps>
+
+<Step title="在后端定义工具">
+
+使用 JSON 架构声明该工具并将其传递给模型。 `copilotkit_stream` 包装器与 `stream=True` 一起将工具调用在生成时流式传输到前端，一次一个参数块。
+
+```python
+# haiku_flow.py
+from crewai.flow.flow import Flow, start
+from litellm import acompletion
+from ag_ui_crewai.sdk import copilotkit_stream, CopilotKitState
+
+GENERATE_HAIKU_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "generate_haiku",
+        "description": "Generate a haiku in Japanese and its English translation",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "japanese": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Three lines in Japanese",
+                },
+                "english": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Three lines in English",
+                },
+            },
+            "required": ["japanese", "english"],
+        },
+    },
+}
+
+
+class HaikuFlow(Flow[CopilotKitState]):
+    @start()
+    async def chat(self):
+        system_prompt = "You help the user write haikus. Use the generate_haiku tool."
+
+        response = await copilotkit_stream(
+            await acompletion(
+                model="openai/gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    *self.state.messages,
+                ],
+                tools=[GENERATE_HAIKU_TOOL],
+                parallel_tool_calls=False,
+                stream=True,
+            )
+        )
+
+        message = response.choices[0].message
+        self.state.messages.append(message)
+
+        if message.tool_calls:
+            self.state.messages.append({
+                "tool_call_id": message.tool_calls[0].id,
+                "role": "tool",
+                "content": "Haiku generated.",
+            })
+```
+
+该工具没有 Python 实现。它的存在只是为了模型发出前端可以渲染的结构化调用。通话结束后，附加一个简短的工具结果，以便下一轮对话保持良好的结构。
+
+</Step>
+
+<Step title="通过 AG-UI 服务流">
+
+在其自己的路径上公开 FastAPI 应用程序中的流：
+
+```python
+# server.py
+from fastapi import FastAPI
+from ag_ui_crewai.endpoint import add_crewai_flow_fastapi_endpoint
+from haiku_flow import HaikuFlow
+
+app = FastAPI(title="CrewAI Agent Server")
+
+add_crewai_flow_fastapi_endpoint(
+    app=app,
+    flow=HaikuFlow(),
+    path="/haiku",
+)
+```
+
+使用 CopilotKit 运行时注册代理并将 `<CopilotKit>` 指向它，完全如[前端概述](/edge/zh-CN/guides/frontend/overview) 中所示。本指南的其余部分假设代理已在 ID `haiku` 下注册。
+
+</Step>
+
+<Step title="注册渲染组件">
+
+在前端，使用与后端声明的相同的 `name` 调用 `useRenderTool` 。 `useRenderTool` 是“渲染”工具调用的钩子：它需要 `render` 函数，并且不需要执行任何内容，因为该工具是纯显示的。
+
+<Note>
+当工具仅绘制 UI 时，请使用 `useRenderTool`。如果该工具还需要在浏览器中“运行”某些内容，请改用 [`useFrontendTool`](/edge/zh-CN/guides/frontend/frontend-actions)，它将 `handler` 与可选的 `render` 配对。
+</Note>
+
+```tsx
+"use client";
+import { useRenderTool } from "@copilotkit/react-core/v2";
+import { z } from "zod";
+
+useRenderTool({
+  name: "generate_haiku",
+  parameters: z.object({
+    japanese: z.array(z.string()),
+    english: z.array(z.string()),
+  }),
+  render: ({ args, status }) => {
+    if (!args.japanese) return <></>; // still streaming
+    return <HaikuCard japanese={args.japanese} english={args.english} />;
+  },
+});
+```
+
+该工具的范围由 `<CopilotKit agent="haiku">` 提供商限定为活动代理，因此此处不需要 `agentId`。有几点需要注意：
+
+-**`name` 必须与后端工具名称** 完全匹配 (`generate_haiku`)。该匹配是 CopilotKit 如何将调用路由到该组件。
+-**`render` 接收 `{ args, status }`。**`args` 随着模型流式传输呼叫而逐渐填充；早期它可能是空的或部分的。如果您想显示加载，则 `status` 从 `"inProgress"` / `"executing"` 移动到 `"complete"`参数流时的状态。
+-**防止部分参数。** 返回一个空片段，直到您需要的字段存在。这里我们在渲染卡片之前等待 `args.japanese`。
+
+</Step>
+
+<Step title="渲染俳句">
+
+`render` 函数委托给普通的 React 组件。它与 CopilotKit 无关：它接受 props 并返回标记。
+
+```tsx
+function HaikuCard({
+  japanese,
+  english,
+}: {
+  japanese: string[];
+  english: string[];
+}) {
+  return (
+    <div className="haiku-card">
+      {japanese.map((line, i) => (
+        <div key={i} className="haiku-line">
+          <span className="jp">{line}</span>
+          <span className="en">{english?.[i]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+由于 `english` 与 `japanese` 一起流入，因此请使用可选访问 (`english?.[i]`)，以便在翻译仍在到达时卡可以干净地呈现。
+
+</Step>
+
+<Step title="运行它">
+
+启动这两个进程并向助手询问俳句。卡片随着参数流入而呈现，逐行填充。
+
+```bash
+uvicorn server:app --port 8000   # terminal 1
+npm run dev                       # terminal 2
+```
+
+</Step>
+
+</Steps>
+
+## 渐进式渲染的工作原理
+
+该模型不会立即发出所有工具调用。它传输令牌，每次新的参数块到达时，CopilotKit 都会重新调用 `render` 函数：
+
+1. 通话开始。 `args` 是空的，所以你的守卫返回一个空片段。
+2. `args.japanese` 逐行填写。该卡片出现并增大。
+3. 填写 `args.english`。将翻译插入到位。
+4. 通话完成。 `args` 保存最终的、完全验证的对象。
+
+这就是为什么部分参数保护很重要：`render` 在设计上针对不完整的数据运行。只阅读您拥有的字段，然后让其余字段在到达时进行绘制。
+
+## 后端工具
+
+上面的 `generate_haiku` 工具没有 Python 实现——它的存在只是为了模型发出前端呈现的结构化调用。但是 **您的 Crew 或 Flow 在服务器端运行的真正工具** 以相同的方式呈现。
+
+当代理或人员在运行期间执行工具时，桥会显示该工具调用及其 **结果**。为工具名称注册 `useRenderTool` 并在渲染中读取 `result`：
+
+```tsx
+useRenderTool({
+  name: "get_weather",
+  parameters: z.object({ location: z.string() }),
+  render: ({ args, result, status }) => {
+    if (status !== "complete") return <WeatherSkeleton location={args.location} />;
+    return <WeatherCard data={JSON.parse(result)} />;
+  },
+});
+```
+
+<Note>
+后端工具必须返回 **JSON 字符串**，而不是 Python 字典。该桥对工具输出进行字符串化，因此原始字典作为 Python 表示到达，浏览器无法 `JSON.parse`。从工具返回 `json.dumps(...)`。
+</Note>
+
+## 有关的
+
+<CardGroup cols={2}>
+ <Card title="代理生成 UI" icon="list-check" href="/edge/zh-CN/guides/frontend/agentic-generative-ui">
+渲染实时代理状态在多步骤运行中发生的变化。
+ </Card>
+ <Card title="人在环（Human-in-the-loop）" icon="user-check" href="/edge/zh-CN/guides/frontend/human-in-the-loop">
+在运行中暂停代理以收集用户批准或输入。
+ </Card>
+ <Card title="前端操作" icon="bolt" href="/edge/zh-CN/guides/frontend/frontend-actions">
+让代理调用在浏览器中运行的函数。
+ </Card>
+</CardGroup>

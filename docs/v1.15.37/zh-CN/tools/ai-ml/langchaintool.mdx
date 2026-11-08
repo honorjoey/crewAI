@@ -1,0 +1,59 @@
+---
+title: "浪链工具"
+description: "浪链工具 工具文档。"
+icon: link
+mode: "wide"
+---
+
+## `LangChainTool`
+
+<Info>
+    CrewAI与LangChain的综合[工具清单](https://python.langchain.com/docs/integrations/tools/)无缝集成，所有这些都可以与CrewAI一起使用。
+</Info>
+
+```python Code
+import os
+from dotenv import load_dotenv
+from crewai import Agent, Task, Crew
+from crewai.tools import BaseTool
+from pydantic import Field
+from langchain_community.utilities import GoogleSerperAPIWrapper
+
+# Set up your SERPER_API_KEY key in an .env file, eg:
+# SERPER_API_KEY=<your api key>
+load_dotenv()
+
+search = GoogleSerperAPIWrapper()
+
+class SearchTool(BaseTool):
+    name: str = "Search"
+    description: str = "Useful for search-based queries. Use this to find current information about markets, companies, and trends."
+    search: GoogleSerperAPIWrapper = Field(default_factory=GoogleSerperAPIWrapper)
+
+    def _run(self, query: str) -> str:
+        """Execute the search query and return results"""
+        try:
+            return self.search.run(query)
+        except Exception as e:
+            return f"Error performing search: {str(e)}"
+
+# Create Agents
+researcher = Agent(
+    role='Research Analyst',
+    goal='Gather current market data and trends',
+    backstory="""You are an expert research analyst with years of experience in
+    gathering market intelligence. You're known for your ability to find
+    relevant and up-to-date market information and present it in a clear,
+    actionable format.""",
+    tools=[SearchTool()],
+    verbose=True
+)
+
+# rest of the code ...
+```
+
+## 结论
+
+工具对于扩展 CrewAI 代理的能力至关重要，使他们能够承担广泛的任务并有效协作。
+使用 CrewAI 构建解决方案时，可利用自定义工具和现有工具来增强代理的能力并增强 AI 生态系统。考虑利用错误处理、缓存机制、
+以及工具参数的灵活性，以优化代理的性能和能力。

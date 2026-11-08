@@ -1,0 +1,384 @@
+---
+title: 流媒体执行人员
+description: 流式传输 CrewAI 船员执行的实时输出
+icon: wave-pulse
+mode: "wide"
+---
+
+## 介绍
+
+CrewAI 提供了在工作人员执行期间流式传输实时输出的能力，使您可以在生成结果时显示结果，而不是等待整个过程完成。此功能对于构建交互式应用程序、提供用户反馈和监视长时间运行的进程特别有用。
+
+## 流媒体如何运作
+
+启用流式传输后，CrewAI 会捕获发生的 LLM 响应和工具调用，将它们打包成结构化块，其中包括有关正在执行的任务和代理的上下文。您可以实时迭代这些块，并在执行完成后访问最终结果。
+
+## 启用流媒体
+
+要启用流式传输，请在创建工作人员时将`stream`参数设置为`True`：
+
+```python Code
+from crewai import Agent, Crew, Task
+
+# Create your agents and tasks
+researcher = Agent(
+    role="Research Analyst",
+    goal="Gather comprehensive information on topics",
+    backstory="You are an experienced researcher with excellent analytical skills.",
+)
+
+task = Task(
+    description="Research the latest developments in AI",
+    expected_output="A detailed report on recent AI advancements",
+    agent=researcher,
+)
+
+# Enable streaming
+crew = Crew(
+    agents=[researcher],
+    tasks=[task],
+    stream=True  # Enable streaming output
+)
+```
+
+## 同步串流
+
+当您在启用了流式传输的工作人员上调用 `kickoff()` 时，它会返回一个 `CrewStreamingOutput` 对象，您可以迭代该对象以在块到达时接收块：
+
+```python Code
+# Start streaming execution
+streaming = crew.kickoff(inputs={"topic": "artificial intelligence"})
+
+# Iterate over chunks as they arrive
+for chunk in streaming:
+    print(chunk.content, end="", flush=True)
+
+# Access the final result after streaming completes
+result = streaming.result
+print(f"\n\nFinal output: {result.raw}")
+```
+
+### 流块信息
+
+每个块都提供有关执行的丰富上下文：
+
+```python Code
+streaming = crew.kickoff(inputs={"topic": "AI"})
+
+for chunk in streaming:
+    print(f"Task: {chunk.task_name} (index {chunk.task_index})")
+    print(f"Agent: {chunk.agent_role}")
+    print(f"Content: {chunk.content}")
+    print(f"Type: {chunk.chunk_type}")  # TEXT or TOOL_CALL
+    if chunk.tool_call:
+        print(f"Tool: {chunk.tool_call.tool_name}")
+        print(f"Arguments: {chunk.tool_call.arguments}")
+```
+
+### 访问流媒体结果
+
+`CrewStreamingOutput` 对象提供了几个有用的属性：
+
+```python Code
+streaming = crew.kickoff(inputs={"topic": "AI"})
+
+# Iterate and collect chunks
+for chunk in streaming:
+    print(chunk.content, end="", flush=True)
+
+# After iteration completes
+print(f"\nCompleted: {streaming.is_completed}")
+print(f"Full text: {streaming.get_full_text()}")
+print(f"All chunks: {len(streaming.chunks)}")
+print(f"Final result: {streaming.result.raw}")
+```
+
+## 异步流式传输
+
+对于异步应用程序，您可以使用`akickoff()`（本机异步）或`kickoff_async()`（基于线程）进行异步迭代：
+
+### 与 `akickoff()` 的本机异步
+
+`akickoff()` 方法在整个链中提供真正的本机异步执行：
+
+```python Code
+import asyncio
+
+async def stream_crew():
+    crew = Crew(
+        agents=[researcher],
+        tasks=[task],
+        stream=True
+    )
+
+    # Start native async streaming
+    streaming = await crew.akickoff(inputs={"topic": "AI"})
+
+    # Async iteration over chunks
+    async for chunk in streaming:
+        print(chunk.content, end="", flush=True)
+
+    # Access final result
+    result = streaming.result
+    print(f"\n\nFinal output: {result.raw}")
+
+asyncio.run(stream_crew())
+```
+
+### 基于线程的异步 `kickoff_async()`
+
+为了更简单的异步集成或向后兼容性：
+
+```python Code
+import asyncio
+
+async def stream_crew():
+    crew = Crew(
+        agents=[researcher],
+        tasks=[task],
+        stream=True
+    )
+
+    # Start thread-based async streaming
+    streaming = await crew.kickoff_async(inputs={"topic": "AI"})
+
+    # Async iteration over chunks
+    async for chunk in streaming:
+        print(chunk.content, end="", flush=True)
+
+    # Access final result
+    result = streaming.result
+    print(f"\n\nFinal output: {result.raw}")
+
+asyncio.run(stream_crew())
+```
+
+<Note>
+对于高并发工作负载，建议使用`akickoff()`，因为它使用本机异步进行任务执行、内存操作和知识检索。有关更多详细信息，请参阅[异步启动人员](/zh-CN/learn/kickoff-async) 指南。
+</Note>
+
+## 使用 kickoff_for_each 进行流式传输
+
+当使用 `kickoff_for_each()` 执行多个输入的工作人员时，流式处理的工作方式会有所不同，具体取决于您使用的是同步还是异步：
+
+### 同步kickoff_for_each
+
+通过同步 `kickoff_for_each()`，您将获得 `CrewStreamingOutput` 对象的列表，每个输入一个：
+
+```python Code
+crew = Crew(
+    agents=[researcher],
+    tasks=[task],
+    stream=True
+)
+
+inputs_list = [
+    {"topic": "AI in healthcare"},
+    {"topic": "AI in finance"}
+]
+
+# Returns list of streaming outputs
+streaming_outputs = crew.kickoff_for_each(inputs=inputs_list)
+
+# Iterate over each streaming output
+for i, streaming in enumerate(streaming_outputs):
+    print(f"\n=== Input {i + 1} ===")
+    for chunk in streaming:
+        print(chunk.content, end="", flush=True)
+
+    result = streaming.result
+    print(f"\n\nResult {i + 1}: {result.raw}")
+```
+
+### 异步kickoff_for_each_async
+
+使用异步`kickoff_for_each_async()`，您将获得一个`CrewStreamingOutput`，当所有人员同时到达时，它会产生来自所有人员的块：
+
+```python Code
+import asyncio
+
+async def stream_multiple_crews():
+    crew = Crew(
+        agents=[researcher],
+        tasks=[task],
+        stream=True
+    )
+
+    inputs_list = [
+        {"topic": "AI in healthcare"},
+        {"topic": "AI in finance"}
+    ]
+
+    # Returns single streaming output for all crews
+    streaming = await crew.kickoff_for_each_async(inputs=inputs_list)
+
+    # Chunks from all crews arrive as they're generated
+    async for chunk in streaming:
+        print(f"[{chunk.task_name}] {chunk.content}", end="", flush=True)
+
+    # Access all results
+    results = streaming.results  # List of CrewOutput objects
+    for i, result in enumerate(results):
+        print(f"\n\nResult {i + 1}: {result.raw}")
+
+asyncio.run(stream_multiple_crews())
+```
+
+## 流块类型
+
+块可以是不同的类型，由 `chunk_type` 字段指示：
+
+### 文本块
+
+LLM 回复的标准文本内容：
+
+```python Code
+for chunk in streaming:
+    if chunk.chunk_type == StreamChunkType.TEXT:
+        print(chunk.content, end="", flush=True)
+```
+
+### TOOL_CALL 块
+
+有关正在进行的工具调用的信息：
+
+```python Code
+for chunk in streaming:
+    if chunk.chunk_type == StreamChunkType.TOOL_CALL:
+        print(f"\nCalling tool: {chunk.tool_call.tool_name}")
+        print(f"Arguments: {chunk.tool_call.arguments}")
+```
+
+## 实际示例：使用流式处理构建 UI
+
+这是一个完整的示例，展示了如何使用流式传输构建交互式应用程序：
+
+```python Code
+import asyncio
+from crewai import Agent, Crew, Task
+from crewai.types.streaming import StreamChunkType
+
+async def interactive_research():
+    # Create crew with streaming enabled
+    researcher = Agent(
+        role="Research Analyst",
+        goal="Provide detailed analysis on any topic",
+        backstory="You are an expert researcher with broad knowledge.",
+    )
+
+    task = Task(
+        description="Research and analyze: {topic}",
+        expected_output="A comprehensive analysis with key insights",
+        agent=researcher,
+    )
+
+    crew = Crew(
+        agents=[researcher],
+        tasks=[task],
+        stream=True,
+        verbose=False
+    )
+
+    # Get user input
+    topic = input("Enter a topic to research: ")
+
+    print(f"\n{'='*60}")
+    print(f"Researching: {topic}")
+    print(f"{'='*60}\n")
+
+    # Start streaming execution
+    streaming = await crew.kickoff_async(inputs={"topic": topic})
+
+    current_task = ""
+    async for chunk in streaming:
+        # Show task transitions
+        if chunk.task_name != current_task:
+            current_task = chunk.task_name
+            print(f"\n[{chunk.agent_role}] Working on: {chunk.task_name}")
+            print("-" * 60)
+
+        # Display text chunks
+        if chunk.chunk_type == StreamChunkType.TEXT:
+            print(chunk.content, end="", flush=True)
+
+        # Display tool calls
+        elif chunk.chunk_type == StreamChunkType.TOOL_CALL and chunk.tool_call:
+            print(f"\n🔧 Using tool: {chunk.tool_call.tool_name}")
+
+    # Show final result
+    result = streaming.result
+    print(f"\n\n{'='*60}")
+    print("Analysis Complete!")
+    print(f"{'='*60}")
+    print(f"\nToken Usage: {result.token_usage}")
+
+asyncio.run(interactive_research())
+```
+
+## 使用案例
+
+流媒体对于以下方面特别有价值：
+
+- **交互式应用程序**：在代理工作时向用户提供实时反馈
+- **长时间运行的任务**：显示研究、分析或内容生成的进度
+- **调试和监控**：实时观察代理行为和决策
+- **用户体验**：通过显示增量结果来减少感知延迟
+- **实时仪表板**：构建显示机组执行状态的监控界面
+
+## 取消和资源清理
+
+`CrewStreamingOutput` 支持优雅取消，以便在消费者断开连接时立即停止正在进行的工作。
+
+### 异步上下文管理器
+
+```python Code
+streaming = await crew.akickoff(inputs={"topic": "AI"})
+
+async with streaming:
+    async for chunk in streaming:
+        print(chunk.content, end="", flush=True)
+```
+
+### 显式取消
+
+```python Code
+streaming = await crew.akickoff(inputs={"topic": "AI"})
+try:
+    async for chunk in streaming:
+        print(chunk.content, end="", flush=True)
+finally:
+    await streaming.aclose()  # async
+    # streaming.close()       # sync equivalent
+```
+
+取消后，`streaming.is_cancelled` 和`streaming.is_completed` 均为`True`。 `aclose()` 和 `close()` 都是幂等的。
+
+## 重要提示
+
+- 流媒体自动为船员中的所有代理启用 LLM 流媒体
+- 在访问 `.result` 属性之前，您必须迭代所有块
+- 对于带有流式传输的`kickoff_for_each_async()`，请使用`.results`（复数）获取所有输出
+- 流媒体增加的开销最小，并且实际上可以提高感知性能
+- 每个块都包含丰富 UI 的完整上下文（任务、代理、块类型）
+
+## 错误处理
+
+处理流执行期间的错误：
+
+```python Code
+streaming = crew.kickoff(inputs={"topic": "AI"})
+
+try:
+    for chunk in streaming:
+        print(chunk.content, end="", flush=True)
+
+    result = streaming.result
+    print(f"\nSuccess: {result.raw}")
+
+except Exception as e:
+    print(f"\nError during streaming: {e}")
+    if streaming.is_completed:
+        print("Streaming completed but an error occurred")
+```
+
+通过利用流式传输，您可以使用 CrewAI 构建更具响应性和交互性的应用程序，为用户提供对代理执行和结果的实时可见性。

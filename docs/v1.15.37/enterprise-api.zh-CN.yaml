@@ -1,0 +1,569 @@
+openapi: 3.0.3
+info:
+  title: CrewAI AMP API
+  description: |
+    用于与您部署在 CrewAI AMP 上的 Crew 进行交互的 REST API。
+
+    ## 快速开始
+
+    1. **获取您的 Crew URL**：在 CrewAI AMP 控制台中获取您专属的 Crew URL
+    2. **复制示例**：将各端点页面中的代码示例作为模板使用
+    3. **替换占位符**：将 URL 和 token 替换为您的实际值
+    4. **使用工具测试**：使用 cURL、Postman 或您偏好的 API 客户端
+
+    ## 身份验证
+
+    所有 API 请求都需要使用 Bearer token 进行身份验证。token 分为两种类型：
+
+    - ******** 组织级 token，可执行完整的 Crew 操作
+    - **User ****** 用户级 token，供个人访问使用，权限有限
+
+    您可以在 CrewAI AMP 控制台中 Crew 详情页的 Status 标签页找到您的 Bearer token。
+
+    ## 参考文档
+
+    本文档为每个端点提供了全面的示例：
+
+    - **请求格式**，包含所有必填和可选参数
+    - **响应示例**，涵盖成功与错误场景
+    - **多种编程语言的代码示例**
+    - **身份验证模式**，演示正确的 ****** 用法
+
+    复制示例并将其中的 Crew URL 和身份验证 token 替换为您的实际值。
+
+    ## 工作流程
+
+    1. **发现输入参数**：使用 `GET /inputs`
+    2. **启动执行**：使用 `POST /kickoff`
+    3. **监控进度**：使用 `GET /status/{kickoff_id}`
+  version: 1.0.0
+  contact:
+    name: CrewAI 支持
+    email: support@crewai.com
+    url: https://crewai.com
+servers:
+  - url: https://your-actual-crew-name.crewai.com
+    description: 请替换为您在 CrewAI AMP 控制台中实际部署的 Crew URL
+  - url: https://my-travel-crew.crewai.com
+    description: 旅行规划 Crew 示例（请替换为您的 URL）
+  - url: https://content-creation-crew.crewai.com
+    description: 内容创作 Crew 示例（请替换为您的 URL）
+  - url: https://research-assistant-crew.crewai.com
+    description: 研究助手 Crew 示例（请替换为您的 URL）
+security:
+  - BearerAuth: []
+paths:
+  /inputs:
+    get:
+      summary: 获取必需的输入参数
+      description: |
+        **📋 仅供参考的示例** - *此处展示请求格式。要使用您的实际 Crew 进行测试，请复制 cURL 示例并将 URL 和 token 替换为您的真实值。*
+
+        获取您的 Crew 执行时所需的全部输入参数列表。
+        在启动 Crew 执行之前，可使用此端点了解需要提供哪些输入。
+      operationId: getRequiredInputs
+      responses:
+        "200":
+          description: 成功获取必需的输入参数
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  inputs:
+                    type: array
+                    items:
+                      type: string
+                    description: 必需输入参数名称的数组
+                    example: ["budget", "interests", "duration", "age"]
+              examples:
+                travel_crew:
+                  summary: 旅行规划 Crew 的输入参数
+                  value:
+                    inputs: ["budget", "interests", "duration", "age"]
+                outreach_crew:
+                  summary: 外联 Crew 的输入参数
+                  value:
+                    inputs:
+                      [
+                        "name",
+                        "title",
+                        "company",
+                        "industry",
+                        "our_product",
+                        "linkedin_url",
+                      ]
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /kickoff:
+    post:
+      summary: 启动 Crew 执行
+      description: |
+        **📋 仅供参考的示例** - *此处展示请求格式。要使用您的实际 Crew 进行测试，请复制 cURL 示例并将 URL 和 token 替换为您的真实值。*
+
+        使用提供的输入启动一次新的 Crew 执行。返回一个 kickoff ID，可用于
+        跟踪执行进度并获取结果。
+
+        根据复杂程度不同，Crew 的执行时间从几秒到几分钟不等。
+        建议使用 Webhook 获取实时通知，或通过状态端点实现轮询。
+      operationId: startCrewExecution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - inputs
+              properties:
+                inputs:
+                  type: object
+                  description: 您的 Crew 所需全部输入的键值对
+                  additionalProperties:
+                    type: string
+                  example:
+                    budget: "1000 USD"
+                    interests: "games, tech, ai, relaxing hikes, amazing food"
+                    duration: "7 days"
+                    age: "35"
+                meta:
+                  type: object
+                  description: 传递给 Crew 的附加元数据
+                  additionalProperties: true
+                  example:
+                    requestId: "user-request-12345"
+                    source: "mobile-app"
+                taskWebhookUrl:
+                  type: string
+                  format: uri
+                  description: 每个 Task 完成后调用的回调 URL
+                  example: "https://your-server.com/webhooks/task"
+                stepWebhookUrl:
+                  type: string
+                  format: uri
+                  description: Agent 每次思考/行动后调用的回调 URL
+                  example: "https://your-server.com/webhooks/step"
+                crewWebhookUrl:
+                  type: string
+                  format: uri
+                  description: Crew 执行完成时调用的回调 URL
+                  example: "https://your-server.com/webhooks/crew"
+            examples:
+              travel_planning:
+                summary: 旅行规划 Crew
+                value:
+                  inputs:
+                    budget: "1000 USD"
+                    interests: "games, tech, ai, relaxing hikes, amazing food"
+                    duration: "7 days"
+                    age: "35"
+                  meta:
+                    requestId: "travel-req-123"
+                    source: "web-app"
+              outreach_campaign:
+                summary: 带 Webhook 的外联 Crew
+                value:
+                  inputs:
+                    name: "John Smith"
+                    title: "CTO"
+                    company: "TechCorp"
+                    industry: "Software"
+                    our_product: "AI Development Platform"
+                    linkedin_url: "https://linkedin.com/in/johnsmith"
+                  taskWebhookUrl: "https://api.example.com/webhooks/task"
+                  crewWebhookUrl: "https://api.example.com/webhooks/crew"
+      responses:
+        "200":
+          description: Crew 执行启动成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  kickoff_id:
+                    type: string
+                    format: uuid
+                    description: 用于跟踪此次执行的唯一标识符
+                    example: "abcd1234-5678-90ef-ghij-klmnopqrstuv"
+        "400":
+          description: 请求体无效或缺少必需的输入
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "422":
+          description: 验证错误 - 请确保提供了所有必需的输入
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /status/{kickoff_id}:
+    get:
+      summary: 获取执行状态
+      description: |
+        **📋 仅供参考的示例** - *此处展示请求格式。要使用您的实际 Crew 进行测试，请复制 cURL 示例并将 URL 和 token 替换为您的真实值。*
+
+        使用 kickoff ID 获取 Crew 执行的当前状态和结果。
+
+        响应结构会根据执行状态而有所不同：
+        - **running**：执行进行中，包含当前 Task 的信息
+        - **completed**：执行已完成，包含完整结果
+        - **error**：执行失败，包含错误详情
+      operationId: getExecutionStatus
+      parameters:
+        - name: kickoff_id
+          in: path
+          required: true
+          description: 由 /kickoff 端点返回的 kickoff ID
+          schema:
+            type: string
+            format: uuid
+            example: "abcd1234-5678-90ef-ghij-klmnopqrstuv"
+      responses:
+        "200":
+          description: 成功获取执行状态
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ExecutionRunning"
+                  - $ref: "#/components/schemas/ExecutionCompleted"
+                  - $ref: "#/components/schemas/ExecutionError"
+              examples:
+                running:
+                  summary: 执行进行中
+                  value:
+                    status: "running"
+                    current_task: "research_task"
+                    progress:
+                      completed_tasks: 1
+                      total_tasks: 3
+                completed:
+                  summary: 执行成功完成
+                  value:
+                    status: "completed"
+                    result:
+                      output: "Comprehensive travel itinerary for 7 days in Japan focusing on tech culture..."
+                      tasks:
+                        - task_id: "research_task"
+                          output: "Research findings on tech destinations in Japan..."
+                          agent: "Travel Researcher"
+                          execution_time: 45.2
+                        - task_id: "planning_task"
+                          output: "7-day detailed itinerary with activities and recommendations..."
+                          agent: "Trip Planner"
+                          execution_time: 62.8
+                    execution_time: 108.5
+                error:
+                  summary: 执行失败
+                  value:
+                    status: "error"
+                    error: "Task execution failed: Invalid API key for external service"
+                    execution_time: 23.1
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: 未找到该 kickoff ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Execution not found"
+                message: "No execution found with ID: abcd1234-5678-90ef-ghij-klmnopqrstuv"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /resume:
+    post:
+      summary: 通过人工反馈恢复 Crew 执行
+      description: |
+        **📋 仅供参考的示例** - *此处展示请求格式。要使用您的实际 Crew 进行测试，请复制 cURL 示例并将 URL 和 token 替换为您的真实值。*
+
+        在人机协同（Human-in-the-Loop，HITL）工作流中，通过人工反馈恢复已暂停的 Crew 执行。
+        当带有 `human_input=True` 的 Task 完成后，Crew 执行会暂停并等待人工反馈。
+
+        **重要提示**：您必须提供与最初 kickoff 调用中相同的 Webhook URL（`taskWebhookUrl`、`stepWebhookUrl`、`crewWebhookUrl`）。
+        Webhook 配置不会自动延续——必须在恢复请求中显式提供，才能继续接收通知。
+      operationId: resumeCrewExecution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - execution_id
+                - task_id
+                - human_feedback
+                - is_approve
+              properties:
+                execution_id:
+                  type: string
+                  format: uuid
+                  description: Crew 执行的唯一标识符（来自 kickoff）
+                  example: "abcd1234-5678-90ef-ghij-klmnopqrstuv"
+                task_id:
+                  type: string
+                  description: 需要人工反馈的 Task 的 ID
+                  example: "research_task"
+                human_feedback:
+                  type: string
+                  description: 您对 Task 输出的反馈。该反馈将作为后续 Task 执行的附加上下文。
+                  example: "Great research! Please add more details about recent developments in the field."
+                is_approve:
+                  type: boolean
+                  description: "是否批准该 Task 的输出：true = 正面反馈（继续执行），false = 负面反馈（重试该 Task）"
+                  example: true
+                taskWebhookUrl:
+                  type: string
+                  format: uri
+                  description: 每个 Task 完成后调用的回调 URL。必须提供才能继续接收 Task 通知。
+                  example: "https://your-server.com/webhooks/task"
+                stepWebhookUrl:
+                  type: string
+                  format: uri
+                  description: Agent 每次思考/行动后调用的回调 URL。必须提供才能继续接收步骤通知。
+                  example: "https://your-server.com/webhooks/step"
+                crewWebhookUrl:
+                  type: string
+                  format: uri
+                  description: Crew 执行完成时调用的回调 URL。必须提供才能接收完成通知。
+                  example: "https://your-server.com/webhooks/crew"
+            examples:
+              approve_and_continue:
+                summary: 批准 Task 并继续执行
+                value:
+                  execution_id: "abcd1234-5678-90ef-ghij-klmnopqrstuv"
+                  task_id: "research_task"
+                  human_feedback: "Excellent research! Proceed to the next task."
+                  is_approve: true
+                  taskWebhookUrl: "https://api.example.com/webhooks/task"
+                  stepWebhookUrl: "https://api.example.com/webhooks/step"
+                  crewWebhookUrl: "https://api.example.com/webhooks/crew"
+              request_revision:
+                summary: 提供反馈并要求修改 Task
+                value:
+                  execution_id: "abcd1234-5678-90ef-ghij-klmnopqrstuv"
+                  task_id: "analysis_task"
+                  human_feedback: "Please include more quantitative data and cite your sources."
+                  is_approve: false
+                  taskWebhookUrl: "https://api.example.com/webhooks/task"
+                  crewWebhookUrl: "https://api.example.com/webhooks/crew"
+      responses:
+        "200":
+          description: 执行恢复成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["resumed", "retrying", "completed"]
+                    description: 已恢复执行的状态
+                    example: "resumed"
+                  message:
+                    type: string
+                    description: 关于恢复操作的人类可读消息
+                    example: "Execution resumed successfully"
+              examples:
+                resumed:
+                  summary: 收到正面反馈后恢复执行
+                  value:
+                    status: "resumed"
+                    message: "Execution resumed successfully"
+                retrying:
+                  summary: 收到负面反馈后将重试 Task
+                  value:
+                    status: "retrying"
+                    message: "Task will be retried with your feedback"
+        "400":
+          description: 请求体无效或执行未处于等待状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Invalid Request"
+                message: "Execution is not in pending human input state"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: 未找到执行 ID 或 Task ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Not Found"
+                message: "Execution ID not found"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        **📋 参考文档** - *示例中展示的 token 仅为参考用占位符。*
+
+        实际调用 API 时，请使用您在 CrewAI AMP 控制台中的真实 ****** 或 User ******。
+
+        ******** 组织级访问权限，可执行完整的 Crew 操作
+        **User ****** 用户级访问权限，权限有限
+
+  schemas:
+    ExecutionRunning:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: ["running"]
+          example: "running"
+        current_task:
+          type: string
+          description: 当前正在执行的 Task 名称
+          example: "research_task"
+        progress:
+          type: object
+          properties:
+            completed_tasks:
+              type: integer
+              description: 已完成的 Task 数量
+              example: 1
+            total_tasks:
+              type: integer
+              description: Crew 中 Task 的总数
+              example: 3
+
+    ExecutionCompleted:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: ["completed"]
+          example: "completed"
+        result:
+          type: object
+          properties:
+            output:
+              type: string
+              description: Crew 执行的最终输出
+              example: "Comprehensive travel itinerary..."
+            tasks:
+              type: array
+              items:
+                $ref: "#/components/schemas/TaskResult"
+        execution_time:
+          type: number
+          description: 总执行时间（秒）
+          example: 108.5
+
+    ExecutionError:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: ["error"]
+          example: "error"
+        error:
+          type: string
+          description: 描述出错原因的错误消息
+          example: "Task execution failed: Invalid API key"
+        execution_time:
+          type: number
+          description: 发生错误前经过的时间（秒）
+          example: 23.1
+
+    TaskResult:
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: Task 的唯一标识符
+          example: "research_task"
+        output:
+          type: string
+          description: 该 Task 生成的输出
+          example: "Research findings..."
+        agent:
+          type: string
+          description: 执行该 Task 的 Agent 名称
+          example: "Travel Researcher"
+        execution_time:
+          type: number
+          description: 执行该 Task 所用的时间（秒）
+          example: 45.2
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: 错误类型或标题
+          example: "Authentication Error"
+        message:
+          type: string
+          description: 详细的错误消息
+          example: "Invalid bearer token provided"
+
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Validation Error"
+        message:
+          type: string
+          example: "Missing required inputs"
+        details:
+          type: object
+          properties:
+            missing_inputs:
+              type: array
+              items:
+                type: string
+              example: ["budget", "interests"]
+
+  responses:
+    UnauthorizedError:
+      description: 身份验证失败 - 请检查您的 Bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Unauthorized"
+            message: "Invalid or missing bearer token"
+
+    NotFoundError:
+      description: 资源未找到
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Not Found"
+            message: "The requested resource was not found"
+
+    ServerError:
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Internal Server Error"
+            message: "An unexpected error occurred"

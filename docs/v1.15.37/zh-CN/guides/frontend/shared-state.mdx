@@ -1,0 +1,210 @@
+---
+title: 共享状态
+description: 保持 CrewAI 代理的状态和应用程序的 UI 双向同步，以便两侧的编辑流向另一侧。
+icon: arrows-rotate
+mode: "wide"
+---
+
+## 一种状态，两个方向
+
+共享状态是代理和 UI 均可读取和写入的单个状态对象。代理会在其工作时更新它，并且您的 React 组件会实时呈现它。当用户在 UI 中编辑相同的状态时，更改流回来，以便智能体在下一回合看到它。
+
+典型的例子是菜谱：代理起草它，用户调整成分或指令，然后代理从编辑后的版本继续。双方都不独占状态；它是共享的。
+
+<Note>
+共享状态依赖于具有自定义状态的 Flow。定义 `CopilotKitState` 的子类 `AgentState` 并将您的 Flow 输入为 `Flow[AgentState]`。 Crew 不携带自定义状态，因此此模式仅适用于 Flow。
+</Note>
+
+## 它是如何工作的
+
+<Steps>
+
+<Step title="定义 Flow 上的共享状态">
+
+子类 `CopilotKitState` 以便代理保留 CopilotKit 的消息管道，然后添加您自己的字段。这里的共享字段是`recipe`。
+
+```python
+# recipe_flow.py
+import json
+from typing import List, Optional
+from pydantic import BaseModel, Field
+from crewai.flow.flow import Flow, start, router, listen
+from litellm import acompletion
+from ag_ui_crewai.sdk import copilotkit_stream, CopilotKitState
+
+
+class Ingredient(BaseModel):
+    name: str
+    amount: str
+
+
+class Recipe(BaseModel):
+    title: str
+    ingredients: List[Ingredient] = Field(default_factory=list)
+    instructions: List[str] = Field(default_factory=list)
+
+
+class AgentState(CopilotKitState):
+    recipe: Optional[Recipe] = None
+```
+
+</Step>
+
+<Step title="从代理读取和写入状态">
+
+代理通过将其转储到系统提示符中来读取当前状态，并通过分配给 `self.state.recipe` 将其写回。 `generate_recipe` 工具允许模型将更新的配方作为结构化参数返回。
+
+```python
+GENERATE_RECIPE_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "generate_recipe",
+        "description": "Generate or modify the recipe.",
+        "parameters": {
+            "type": "object",
+            "properties": {"recipe": {"type": "object"}},
+            "required": ["recipe"],
+        },
+    },
+}
+
+
+class SharedStateFlow(Flow[AgentState]):
+    @start()
+    @listen("route_follow_up")
+    async def start_flow(self):
+        pass
+
+    @router(start_flow)
+    async def chat(self):
+        # The current shared state is visible to the model.
+        system_prompt = f"""You help the user build a recipe.
+        Current recipe: {self.state.model_dump_json(indent=2)}
+        Modify it by calling generate_recipe."""
+
+        response = await copilotkit_stream(
+            await acompletion(
+                model="openai/gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    *self.state.messages,
+                ],
+                tools=[*self.state.copilotkit.actions, GENERATE_RECIPE_TOOL],
+                parallel_tool_calls=False,
+                stream=True,
+            )
+        )
+        message = response.choices[0].message
+        self.state.messages.append(message)
+
+        if message.tool_calls:
+            call = message.tool_calls[0]
+            if call.function.name == "generate_recipe":
+                args = json.loads(call.function.arguments)
+                self.state.recipe = Recipe(**args["recipe"])  # write to shared state
+                self.state.messages.append({
+                    "role": "tool",
+                    "content": "Recipe updated.",
+                    "tool_call_id": call.id,
+                })
+                return "route_follow_up"
+        return "route_end"
+
+    @listen("route_end")
+    async def end(self):
+        pass
+```
+
+有两件事使此共享而不是单向：将 `self.state` 转储到提示中意味着代理始终从最新的配方工作（包括用户在 UI 中进行的编辑），并分配 `self.state.recipe` 放置新值进入在步骤结束时发送到连接的客户端的状态快照。对于长步骤期间的更新，请使用 `copilotkit_emit_state` 显式发出（请参阅 [代理生成 UI](/edge/zh-CN/guides/frontend/agentic-generative-ui)）。
+
+</Step>
+
+<Step title="通过 AG-UI 服务流">
+
+使用 `add_crewai_flow_fastapi_endpoint` 从 FastAPI 应用程序公开 Flow，然后在 CopilotKit 运行时中注册它。有关完整的服务器和运行时设置，请参阅[前端概述](/edge/zh-CN/guides/frontend/overview)。
+
+```python
+# server.py
+from fastapi import FastAPI
+from ag_ui_crewai.endpoint import add_crewai_flow_fastapi_endpoint
+from recipe_flow import SharedStateFlow
+
+app = FastAPI(title="CrewAI Agent Server")
+
+add_crewai_flow_fastapi_endpoint(
+    app=app,
+    flow=SharedStateFlow(),
+    path="/shared_state",
+)
+```
+
+</Step>
+
+<Step title="从 UI 读取和写入状态">
+
+`useAgent` 通过一个钩子为您提供两个方向。从 `agent.state` 读取共享状态，并使用 `agent.setState(...)` 将其写回。订阅 `OnStateChanged` ，以便只要代理更新状态，您的组件就会重新渲染。
+
+```tsx
+"use client";
+import { useAgent, UseAgentUpdate } from "@copilotkit/react-core/v2";
+
+function RecipeEditor() {
+  const { agent } = useAgent({
+    agentId: "shared_state",
+    updates: [UseAgentUpdate.OnStateChanged],
+  });
+
+  const state = agent?.state as { recipe?: Recipe } | undefined;
+  const isLoading = agent?.isRunning;
+
+  const recipe = state?.recipe;
+
+  // setState replaces the whole state object, so spread the current
+  // state and override only the field you changed. Passing just
+  // `{ recipe }` would drop messages and other runtime fields.
+  const updateRecipe = (patch: Partial<Recipe>) =>
+    agent?.setState({ ...(agent.state ?? {}), recipe: { ...(recipe ?? {}), ...patch } });
+
+  return (
+    <div>
+      <input
+        value={recipe?.title ?? ""}
+        disabled={isLoading}
+        onChange={(e) => updateRecipe({ title: e.target.value })}
+      />
+      {/* render inputs for ingredients and instructions the same way */}
+    </div>
+  );
+}
+```
+
+`agent.state` 读取共享状态，`agent.setState(...)` 将其写回，以便代理在下一回合看到更改，而 `agent.isRunning` 反映代理当前是否正在工作。
+
+<Note>
+`setState`**替换** 整个状态对象而不是合并。始终扩展当前状态 (`{ ...agent.state, ... }`) 并仅覆盖您正在更改的字段，否则您将删除对话和其他运行时字段代理取决于。
+</Note>
+
+</Step>
+
+</Steps>
+
+## 双向循环
+
+将各个部分放在一起，单个配方对象在两个方向上保持同步：
+
+-**代理编辑、UI 更新。** 流程分配 `self.state.recipe`，新值在步骤的状态快照中传送，并且 `OnStateChanged` 重新呈现您的输入。
+-**用户编辑，代理看到它。** UI 中的更改调用 `agent.setState(...)`，并且由于流程将 `self.state` 转储到其提示中，因此代理在下一回合中根据编辑的配方进行工作。
+
+## 有关的
+
+<CardGroup cols={2}>
+ <Card title="代理生成 UI" icon="list-check" href="/edge/zh-CN/guides/frontend/agentic-generative-ui">
+在发生变化时渲染实时代理状态。
+ </Card>
+ <Card title="预测性状态更新" icon="gauge-high" href="/edge/zh-CN/guides/frontend/predictive-state-updates">
+当代理工作时，将正在进行的状态传输到 UI。
+ </Card>
+ <Card title="人在环（Human-in-the-loop）" icon="user-check" href="/edge/zh-CN/guides/frontend/human-in-the-loop">
+在运行中暂停代理以收集用户批准或输入。
+ </Card>
+</CardGroup>

@@ -1,0 +1,125 @@
+---
+title: 编织一体化
+description: 学习如何使用Wights & Biases(W&B)编织来跟踪,实验,评价和改进您的CrewAI应用.
+icon: radar
+mode: "wide"
+---
+
+# 编织概览
+
+[Weights & Biases (W&B) Weave](https://weave-docs.wandb.ai/)是一个用于跟踪、实验、评估、部署和改进基于 LLM 的应用程序的框架。
+
+![W&B Weave CrewAI追踪使用情况概览](/images/weave-tracing.gif)
+
+编织为您的 CrewAI 应用程序开发的每个阶段提供全面支持:
+
+- ** 追踪和监测**: 自动跟踪 LLM 调试和分析生产系统的应用逻辑
+- ** 系统迭代**: 在提示、数据集和模型上改进和提升
+- ** 评估**:使用定制或预建的计分器系统评估和加强代理业绩
+- ** 警卫**: 保护你的特工 保护他们的前期和后期安全 保证内容的节制和快速安全
+
+编织会自动捕捉 CrewAI 应用程序的痕迹,使您能够监控和分析您的特工的性能,互动,以及执行流程. 这有助于构建更好的评价数据集,优化代理工作流程.
+
+## 设置指令
+
+<Steps>
+    <Step title="Install required packages">
+      ```shell
+      pip install crewai weave
+      ```
+    </Step>
+    <Step title="Set up W&B Account">
+如果你还没有账号，请先注册一个 [Weights & Biases 账户](https://wandb.ai)。你需要它来查看追踪和指标。
+    </Step>
+    <Step title="Initialize Weave in Your Application">
+在您的应用程序中添加以下代码:
+
+      ```python
+      import weave
+
+      # Initialize Weave with your project name
+      weave.init(project_name="crewai_demo")
+      ```
+      
+初始化后,编织会提供一个URL,您可以在其中查看您的痕迹和度量.
+    </Step>
+    <Step title="Create your Crews/Flows">
+      ```python
+      from crewai import Agent, Task, Crew, LLM, Process
+
+      # Create an LLM with a temperature of 0 to ensure deterministic outputs
+      llm = LLM(model="gpt-4o", temperature=0)
+
+      # Create agents
+      researcher = Agent(
+          role='Research Analyst',
+          goal='Find and analyze the best investment opportunities',
+          backstory='Expert in financial analysis and market research',
+          llm=llm,
+          verbose=True,
+          allow_delegation=False,
+      )
+
+      writer = Agent(
+          role='Report Writer',
+          goal='Write clear and concise investment reports',
+          backstory='Experienced in creating detailed financial reports',
+          llm=llm,
+          verbose=True,
+          allow_delegation=False,
+      )
+
+      # Create tasks
+      research_task = Task(
+          description='Deep research on the {topic}',
+          expected_output='Comprehensive market data including key players, market size, and growth trends.',
+          agent=researcher
+      )
+
+      writing_task = Task(
+          description='Write a detailed report based on the research',
+          expected_output='The report should be easy to read and understand. Use bullet points where applicable.',
+          agent=writer
+      )
+
+      # Create a crew
+      crew = Crew(
+          agents=[researcher, writer],
+          tasks=[research_task, writing_task],
+          verbose=True,
+          process=Process.sequential,
+      )
+
+      # Run the crew
+      result = crew.kickoff(inputs={"topic": "AI in material science"})
+      print(result)
+      ```
+    </Step>
+    <Step title="View Traces in Weave">
+在运行您的 CrewAI 应用程序后, 访问初始化时提供的 Weave URL 查看 :
+      - LLM 调用及其元数据
+      - 代理交互和任务执行流程
+      - 诸如耐久性和象征性使用等业绩计量
+      - 执行过程中发生的任何错误或问题
+
+      <Frame caption="Weave Tracing Dashboard">
+        <img src="/images/weave-tracing.png" alt="Weave tracing example with CrewAI" />
+      </Frame>
+    </Step>
+</Steps>
+
+## 特征
+
+- 编织自动捕捉所有CrewAI操作:代理交互和任务执行;LLM调用元数据和符号使用;工具使用和结果.
+- 综合支持所有CrewAI执行方法:`kickoff()`, `kickoff_for_each()`, `kickoff_async()`,以及`kickoff_for_each_async()`.
+- 自动跟踪所有 [crewAI-tools](https://github.com/crewAIInc/crewAI-tools).
+- 带有装饰器补丁的流程特性支持( R)`@start`, `@listen`, `@router`, `@or_`, `@and_`).
+- 轨迹自定义护栏传递给 CrewAI`Task`与`@weave.op()`.
+
+欲了解所支持的详情,请访问[Weave CrewAI文件](https://weave-docs.wandb.ai/guides/integrations/crewai/#getting-started-with-flow).
+
+## 资源
+
+- [📘编织文档](中文(简体) ).https://weave-docs.wandb.ai)
+- [[例编织xCrewAI仪表板](https://wandb.ai/ayut/crewai_demo/weave/traces?cols=%7B%22wb_run_id%22%3Afalse%2C%22attributes.weave.client_version%22%3Afalse%2C%22attributes.weave.os_name%22%3Afalse%2C%22attributes.weave.os_release%22%3Afalse%2C%22attributes.weave.os_version%22%3Afalse%2C%22attributes.weave.source%22%3Afalse%2C%22attributes.weave.sys_version%22%3Afalse%7D&peekPath=%2Fayut%2Fcrewai_demo%2Fcalls%2F0195c838-38cb-71a2-8a15-651ecddf9d89)
+- [X](中文(简体) ).https://x.com/weave_wb)

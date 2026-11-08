@@ -1,0 +1,166 @@
+---
+title: '基岩知识库检索器'
+description: '使用自然语言查询从 Amazon Bedrock 知识库检索信息'
+icon: aws
+mode: "wide"
+---
+
+# `BedrockKBRetrieverTool`
+
+这`BedrockKBRetrieverTool` 使 CrewAI 代理能够使用自然语言查询从 Amazon Bedrock 知识库检索信息。
+
+## 安装
+
+```bash
+uv pip install 'crewai[tools]'
+```
+
+## 要求
+
+- 配置的 AWS 凭证（通过环境变量或 AWS CLI）
+- `boto3` 和`python-dotenv` 包
+- 访问 Amazon Bedrock 知识库
+
+## 用法
+
+以下是如何将该工具与 CrewAI 代理一起使用：
+
+```python {2, 4-17}
+from crewai import Agent, Task, Crew
+from crewai_tools.aws.bedrock.knowledge_base.retriever_tool import BedrockKBRetrieverTool
+
+# Initialize the tool
+kb_tool = BedrockKBRetrieverTool(
+    knowledge_base_id="your-kb-id",
+    number_of_results=5
+)
+
+# Create a CrewAI agent that uses the tool
+researcher = Agent(
+    role='Knowledge Base Researcher',
+    goal='Find information about company policies',
+    backstory='I am a researcher specialized in retrieving and analyzing company documentation.',
+    tools=[kb_tool],
+    verbose=True
+)
+
+# Create a task for the agent
+research_task = Task(
+    description="Find our company's remote work policy and summarize the key points.",
+    agent=researcher
+)
+
+# Create a crew with the agent
+crew = Crew(
+    agents=[researcher],
+    tasks=[research_task],
+    verbose=2
+)
+
+# Run the crew
+result = crew.kickoff()
+print(result)   
+```
+
+## 工具参数
+
+| 争论| 类型| 必需的| 默认| 描述|
+|:---------|:-----|:---------|:---------|:-------------|
+| **知识库id** | `str`| 是的| 没有任何| 知识库的唯一标识符（0-10个字母数字字符）|
+| **结果数** | `int`| 不| 5 | 返回结果的最大数量|
+| **检索配置** | `字典`| 不| 没有任何| 知识库查询的自定义配置|
+| **护栏配置** | `字典`| 不| 没有任何| 内容过滤设置|
+| **下一个令牌** | `str`| 不| 没有任何| 分页令牌|
+
+## 环境变量
+
+```bash
+BEDROCK_KB_ID=your-knowledge-base-id  # Alternative to passing knowledge_base_id
+AWS_REGION=your-aws-region            # Defaults to us-east-1
+AWS_ACCESS_KEY_ID=your-access-key     # Required for AWS authentication
+AWS_SECRET_ACCESS_KEY=your-secret-key # Required for AWS authentication
+```
+
+## 响应格式
+
+该工具以 JSON 格式返回结果：
+
+```json
+{
+  "results": [
+    {
+      "content": "Retrieved text content",
+      "content_type": "text",
+      "source_type": "S3",
+      "source_uri": "s3://bucket/document.pdf",
+      "score": 0.95,
+      "metadata": {
+        "additional": "metadata"
+      }
+    }
+  ],
+  "nextToken": "pagination-token",
+  "guardrailAction": "NONE"
+}
+```
+
+## 高级用法
+
+### 自定义检索配置
+
+```python
+kb_tool = BedrockKBRetrieverTool(
+    knowledge_base_id="your-kb-id",
+    retrieval_configuration={
+        "vectorSearchConfiguration": {
+            "numberOfResults": 10,
+            "overrideSearchType": "HYBRID"
+        }
+    }
+)
+
+policy_expert = Agent(
+    role='Policy Expert',
+    goal='Analyze company policies in detail',
+    backstory='I am an expert in corporate policy analysis with deep knowledge of regulatory requirements.',
+    tools=[kb_tool]
+)
+```
+
+## 支持的数据源
+
+- 亚马逊S3
+- 合流
+- 销售人员
+- 共享点
+- 网页
+- 自定义文档位置
+- 亚马逊肯德拉
+- SQL数据库
+
+## 使用案例
+
+### 企业知识整合
+- 使 CrewAI 代理能够访问您组织的专有知识，而无需暴露敏感数据
+- 允许代理根据您公司的具体政策、程序和文件做出决策
+- 创建可以根据您的内部文档回答问题的代理，同时维护数据安全
+
+### 专业领域知识
+- 将 CrewAI 代理连接到特定领域的知识库（法律、医疗、技术），无需重新训练模型
+- 利用 AWS 环境中已维护的现有知识存储库
+- 将 CrewAI 的推理与知识库中的特定领域信息相结合
+
+### 数据驱动的决策
+- Ground CrewAI 代理根据您的实际公司数据而不是一般知识进行响应
+- 确保代理根据您的具体业务背景和文档提供建议
+- 通过从知识库中检索事实信息来减少幻觉
+
+### 可扩展的信息访问
+- 访问数 TB 的组织知识，而无需将其全部嵌入到您的模型中
+- 动态仅查询特定任务所需的相关信息
+- 利用 AWS 的可扩展基础设施高效处理大型知识库
+
+### 合规与治理
+- 确保 CrewAI 代理提供的响应与贵公司批准的文档一致
+- 创建代理使用的信息源的可审计跟踪
+- 保持对代理可以访问哪些信息源的控制

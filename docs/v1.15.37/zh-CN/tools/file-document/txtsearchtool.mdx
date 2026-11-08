@@ -1,0 +1,97 @@
+---
+title: "TXT RAG 搜索"
+description: "TXT RAG 搜索 工具文档。"
+icon: file-lines
+mode: "wide"
+---
+
+## 概览
+
+<Note>
+    我们仍然在努力改进工具,所以将来可能会有出乎意料的行为或变化.
+</Note>
+
+此工具用于在文本文件内容范围内进行RAG( Retrival-Augmented Generation)搜索.
+它允许在指定的文本文件内容中进行语义查询,
+使它成为快速提取信息或根据提供的查询找到文本特定章节的宝贵资源。
+
+## 安装
+
+用来使用`TXTSearchTool`,您首先需要安装`crewai_tools` 软件包。
+这可以用 Pip, Python 的软件包管理器来完成.
+打开您的终端或命令提示并输入以下命令 :
+
+```shell
+pip install 'crewai[tools]'
+```
+
+此命令将下载并安装 TXTSearch Tool , 并附带任何必要的依赖性 。
+
+## 示例
+
+以下示例说明如何在文本文件中使用 TXTSearchToool 搜索 。
+这个例子既显示工具的初始化并带有特定的文本文件,又显示随后在该文件内容范围内的搜索.
+
+```python Code
+from crewai_tools import TXTSearchTool
+
+# Initialize the tool to search within any text file's content 
+# the agent learns about during its execution
+tool = TXTSearchTool()
+
+# OR
+
+# Initialize the tool with a specific text file, 
+# so the agent can search within the given text file's content
+tool = TXTSearchTool(txt='path/to/text/file.txt')
+```
+
+## 参数
+- `txt` (r): **可选**. 您想要搜索的文本文件路径 。
+只有当工具没有以特定文本文件初始化时,才需要这个参数;
+否则,搜索将在最初提供的文本文件中进行。
+
+## 自定义模式和嵌入
+
+默认情况下,该工具同时使用OpenAI进行嵌入和概括.
+要自定义模型,可以使用配置词典如下:
+
+```python Code
+from chromadb.config import Settings
+
+tool = TXTSearchTool(
+    config={
+        # Required: embeddings provider + config
+        "embedding_model": {
+            "provider": "openai",  # or google-generativeai, cohere, ollama, ...
+            "config": {
+                "model": "text-embedding-3-small",
+                # "api_key": "sk-...",  # optional if env var is set (e.g., OPENAI_API_KEY or EMBEDDINGS_OPENAI_API_KEY)
+                # Provider examples:
+                # Google → model_name: "gemini-embedding-001", task_type: "RETRIEVAL_DOCUMENT"
+                # Cohere → model: "embed-english-v3.0"
+                # Ollama → model: "nomic-embed-text"
+            },
+        },
+
+        # Required: vector database config
+        "vectordb": {
+            "provider": "chromadb",  # or "qdrant"
+            "config": {
+                # Chroma settings (optional persistence)
+                # "settings": Settings(
+                #     persist_directory="/content/chroma",
+                #     allow_reset=True,
+                #     is_persistent=True,
+                # ),
+
+                # Qdrant vector params example:
+                # from qdrant_client.models import VectorParams, Distance
+                # "vectors_config": VectorParams(size=384, distance=Distance.COSINE),
+
+                # Note: collection name is controlled by the tool (default: "rag_tool_collection").
+            }
+        },
+    }
+)
+```

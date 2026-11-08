@@ -1,0 +1,458 @@
+---
+title: 检查点
+description: 自动保存执行状态，让 crew、flow 和 agent 可以在失败后恢复运行。
+icon: floppy-disk
+mode: "wide"
+---
+
+检查点（Checkpointing）会在运行期间保存执行状态的快照，使 crew、flow 或 agent 能够在失败后恢复，或分叉（fork）到一个新的分支。
+
+<CardGroup cols={2}>
+  <Card title="说明" icon="lightbulb" href="#说明">
+    检查点的工作原理：事件、存储与继承。
+  </Card>
+  <Card title="教程" icon="graduation-cap" href="#教程-恢复失败的-crew">
+    5 分钟上手演练：运行、中断、恢复。
+  </Card>
+  <Card title="操作指南" icon="screwdriver-wrench" href="#操作指南">
+    针对常见工作流的任务型实用示例。
+  </Card>
+  <Card title="参考" icon="book" href="#参考">
+    `CheckpointConfig`、事件、提供器与 CLI。
+  </Card>
+</CardGroup>
+
+## 说明
+
+### 什么是检查点
+
+检查点会捕获 CrewAI 在运行中途重建一次运行所需的状态：crew、flow 或 agent 的完整状态——配置、agent 的记忆与知识源、task 进度、中间输出、内部状态与属性——以及 kickoff 输入、截至该时刻的事件历史，还有一个将该检查点与其所属运行关联起来的 lineage ID。回调仅以具名函数引用的形式保存；参见[恢复不会带回的内容](#恢复不会带回的内容)。
+
+恢复会重建该状态并继续执行。已完成的 task 会被跳过，记忆与知识会被重新加载，后续工作会基于原始运行产生的相同输出继续进行。分叉执行同样的恢复流程，但使用新的 lineage，因此新分支与原始运行可以并行写入各自的检查点而不会相互覆盖。
+
+### 检查点何时写入
+
+检查点由事件驱动。运行时会订阅你通过 `on_events` 选择的事件，并在每次事件触发时写入一个检查点。默认的 `task_completed` 会为每个完成的 task 生成一个检查点——这是在粒度与磁盘占用之间的合理折中。像 `llm_call_completed` 这样的高频事件可用于更细粒度的恢复，但会写入多得多的文件。
+
+### 存储
+
+CrewAI 内置两种提供器：
+
+- `JsonProvider` 为每个检查点写入一个文件。人类可读，易于查看。
+- `SqliteProvider` 写入单个 SQLite 数据库。更适合高频检查点场景。
+
+当设置了 `max_checkpoints` 时，两者都会清理最旧的检查点。
+
+<Note>
+自动检查点写入（事件驱动）采用尽力而为策略：写入失败会被记录日志，运行继续。手动调用 `state.checkpoint()` 和 `state.acheckpoint()` 在失败时会重新抛出异常。
+</Note>
+
+### 继承模型
+
+`Crew`、`Flow` 和 `Agent` 都接受一个 `checkpoint` 参数。子级会从父级继承设置，除非它们自行设置了值，或传入 `False` 来选择退出。只需在 crew 上启用一次检查点，所有 agent 都会参与；也可以选择性地排除某个 agent。
+
+### 恢复不会带回的内容
+
+恢复操作会根据检查点文件构建 crew、flow 或 agent，而不是基于你调用 `kickoff()` 的那个对象。`crew.kickoff(from_checkpoint=...)` 运行的是文件中保存的 crew，因此你在 `crew` 上设置的可调用对象不会被复制过来。
+
+检查点会将回调保存为模块级函数的点路径，例如 `"my_project.hooks.on_task_done"`，并在恢复时重新导入。检查点本质上是数据，所以只有在设置了 `CREWAI_DESERIALIZE_CALLBACKS=1` 环境变量时，CrewAI 才会导入这些路径。若未设置，恢复一个包含回调名称的检查点会抛出 `ValueError`。请只对你信任的检查点文件设置该变量。
+
+以下内容不会被保存，恢复后也不会运行：
+
+- Lambda、闭包、绑定方法（如 `notifier.on_task_done`）、`functools.partial` 对象以及可调用实例。当你将此类对象传给 `Task`、`Agent`、`Crew` 或工具时，CrewAI 会发出 `A ... callback cannot be saved in a checkpoint` 的警告；事后直接设置属性则不会警告。此类工具 `cache_function` 恢复后会变成一个永不缓存的函数。
+- 可调用的 guardrail。CrewAI 在写入检查点时会发出警告。字符串形式的 guardrail 会被保存。
+- `@CrewBase` 类上的 `@before_kickoff` 和 `@after_kickoff` 钩子。
+
+若要保留无法保存的回调，请使用 `Crew.from_checkpoint()` 进行恢复，并在调用 `kickoff()` 前重新赋值：
+
+```python
+from crewai import CheckpointConfig, Crew
+
+
+class Notifier:
+    def on_task_done(self, output):
+        print(f"Finished: {output.description}")
+
+
+notifier = Notifier()
+crew = Crew.from_checkpoint(
+    CheckpointConfig(restore_from="./.checkpoints/<timestamp>_<uuid>.json")
+)
+crew.tasks[-1].callback = notifier.on_task_done
+result = crew.kickoff()
+```
+
+## 教程: 恢复失败的 crew
+
+本演练大约需要 5 分钟。你将运行一个包含两个 task 的 crew，在中途终止它，然后从保存的检查点恢复。
+
+<Steps>
+  <Step title="创建启用检查点的 crew">
+    ```python
+    from crewai import Agent, Crew, Task
+
+    researcher = Agent(role="Researcher", goal="Research", backstory="Expert")
+    writer = Agent(role="Writer", goal="Write", backstory="Expert")
+
+    crew = Crew(
+        agents=[researcher, writer],
+        tasks=[
+            Task(description="Research AI trends", agent=researcher, expected_output="bullets"),
+            Task(description="Write a summary", agent=writer, expected_output="paragraph"),
+        ],
+        checkpoint=True,
+    )
+    ```
+  </Step>
+  <Step title="运行并在第一个 task 完成后中断">
+    ```python
+    result = crew.kickoff()
+    ```
+
+    在第一个 task 完成后按下 `Ctrl+C`。查看 `./.checkpoints/` 目录——名为 `<timestamp>_<uuid>.json` 的文件就是检查点。
+  </Step>
+  <Step title="从检查点恢复">
+    ```python
+    from crewai import CheckpointConfig
+
+    result = crew.kickoff(
+        from_checkpoint=CheckpointConfig(
+            restore_from="./.checkpoints/<timestamp>_<uuid>.json",
+        ),
+    )
+    ```
+
+    研究 task 会被跳过，写作 agent 基于已保存的研究输出继续执行，crew 完成运行。
+
+    <Note>
+    恢复后的 crew 是根据检查点文件构建的，而不是 `crew` 对象。如果你的 task 使用了回调，请阅读[恢复不会带回的内容](#恢复不会带回的内容)。
+    </Note>
+  </Step>
+</Steps>
+
+## 操作指南
+
+<AccordionGroup>
+  <Accordion title="使用默认设置启用检查点" icon="play">
+    ```python
+    crew = Crew(agents=[...], tasks=[...], checkpoint=True)
+    ```
+
+    在每次 `task_completed` 时写入 `./.checkpoints/`。
+  </Accordion>
+
+  <Accordion title="自定义存储与频率" icon="sliders">
+    ```python
+    from crewai import Crew, CheckpointConfig
+
+    crew = Crew(
+        agents=[...],
+        tasks=[...],
+        checkpoint=CheckpointConfig(
+            location="./my_checkpoints",
+            on_events=["task_completed", "crew_kickoff_completed"],
+            max_checkpoints=5,
+        ),
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="选择存储提供器" icon="database">
+    <CodeGroup>
+    ```python JsonProvider
+    from crewai import Crew, CheckpointConfig
+    from crewai.state import JsonProvider
+
+    crew = Crew(
+        agents=[...],
+        tasks=[...],
+        checkpoint=CheckpointConfig(
+            location="./my_checkpoints",
+            provider=JsonProvider(),
+            max_checkpoints=5,
+        ),
+    )
+    ```
+    ```python SqliteProvider
+    from crewai import Crew, CheckpointConfig
+    from crewai.state import SqliteProvider
+
+    crew = Crew(
+        agents=[...],
+        tasks=[...],
+        checkpoint=CheckpointConfig(
+            location="./.checkpoints.db",
+            provider=SqliteProvider(),
+            max_checkpoints=50,
+        ),
+    )
+    ```
+    </CodeGroup>
+
+    <Tip>
+    SQLite 启用了 WAL 日志模式以支持并发读取。高频检查点场景建议优先使用它。
+    </Tip>
+  </Accordion>
+
+  <Accordion title="让某个 agent 退出检查点" icon="user-slash">
+    ```python
+    crew = Crew(
+        agents=[
+            Agent(role="Researcher", ...),
+            Agent(role="Writer", ..., checkpoint=False),
+        ],
+        tasks=[...],
+        checkpoint=True,
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="分叉到新分支" icon="code-branch">
+    `fork()` 会在全新的 lineage 下恢复检查点，使新运行不会与原始运行发生冲突。
+
+    ```python
+    config = CheckpointConfig(restore_from="./my_checkpoints/<file>.json")
+    crew = Crew.fork(config, branch="experiment-a")
+    result = crew.kickoff(inputs={"strategy": "aggressive"})
+    ```
+
+    `branch` 标签是可选的；省略时会自动生成一个。
+  </Accordion>
+
+  <Accordion title="为 Crew、Flow 或 Agent 设置检查点" icon="cubes">
+    <Tabs>
+      <Tab title="Crew">
+        ```python
+        crew = Crew(
+            agents=[researcher, writer],
+            tasks=[research_task, write_task, review_task],
+            checkpoint=CheckpointConfig(location="./crew_cp"),
+        )
+        ```
+
+        默认触发事件：`task_completed`。
+      </Tab>
+      <Tab title="Flow">
+        ```python
+        from crewai.flow.flow import Flow, start, listen
+        from crewai import CheckpointConfig
+
+        class MyFlow(Flow):
+            @start()
+            def step_one(self):
+                return "data"
+
+            @listen(step_one)
+            def step_two(self, data):
+                return process(data)
+
+        flow = MyFlow(
+            checkpoint=CheckpointConfig(
+                location="./flow_cp",
+                on_events=["method_execution_finished"],
+            ),
+        )
+        result = flow.kickoff()
+        ```
+      </Tab>
+      <Tab title="Agent">
+        ```python
+        agent = Agent(
+            role="Researcher",
+            goal="Research topics",
+            backstory="Expert researcher",
+            checkpoint=CheckpointConfig(
+                location="./agent_cp",
+                on_events=["lite_agent_execution_completed"],
+            ),
+        )
+        result = agent.kickoff(messages=[{"role": "user", "content": "Research AI trends"}])
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+
+  <Accordion title="手动写入检查点" icon="code">
+    在任意事件上注册处理函数并调用 `state.checkpoint()`。
+
+    <CodeGroup>
+    ```python Sync
+    from __future__ import annotations
+
+    from typing import TYPE_CHECKING, Any
+
+    from crewai.events.event_bus import crewai_event_bus
+    from crewai.events.types.llm_events import LLMCallCompletedEvent
+
+    if TYPE_CHECKING:
+        from crewai.state.runtime import RuntimeState
+
+
+    @crewai_event_bus.on(LLMCallCompletedEvent)
+    def on_llm_done(source: Any, event: LLMCallCompletedEvent, state: RuntimeState) -> None:
+        path = state.checkpoint("./my_checkpoints")
+        print(f"Saved checkpoint: {path}")
+    ```
+    ```python Async
+    from __future__ import annotations
+
+    from typing import TYPE_CHECKING, Any
+
+    from crewai.events.event_bus import crewai_event_bus
+    from crewai.events.types.llm_events import LLMCallCompletedEvent
+
+    if TYPE_CHECKING:
+        from crewai.state.runtime import RuntimeState
+
+
+    @crewai_event_bus.on(LLMCallCompletedEvent)
+    async def on_llm_done_async(source: Any, event: LLMCallCompletedEvent, state: RuntimeState) -> None:
+        path = await state.acheckpoint("./my_checkpoints")
+        print(f"Saved checkpoint: {path}")
+    ```
+    </CodeGroup>
+
+    当处理函数接受三个参数时，`state` 参数会被自动传入。完整事件目录参见[事件监听器](/zh-CN/concepts/event-listener)。
+  </Accordion>
+
+  <Accordion title="通过 CLI 浏览、恢复与分叉" icon="terminal">
+    ```bash
+    crewai checkpoint
+    crewai checkpoint --location ./my_checkpoints
+    crewai checkpoint --location ./.checkpoints.db
+    ```
+
+    <Frame caption="检查点树——分支和分叉嵌套在其父级之下。">
+      <img src="/images/checkpoint-tui-tree.png" alt="Checkpoint TUI tree view" />
+    </Frame>
+
+    左侧面板按分支对检查点分组；分叉嵌套在其父级之下。选中一个检查点会打开详情面板，展示元数据、实体状态和 task 进度。**Resume**继续该运行；**Fork**开启新分支。
+
+    <Frame caption="概览标签页——元数据、实体状态与运行摘要。">
+      <img src="/images/checkpoint-tui-detail-overview.png" alt="Checkpoint detail overview tab" />
+    </Frame>
+
+    详情面板提供两个可编辑区域：
+
+    - **Inputs**——原始 kickoff 输入，已预填且可编辑。
+
+      <Frame>
+        <img src="/images/checkpoint-tui-detail-inputs.png" alt="Editable kickoff inputs" />
+      </Frame>
+
+    - **Task outputs**——已完成 task 的输出。编辑某个输出并点击**Fork**会使下游 task 失效，从而基于修改后的上下文重新运行。
+
+      <Frame>
+        <img src="/images/checkpoint-tui-detail-tasks.png" alt="Editable task outputs" />
+      </Frame>
+
+    <Frame caption="分叉视图——确认从选中的检查点创建新分支。">
+      <img src="/images/checkpoint-tui-details-fork.png" alt="Fork confirmation panel" />
+    </Frame>
+
+    <Tip>
+    非常适合"如果……会怎样"式的探索：分叉、调整、观察。
+    </Tip>
+  </Accordion>
+
+  <Accordion title="不使用 TUI 检查检查点" icon="magnifying-glass">
+    ```bash
+    crewai checkpoint list ./my_checkpoints
+    crewai checkpoint info ./my_checkpoints/<file>.json
+    crewai checkpoint info ./.checkpoints.db
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 参考
+
+### `CheckpointConfig`
+
+<ParamField path="location" type="str" default='"./.checkpoints"'>
+  存储目标位置。对 `JsonProvider` 是一个目录，对 `SqliteProvider` 是数据库文件路径。
+</ParamField>
+
+<ParamField path="on_events" type='list[CheckpointEventType | Literal["*"]]' default='["task_completed"]'>
+  触发检查点的事件类型。`CheckpointEventType` 是一个 `Literal`——类型检查器会提供自动补全并拒绝不支持的值。完整列表参见[事件类型](#事件类型)。
+</ParamField>
+
+<ParamField path="provider" type="BaseProvider" default="JsonProvider()">
+  存储后端。`JsonProvider` 或 `SqliteProvider`。
+</ParamField>
+
+<ParamField path="max_checkpoints" type="int | None" default="None">
+  保留的最大检查点数量。每次写入后清理最旧的检查点。
+</ParamField>
+
+<ParamField path="restore_from" type="Path | str | None" default="None">
+  通过 `from_checkpoint` 传入时要恢复的检查点。
+</ParamField>
+
+### `checkpoint` 字段取值
+
+`Crew`、`Flow` 和 `Agent` 均接受此字段。
+
+<ParamField path="None" type="default">
+  从父级继承。
+</ParamField>
+
+<ParamField path="True" type="bool">
+  使用默认设置启用。
+</ParamField>
+
+<ParamField path="False" type="bool">
+  显式选择退出。阻断继承。
+</ParamField>
+
+<ParamField path="CheckpointConfig(...)" type="CheckpointConfig">
+  自定义配置。
+</ParamField>
+
+### 事件类型
+
+`on_events` 接受任意组合的 `CheckpointEventType` 值。默认的 `["task_completed"]` 会为每个完成的 task 写入一个检查点；`["*"]` 匹配所有事件。
+
+<Warning>
+`["*"]` 以及 `llm_call_completed` 等高频事件会写入大量检查点，可能降低性能。请配合 `max_checkpoints` 使用。
+</Warning>
+
+<Expandable title="所有支持的事件">
+
+- **Task**— `task_started`, `task_completed`, `task_failed`, `task_evaluation`
+- **Crew**— `crew_kickoff_started`, `crew_kickoff_completed`, `crew_kickoff_failed`, `crew_train_started`, `crew_train_completed`, `crew_train_failed`, `crew_test_started`, `crew_test_completed`, `crew_test_failed`, `crew_test_result`
+- **Agent**— `agent_execution_started`, `agent_execution_completed`, `agent_execution_error`, `lite_agent_execution_started`, `lite_agent_execution_completed`, `lite_agent_execution_error`, `agent_evaluation_started`, `agent_evaluation_completed`, `agent_evaluation_failed`
+- **Flow**— `flow_created`, `flow_started`, `flow_finished`, `flow_paused`, `method_execution_started`, `method_execution_finished`, `method_execution_failed`, `method_execution_paused`, `human_feedback_requested`, `human_feedback_received`, `flow_input_requested`, `flow_input_received`
+- **LLM**— `llm_call_started`, `llm_call_completed`, `llm_call_failed`, `llm_stream_chunk`, `llm_thinking_chunk`
+- **LLM Guardrail**— `llm_guardrail_started`, `llm_guardrail_completed`, `llm_guardrail_failed`
+- **Tool**— `tool_usage_started`, `tool_usage_finished`, `tool_usage_error`, `tool_validate_input_error`, `tool_selection_error`, `tool_execution_error`
+- **Memory**— `memory_save_started`, `memory_save_completed`, `memory_save_failed`, `memory_query_started`, `memory_query_completed`, `memory_query_failed`, `memory_retrieval_started`, `memory_retrieval_completed`, `memory_retrieval_failed`
+- **Knowledge**— `knowledge_search_query_started`, `knowledge_search_query_completed`, `knowledge_query_started`, `knowledge_query_completed`, `knowledge_query_failed`, `knowledge_search_query_failed`
+- **Reasoning**— `agent_reasoning_started`, `agent_reasoning_completed`, `agent_reasoning_failed`
+- **MCP**— `mcp_connection_started`, `mcp_connection_completed`, `mcp_connection_failed`, `mcp_tool_execution_started`, `mcp_tool_execution_completed`, `mcp_tool_execution_failed`, `mcp_config_fetch_failed`
+- **Observation**— `step_observation_started`, `step_observation_completed`, `step_observation_failed`, `plan_refinement`, `plan_replan_triggered`, `goal_achieved_early`
+- **Skill**— `skill_discovery_started`, `skill_discovery_completed`, `skill_loaded`, `skill_activated`, `skill_load_failed`
+- **Logging**— `agent_logs_started`, `agent_logs_execution`
+- **A2A**— `a2a_delegation_started`, `a2a_delegation_completed`, `a2a_conversation_started`, `a2a_conversation_completed`, `a2a_message_sent`, `a2a_response_received`, `a2a_polling_started`, `a2a_polling_status`, `a2a_push_notification_registered`, `a2a_push_notification_received`, `a2a_push_notification_sent`, `a2a_push_notification_timeout`, `a2a_streaming_started`, `a2a_streaming_chunk`, `a2a_agent_card_fetched`, `a2a_authentication_failed`, `a2a_artifact_received`, `a2a_connection_error`, `a2a_server_task_started`, `a2a_server_task_completed`, `a2a_server_task_canceled`, `a2a_server_task_failed`, `a2a_parallel_delegation_started`, `a2a_parallel_delegation_completed`, `a2a_transport_negotiated`, `a2a_content_type_negotiated`, `a2a_context_created`, `a2a_context_expired`, `a2a_context_idle`, `a2a_context_completed`, `a2a_context_pruned`
+- **System signals**— `SIGTERM`, `SIGINT`, `SIGHUP`, `SIGTSTP`, `SIGCONT`
+- **Wildcard**— `"*"` 匹配所有事件。
+
+</Expandable>
+
+### 存储提供器
+
+<ParamField path="JsonProvider" type="provider">
+  每个检查点一个文件，位于 `location` 目录内，命名为 `<timestamp>_<uuid>.json`。
+</ParamField>
+
+<ParamField path="SqliteProvider" type="provider">
+  位于 `location` 的单个数据库文件，使用 WAL 日志。
+</ParamField>
+
+### CLI
+
+| 命令 | 用途 |
+|:--------|:--------|
+| `crewai checkpoint` | 启动 TUI；自动检测存储。 |
+| `crewai checkpoint --location <path>` | 针对指定位置启动 TUI。 |
+| `crewai checkpoint list <path>` | 列出检查点。 |
+| `crewai checkpoint info <path>` | 查看某个检查点文件或 SQLite 数据库中的最新条目。 |

@@ -1,0 +1,169 @@
+---
+title: "织造矢量搜索"
+description: "织造矢量搜索 工具文档。"
+icon: network-wired
+mode: "wide"
+---
+
+## 概览
+
+
+那个`WeaviateVectorSearchTool` 用于在Weaviate矢量数据库储存的文档内进行语义搜索。 这个工具可以让您找到与给定查询相似的成像文档,利用向量和关键字搜索的力量来获取更准确和上下文相关的搜索结果.
+
+"%0"是一个向量数据库,用于存储和查询向量嵌入,使语义搜索能力得以实现.
+
+## 安装
+
+要将此工具纳入您的项目, 您需要安装 Weaviate 客户端 :
+
+```shell
+uv add weaviate-client
+```
+
+## 开始的步骤
+
+有效利用`WeaviateVectorSearchTool`,遵循这些步骤:
+
+1. **软件包安装**:确认:`crewai[tools]` 和`weaviate-client` 软件包安装在您的 Python 环境中。
+2. ======================================================================================================================================================================================================= 你可以听从命令
+3. “ 0” : 获取您的 Weaviate 集群 URL 和 API 密钥 。
+4. “0”:确保您在环境变量中设置 OpenAI API 密钥为`OPENAI_API_KEY`.
+
+## 示例
+
+以下例子说明如何初始化工具并执行搜索:
+
+```python Code
+from crewai_tools import WeaviateVectorSearchTool
+
+# Initialize the tool
+tool = WeaviateVectorSearchTool(
+    collection_name='example_collections',
+    limit=3,
+    alpha=0.75,
+    weaviate_cluster_url="https://your-weaviate-cluster-url.com",
+    weaviate_api_key="your-weaviate-api-key",
+)
+
+@agent
+def search_agent(self) -> Agent:
+    '''
+    This agent uses the WeaviateVectorSearchTool to search for 
+    semantically similar documents in a Weaviate vector database.
+    '''
+    return Agent(
+        config=self.agents_config["search_agent"],
+        tools=[tool]
+    )
+```
+
+## 参数
+
+那个`WeaviateVectorSearchTool` 接受以下参数:
+
+- 需要吗? 要搜索的收藏名称 。
+- 需要吗? Weaviate 集群的 URL 。
+- 需要吗? Weaviate 集群的 API 密钥 。
+- 零:可选。 果数回向. 默认为`3`.
+- 零:可选。 控制向量和关键字(BM25)搜索之间的加权。 α = 0 - > BM25,仅α = 1 - > 矢量搜索. 默认为`0.75`.
+- 零:可选。 要使用的矢量器 。 如果不提供,将使用`text2vec_openai` 与`nomic-embed-text` 型号。
+- 零:可选。 要使用的基因模型。 如果不提供,它将使用 OpenAI 的`gpt-4o`.
+
+## 高级配置
+
+您可以自定义工具使用的矢量器和基因模型 :
+
+```python Code
+from crewai_tools import WeaviateVectorSearchTool
+from weaviate.classes.config import Configure
+
+# Setup custom model for vectorizer and generative model
+tool = WeaviateVectorSearchTool(
+    collection_name='example_collections',
+    limit=3,
+    alpha=0.75,
+    vectorizer=Configure.Vectorizer.text2vec_openai(model="nomic-embed-text"),
+    generative_model=Configure.Generative.openai(model="gpt-4o-mini"),
+    weaviate_cluster_url="https://your-weaviate-cluster-url.com",
+    weaviate_api_key="your-weaviate-api-key",
+)
+```
+
+## 预装文档
+
+您可以在使用此工具前, 以文档预装您的 Weaviate 数据库 :
+
+```python Code
+import os
+from crewai_tools import WeaviateVectorSearchTool
+import weaviate
+from weaviate.classes.init import Auth
+
+# Connect to Weaviate
+client = weaviate.connect_to_weaviate_cloud(
+    cluster_url="https://your-weaviate-cluster-url.com",
+    auth_credentials=Auth.api_key("your-weaviate-api-key"),
+    headers={"X-OpenAI-Api-Key": "your-openai-api-key"}
+)
+
+# Get or create collection
+test_docs = client.collections.get("example_collections")
+if not test_docs:
+    test_docs = client.collections.create(
+        name="example_collections",
+        vectorizer_config=Configure.Vectorizer.text2vec_openai(model="nomic-embed-text"),
+        generative_config=Configure.Generative.openai(model="gpt-4o"),
+    )
+
+# Load documents
+docs_to_load = os.listdir("knowledge")
+with test_docs.batch.dynamic() as batch:
+    for d in docs_to_load:
+        with open(os.path.join("knowledge", d), "r") as f:
+            content = f.read()
+        batch.add_object(
+            {
+                "content": content,
+                "year": d.split("_")[0],
+            }
+        )
+
+# Initialize the tool
+tool = WeaviateVectorSearchTool(
+    collection_name='example_collections', 
+    limit=3,
+    alpha=0.75,
+    weaviate_cluster_url="https://your-weaviate-cluster-url.com",
+    weaviate_api_key="your-weaviate-api-key",
+)
+```
+
+## 代理集成示例
+
+这是如何整合`WeaviateVectorSearchTool` 与CrewAI的代理人:
+
+```python Code
+from crewai import Agent
+from crewai_tools import WeaviateVectorSearchTool
+
+# Initialize the tool
+weaviate_tool = WeaviateVectorSearchTool(
+    collection_name='example_collections',
+    limit=3,
+    alpha=0.75,
+    weaviate_cluster_url="https://your-weaviate-cluster-url.com",
+    weaviate_api_key="your-weaviate-api-key",
+)
+
+# Create an agent with the tool
+rag_agent = Agent(
+    name="rag_agent",
+    role="You are a helpful assistant that can answer questions with the help of the WeaviateVectorSearchTool.",
+    llm="gpt-4o-mini",
+    tools=[weaviate_tool],
+)
+```
+
+## 结论
+
+那个`WeaviateVectorSearchTool` 提供了在Weaviate矢量数据库中搜索类似模拟文档的有力方法。 通过利用向量嵌入,与传统的基于关键字的搜索相比,它能够实现更准确和上下文相关的搜索结果. 这个工具对于需要根据意义而不是精确匹配来查找信息的应用程序特别有用.

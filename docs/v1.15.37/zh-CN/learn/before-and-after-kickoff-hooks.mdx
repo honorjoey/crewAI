@@ -1,0 +1,60 @@
+---
+title: 开球钩之前和之后
+description: 了解如何在 CrewAI 中使用开球前和开球后挂钩
+mode: "wide"
+---
+
+CrewAI 提供了钩子，允许您在船员开球之前和之后执行代码。这些钩子对于预处理输入或后处理结果非常有用。
+
+## 开球钩前
+
+开球前钩子在工作人员开始其任务之前执行。它接收输入字典并可以在将其传递给工作人员之前对其进行修改。您可以使用此挂钩来设置环境、加载必要的数据或预处理输入。这在输入数据在被机组人员处理之前可能需要丰富或验证的情况下非常有用。
+
+以下是在 `crew.py` 中定义 before kickoff 函数的示例：
+
+```python
+from crewai.project import CrewBase, before_kickoff
+
+@CrewBase
+class MyCrew:
+    @before_kickoff
+    def prepare_data(self, inputs):
+        # Preprocess or modify inputs
+        inputs['processed'] = True
+        return inputs
+
+#...
+```
+
+在此示例中，prepare_data 函数通过添加指示输入已被处理的新键值对来修改输入。
+
+## 开球钩后
+
+开球后钩子在工作人员完成其任务后执行。它接收结果对象，其中包含机组执行的输出。该挂钩非常适合后处理结果，例如日志记录、数据转换或进一步分析。
+
+以下是如何在 `crew.py` 中定义启动后函数：
+
+```python
+from crewai.project import CrewBase, after_kickoff
+
+@CrewBase
+class MyCrew:
+    @after_kickoff
+    def log_results(self, result):
+        # Log or modify the results
+        print("Crew execution completed with result:", result)
+        return result
+
+# ...
+```
+
+
+在`log_results`函数中，将crew执行的结果简单地打印出来。您可以扩展它以执行更复杂的操作，例如发送通知或与其他服务集成。
+
+## 使用两个钩子
+
+两个挂钩可以一起使用，为您的工作人员的执行提供全面的设置和拆卸过程。它们通过分离关注点和增强 CrewAI 实现的模块化来维护干净的代码架构特别有用。
+
+## 结论
+
+CrewAI 中的开球前后挂钩提供了与船员执行生命周期进行交互的强大方法。通过理解和利用这些钩子，您可以大大增强人工智能代理的稳健性和灵活性。

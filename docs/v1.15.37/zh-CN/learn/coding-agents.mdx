@@ -1,0 +1,96 @@
+---
+title: 编码剂
+description: 了解如何使您的 CrewAI 代理能够编写和执行代码，并探索高级功能以增强功能。
+icon: rectangle-code
+mode: "wide"
+---
+
+## 介绍
+
+CrewAI Agents 现在拥有强大的编写和执行代码的能力，显着增强了他们解决问题的能力。此功能对于需要计算或编程解决方案的任务特别有用。
+
+## 启用代码执行
+
+要启用代理的代码执行，请在创建代理时将`allow_code_execution` 参数设置为`True`。
+
+这是一个例子：
+
+```python Code
+from crewai import Agent
+
+coding_agent = Agent(
+    role="Senior Python Developer",
+    goal="Craft well-designed and thought-out code",
+    backstory="You are a senior Python developer with extensive experience in software architecture and best practices.",
+    allow_code_execution=True
+)
+```
+
+<Note>
+请注意，`allow_code_execution` 参数默认为`False`。
+</Note>
+
+## 重要考虑因素
+
+1. **模型选择**：强烈建议在启用代码执行时使用功能更强的模型，例如 Claude 3.5 Sonnet 和 GPT-4。
+这些模型可以更好地理解编程概念，并且更有可能生成正确且高效的代码。
+
+2. **错误处理**：代码执行功能包括错误处理。如果执行的代码引发异常，代理将收到错误消息并可以尝试更正代码或
+提供替代解决方案。 `max_retry_limit` 参数（默认为 2）控制任务的最大重试次数。
+
+3. **依赖项**：要使用代码执行功能，您需要安装`crewai_tools`包。如果未安装，代理将记录一条信息消息：
+“编码工具不可用。安装crewai_tools。”
+
+## 代码执行过程
+
+当启用代码执行的代理遇到需要编程的任务时：
+
+<Steps>
+    <Step title="Task Analysis">
+代理分析任务并确定需要执行代码。
+    </Step>
+    <Step title="Code Formulation">
+它制定了解决问题所需的Python代码。
+    </Step>
+    <Step title="Code Execution">
+代码被发送到内部代码执行工具（`CodeInterpreterTool`）。
+    </Step>
+    <Step title="Result Interpretation">
+代理解释结果并将其合并到其响应中或使用它来进一步解决问题。
+    </Step>
+</Steps>
+
+## 用法示例
+
+以下是创建具有代码执行功能的代理并在任务中使用它的详细示例：
+
+```python Code
+from crewai import Agent, Task, Crew
+
+# Create an agent with code execution enabled
+coding_agent = Agent(
+    role="Python Data Analyst",
+    goal="Analyze data and provide insights using Python",
+    backstory="You are an experienced data analyst with strong Python skills.",
+    allow_code_execution=True
+)
+
+# Create a task that requires code execution
+data_analysis_task = Task(
+    description="Analyze the given dataset and calculate the average age of participants.",
+    agent=coding_agent
+)
+
+# Create a crew and add the task
+analysis_crew = Crew(
+    agents=[coding_agent],
+    tasks=[data_analysis_task]
+)
+
+# Execute the crew
+result = analysis_crew.kickoff()
+
+print(result)
+```
+
+在本例中，`coding_agent`可以编写并执行Python代码来执行数据分析任务。

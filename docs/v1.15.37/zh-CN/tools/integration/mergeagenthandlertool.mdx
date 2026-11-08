@@ -1,0 +1,367 @@
+---
+title: Merge Agent Handler 工具
+description: 通过 Merge 的 Agent Handler 平台，让 CrewAI 智能体安全访问 Linear、GitHub、Slack 等第三方集成
+icon: diagram-project
+mode: "wide"
+---
+
+# `MergeAgentHandlerTool`
+
+`MergeAgentHandlerTool` 让 CrewAI 智能体能够通过 [Merge Agent Handler](https://www.merge.dev/products/merge-agent-handler) 平台安全访问第三方集成。Agent Handler 提供了大量预构建的安全连接器，可连接 Linear、GitHub、Slack、Notion 等热门工具及数百种服务，并内置认证、权限与监控能力。
+
+## 安装
+
+```bash
+uv pip install 'crewai[tools]'
+```
+
+## 前置要求
+
+- 拥有已配置 Tool Pack 的 Merge Agent Handler 账号
+- Agent Handler API key
+- 至少一个与 Tool Pack 关联的已注册用户
+- Tool Pack 中已配置好第三方集成
+
+## Agent Handler 快速开始
+
+1. 在 [ah.merge.dev/signup](https://ah.merge.dev/signup) 注册 Merge Agent Handler 账号
+2. 创建 Tool Pack 并配置你需要的集成
+3. 注册将用于第三方服务认证的用户
+4. 在 Agent Handler 控制台获取 API key
+5. 设置环境变量：`export AGENT_HANDLER_API_KEY='your-key-here'`
+6. 在 CrewAI 中开始使用 `MergeAgentHandlerTool`
+
+## 说明
+
+- Tool Pack ID 和 Registered User ID 可在 Agent Handler 控制台查看，也可通过 API 创建
+- 该工具通过 Model Context Protocol (MCP) 与 Agent Handler 通信
+- Session ID 会自动生成，也可自定义以保持上下文
+- 所有工具调用都可在 Agent Handler 平台记录与审计
+- 工具参数会从 Agent Handler API 动态发现并自动校验
+
+## 用法
+
+### 使用单个工具
+
+下面演示如何使用 Tool Pack 中的某个具体工具：
+
+```python {2, 4-9}
+from crewai import Agent, Task, Crew
+from crewai_tools import MergeAgentHandlerTool
+
+# Create a tool for Linear issue creation
+linear_create_tool = MergeAgentHandlerTool.from_tool_name(
+    tool_name="linear__create_issue",
+    tool_pack_id="134e0111-0f67-44f6-98f0-597000290bb3",
+    registered_user_id="91b2b905-e866-40c8-8be2-efe53827a0aa"
+)
+
+# Create a CrewAI agent that uses the tool
+project_manager = Agent(
+    role='Project Manager',
+    goal='Manage project tasks and issues efficiently',
+    backstory='I am an expert at tracking project work and creating actionable tasks.',
+    tools=[linear_create_tool],
+    verbose=True
+)
+
+# Create a task for the agent
+create_issue_task = Task(
+    description="Create a new high-priority issue in Linear titled 'Implement user authentication' with a detailed description of the requirements.",
+    agent=project_manager,
+    expected_output="Confirmation that the issue was created with its ID"
+)
+
+# Create a crew with the agent
+crew = Crew(
+    agents=[project_manager],
+    tasks=[create_issue_task],
+    verbose=True
+)
+
+# Run the crew
+result = crew.kickoff()
+print(result)
+```
+
+### 从 Tool Pack 加载多个工具
+
+你可以一次性加载 Tool Pack 中全部可用工具：
+
+```python {2, 4-8}
+from crewai import Agent, Task, Crew
+from crewai_tools import MergeAgentHandlerTool
+
+# Load all tools from the Tool Pack
+tools = MergeAgentHandlerTool.from_tool_pack(
+    tool_pack_id="134e0111-0f67-44f6-98f0-597000290bb3",
+    registered_user_id="91b2b905-e866-40c8-8be2-efe53827a0aa"
+)
+
+# Create an agent with access to all tools
+automation_expert = Agent(
+    role='Automation Expert',
+    goal='Automate workflows across multiple platforms',
+    backstory='I can work with any tool in the toolbox to get things done.',
+    tools=tools,
+    verbose=True
+)
+
+automation_task = Task(
+    description="Check for any high-priority issues in Linear and post a summary to Slack.",
+    agent=automation_expert
+)
+
+crew = Crew(
+    agents=[automation_expert],
+    tasks=[automation_task],
+    verbose=True
+)
+
+result = crew.kickoff()
+```
+
+### 仅加载指定工具
+
+只加载你需要的工具：
+
+```python {2, 4-10}
+from crewai import Agent, Task, Crew
+from crewai_tools import MergeAgentHandlerTool
+
+# Load specific tools from the Tool Pack
+selected_tools = MergeAgentHandlerTool.from_tool_pack(
+    tool_pack_id="134e0111-0f67-44f6-98f0-597000290bb3",
+    registered_user_id="91b2b905-e866-40c8-8be2-efe53827a0aa",
+    tool_names=["linear__create_issue", "linear__get_issues", "slack__post_message"]
+)
+
+developer_assistant = Agent(
+    role='Developer Assistant',
+    goal='Help developers track and communicate about their work',
+    backstory='I help developers stay organized and keep the team informed.',
+    tools=selected_tools,
+    verbose=True
+)
+
+daily_update_task = Task(
+    description="Get all issues assigned to the current user in Linear and post a summary to the #dev-updates Slack channel.",
+    agent=developer_assistant
+)
+
+crew = Crew(
+    agents=[developer_assistant],
+    tasks=[daily_update_task],
+    verbose=True
+)
+
+result = crew.kickoff()
+```
+
+## 工具参数
+
+### `from_tool_name()` 方法
+
+| Argument | Type | Required | Default | Description |
+|:---------|:-----|:---------|:--------|:------------|
+| **tool_name** | `str` | Yes | None | 要使用的具体工具名称（例如 `linear__create_issue`） |
+| **tool_pack_id** | `str` | Yes | None | Agent Handler Tool Pack 的 UUID |
+| **registered_user_id** | `str` | Yes | None | 已注册用户的 UUID 或 origin_id |
+| **base_url** | `str` | No | `"https://ah-api.merge.dev"` | Agent Handler API 的基础 URL |
+| **session_id** | `str` | No | 自动生成 | 用于保持上下文的 MCP 会话 ID |
+
+### `from_tool_pack()` 方法
+
+| Argument | Type | Required | Default | Description |
+|:---------|:-----|:---------|:--------|:------------|
+| **tool_pack_id** | `str` | Yes | None | Agent Handler Tool Pack 的 UUID |
+| **registered_user_id** | `str` | Yes | None | 已注册用户的 UUID 或 origin_id |
+| **tool_names** | `list[str]` | No | None | 指定要加载的工具名；为 `None` 时会加载全部可用工具 |
+| **base_url** | `str` | No | `"https://ah-api.merge.dev"` | Agent Handler API 的基础 URL |
+
+## 环境变量
+
+```bash
+AGENT_HANDLER_API_KEY=your_api_key_here  # Required for authentication
+```
+
+## 进阶用法
+
+### 多智能体工作流（不同工具访问权限）
+
+```python {2, 4-20}
+from crewai import Agent, Task, Crew, Process
+from crewai_tools import MergeAgentHandlerTool
+
+# Create specialized tools for different agents
+github_tools = MergeAgentHandlerTool.from_tool_pack(
+    tool_pack_id="134e0111-0f67-44f6-98f0-597000290bb3",
+    registered_user_id="91b2b905-e866-40c8-8be2-efe53827a0aa",
+    tool_names=["github__create_pull_request", "github__get_pull_requests"]
+)
+
+linear_tools = MergeAgentHandlerTool.from_tool_pack(
+    tool_pack_id="134e0111-0f67-44f6-98f0-597000290bb3",
+    registered_user_id="91b2b905-e866-40c8-8be2-efe53827a0aa",
+    tool_names=["linear__create_issue", "linear__update_issue"]
+)
+
+slack_tool = MergeAgentHandlerTool.from_tool_name(
+    tool_name="slack__post_message",
+    tool_pack_id="134e0111-0f67-44f6-98f0-597000290bb3",
+    registered_user_id="91b2b905-e866-40c8-8be2-efe53827a0aa"
+)
+
+# Create specialized agents
+code_reviewer = Agent(
+    role='Code Reviewer',
+    goal='Review pull requests and ensure code quality',
+    backstory='I am an expert at reviewing code changes and providing constructive feedback.',
+    tools=github_tools
+)
+
+task_manager = Agent(
+    role='Task Manager',
+    goal='Track and update project tasks based on code changes',
+    backstory='I keep the project board up to date with the latest development progress.',
+    tools=linear_tools
+)
+
+communicator = Agent(
+    role='Team Communicator',
+    goal='Keep the team informed about important updates',
+    backstory='I make sure everyone knows what is happening in the project.',
+    tools=[slack_tool]
+)
+
+# Create sequential tasks
+review_task = Task(
+    description="Review all open pull requests in the 'api-service' repository and identify any that need attention.",
+    agent=code_reviewer,
+    expected_output="List of pull requests that need review or have issues"
+)
+
+update_task = Task(
+    description="Update Linear issues based on the pull request review findings. Mark completed PRs as done.",
+    agent=task_manager,
+    expected_output="Summary of updated Linear issues"
+)
+
+notify_task = Task(
+    description="Post a summary of today's code review and task updates to the #engineering Slack channel.",
+    agent=communicator,
+    expected_output="Confirmation that the message was posted"
+)
+
+# Create a crew with sequential processing
+crew = Crew(
+    agents=[code_reviewer, task_manager, communicator],
+    tasks=[review_task, update_task, notify_task],
+    process=Process.sequential,
+    verbose=True
+)
+
+result = crew.kickoff()
+```
+
+### 自定义会话管理
+
+使用会话 ID 在多次工具调用之间保持上下文：
+
+```python {2, 4-17}
+from crewai import Agent, Task, Crew
+from crewai_tools import MergeAgentHandlerTool
+
+# Create tools with the same session ID to maintain context
+session_id = "project-sprint-planning-2024"
+
+create_tool = MergeAgentHandlerTool(
+    name="linear_create_issue",
+    description="Creates a new issue in Linear",
+    tool_name="linear__create_issue",
+    tool_pack_id="134e0111-0f67-44f6-98f0-597000290bb3",
+    registered_user_id="91b2b905-e866-40c8-8be2-efe53827a0aa",
+    session_id=session_id
+)
+
+update_tool = MergeAgentHandlerTool(
+    name="linear_update_issue",
+    description="Updates an existing issue in Linear",
+    tool_name="linear__update_issue",
+    tool_pack_id="134e0111-0f67-44f6-98f0-597000290bb3",
+    registered_user_id="91b2b905-e866-40c8-8be2-efe53827a0aa",
+    session_id=session_id
+)
+
+sprint_planner = Agent(
+    role='Sprint Planner',
+    goal='Plan and organize sprint tasks',
+    backstory='I help teams plan effective sprints with well-defined tasks.',
+    tools=[create_tool, update_tool],
+    verbose=True
+)
+
+planning_task = Task(
+    description="Create 5 sprint tasks for the authentication feature and set their priorities based on dependencies.",
+    agent=sprint_planner
+)
+
+crew = Crew(
+    agents=[sprint_planner],
+    tasks=[planning_task],
+    verbose=True
+)
+
+result = crew.kickoff()
+```
+
+## 使用场景
+
+### 统一集成访问
+- 通过一个统一 API 访问数百种第三方工具，无需管理多个 SDK
+- 让智能体从单一接入点使用 Linear、GitHub、Slack、Notion、Jira、Asana 等工具
+- 将认证和 API 版本管理交给 Agent Handler，降低集成复杂度
+
+### 企业级安全工作流
+- 利用内置认证和权限管理能力访问所有第三方集成
+- 通过集中访问控制与审计日志满足企业安全标准
+- 在代码中不暴露 API key 或凭据的前提下，让智能体访问公司工具
+
+### 跨平台自动化
+- 构建横跨多个平台的流程（如：由 Linear 任务创建 GitHub issue、将 Notion 页面同步到 Slack）
+- 打通不同工具之间的数据流
+- 构建能理解跨平台上下文的智能自动化流程
+
+### 动态工具发现
+- 运行时加载所有可用工具，无需硬编码集成逻辑
+- 当 Tool Pack 增加新工具时，智能体可自动发现并使用
+- 构建可适应工具变化的高弹性智能体
+
+### 用户级工具访问控制
+- 不同用户可拥有不同工具权限与访问级别
+- 支持多租户场景下由智能体代表特定用户执行操作
+- 为所有工具动作保持正确归因与权限边界
+
+## 可用集成
+
+Merge Agent Handler 支持跨多个类别的数百种集成：
+
+- **项目管理**：Linear、Jira、Asana、Monday.com、ClickUp
+- **代码管理**：GitHub、GitLab、Bitbucket
+- **沟通协作**：Slack、Microsoft Teams、Discord
+- **文档协作**：Notion、Confluence、Google Docs
+- **CRM**：Salesforce、HubSpot、Pipedrive
+- **以及更多……**
+
+完整集成列表请访问 [Merge Agent Handler 文档](https://docs.ah.merge.dev/)。
+
+## 错误处理
+
+该工具提供了完整的错误处理机制：
+
+- **认证错误**：API key 无效或缺失
+- **权限错误**：用户没有执行请求操作的权限
+- **API 错误**：与 Agent Handler 或第三方服务通信失败
+- **校验错误**：传入工具方法的参数无效
+
+所有错误都会包装为 `MergeAgentHandlerToolError`，便于统一处理。

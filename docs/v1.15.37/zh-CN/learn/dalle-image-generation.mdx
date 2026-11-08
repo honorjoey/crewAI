@@ -1,0 +1,74 @@
+---
+title: "使用 DALL-E 生成图像"
+description: "了解如何在 CrewAI 项目中使用 DALL-E 进行 AI 驱动的图像生成"
+icon: "image"
+mode: "wide"
+---
+
+CrewAI 支持与 OpenAI 的 DALL-E 集成，允许您的 AI 代理在其任务中生成图像。本指南将引导您了解如何在 CrewAI 项目中设置和使用 DALL-E 工具。
+
+## 先决条件
+
+- 已安装crewAI（最新版本）
+- 可访问 DALL-E 的 OpenAI API 密钥
+
+## 设置 DALL-E 工具
+
+<Steps>
+    <Step title="Import the DALL-E tool">
+        ```python
+        from crewai_tools import DallETool
+        ```
+    </Step>
+
+    <Step title="Add the DALL-E tool to your agent configuration">
+        ```python
+        @agent
+        def researcher(self) -> Agent:
+            return Agent(
+                config=self.agents_config['researcher'],
+                tools=[SerperDevTool(), DallETool()],  # Add DallETool to the list of tools
+                allow_delegation=False,
+                verbose=True
+            )
+        ```
+    </Step>
+</Steps>
+
+## 使用 DALL-E 工具
+
+将 DALL-E 工具添加到代理后，它可以根据文本提示生成图像。该工具将返回生成图像的 URL，该 URL 可以在代理的输出中使用或传递给其他代理进行进一步处理。
+
+### 代理配置示例
+
+```yaml
+role: >
+    LinkedIn Profile Senior Data Researcher
+goal: >
+    Uncover detailed LinkedIn profiles based on provided name {name} and domain {domain}
+    Generate a Dall-e image based on domain {domain}
+backstory: >
+    You're a seasoned researcher with a knack for uncovering the most relevant LinkedIn profiles.
+    Known for your ability to navigate LinkedIn efficiently, you excel at gathering and presenting
+    professional information clearly and concisely.
+```
+
+### 预期输出
+
+使用 DALL-E 工具的代理将能够生成图像并在其响应中提供 URL。然后您可以下载该图像。
+
+<Frame>
+    <img src="/images/enterprise/dall-e-image.png" alt="DALL-E Image" />
+</Frame>
+
+## 最佳实践
+
+1. **在图像生成提示中具体化**以获得最佳结果。
+2. **考虑生成时间** - 图像生成可能需要一些时间，因此请将此因素纳入您的任务计划中。
+3. **遵循使用政策** - 生成图像时始终遵守 OpenAI 的使用政策。
+
+## 故障排除
+
+1. **检查 API 访问权限** - 确保您的 OpenAI API 密钥有权访问 DALL-E。
+2. **版本兼容性** - 检查您是否使用最新版本的crewAI 和crewai-tools。
+3. **工具配置** - 验证 DALL-E 工具是否已正确添加到代理的工具列表中。

@@ -1,0 +1,54 @@
+---
+title: 各组开球人员
+description: 列表中每个项目的启动人员
+icon: at
+mode: "wide"
+---
+
+## 介绍
+
+CrewAI 提供了为列表中的每个项目启动工作人员的能力，允许您为列表中的每个项目执行工作人员。
+当您需要对多个项目执行同一组任务时，此功能特别有用。
+
+## 为每个项目组建一个团队
+
+要为列表中的每个项目启动工作人员，请使用 `kickoff_for_each()` 方法。
+此方法对列表中的每个项目执行工作人员，使您可以有效地处理多个项目。
+
+以下是如何为列表中的每个项目启动工作人员的示例：
+
+```python Code
+from crewai import Crew, Agent, Task
+
+# Create an agent with code execution enabled
+coding_agent = Agent(
+    role="Python Data Analyst",
+    goal="Analyze data and provide insights using Python",
+    backstory="You are an experienced data analyst with strong Python skills.",
+    allow_code_execution=True
+)
+
+# Create a task that requires code execution
+data_analysis_task = Task(
+    description="Analyze the given dataset and calculate the average age of participants. Ages: {ages}",
+    agent=coding_agent,
+    expected_output="The average age calculated from the dataset"
+)
+
+# Create a crew and add the task
+analysis_crew = Crew(
+    agents=[coding_agent],
+    tasks=[data_analysis_task],
+    verbose=True,
+    memory=False
+)
+
+datasets = [
+  { "ages": [25, 30, 35, 40, 45] },
+  { "ages": [20, 25, 30, 35, 40] },
+  { "ages": [30, 35, 40, 45, 50] }
+]
+
+# Execute the crew
+result = analysis_crew.kickoff_for_each(inputs=datasets)
+```

@@ -1,0 +1,5658 @@
+---
+title: "更新日志"
+description: "CrewAI 的产品更新、改进和问题修复"
+icon: "clock"
+mode: "wide"
+---
+<Update label="2026年11月6日">
+  ## v1.15.37
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.37)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在 crewai-files 中为 agent 添加读取电子表格的功能。
+  - 支持搭建并加载独立 agent 项目。
+
+  ### 文档
+  - 更新 RagTool 描述，以便 Mintlify 更好地解析。
+
+  ## 贡献者
+
+  @Vidit-Ostwal, @joaomdmoura, @lorenzejay
+
+</Update>
+
+<Update label="2026年11月5日">
+  ## v1.15.36
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.36)
+
+  # 更新内容
+
+  ### 新功能
+  - 添加实验性的对话式 Agent 会话。
+  - 在 crewai run 启动时提示输入缺失的 API 密钥。
+  - 当 crewai run 无法加载项目时记录错误类别。
+  - 指明 CrewAI AMP 无法为 agent 解析的应用名称。
+
+  ### 问题修复
+  - 修复同步工具在调用方上下文中执行异步调用的问题。
+  - 解决运行密钥检查中空值优先级的问题。
+  - 当缺少 API 密钥时干净地停止 JSON crew 运行。
+  - 通过 Responses API 调用 GPT-6 Astra 和 GPT-6.1 Sol 工具。
+  - 正确处理 sourcedAnswer 输出结构。
+  - 在写入 ChromaDB 前丢弃值为 None 的元数据。
+  - 为新项目添加所选提供商对应的 crewai extra。
+  - 在 file-processing extra 中像其他同类依赖一样固定 crewai-files 版本。
+
+  ### 文档
+  - 更新 v1.15.35 的快照和更新日志。
+
+  ## 贡献者
+
+  @Kiko0301, @StoyanD, @joaomdmoura, @lorenzejay
+
+</Update>
+
+<Update label="2026年11月3日">
+  ## v1.15.35
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.35)
+
+  ## 更新内容
+
+  ### 文档
+  - 为 v1.15.35 更新 litellm 模型目录
+  - 添加 v1.15.34 的快照和更新日志
+
+  ## 贡献者
+
+  @github-actions[bot], @joaomdmoura, @lorenzejay
+
+</Update>
+
+<Update label="2026年11月1日">
+  ## v1.15.34
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.34)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在版本号提升前添加独立的 LiteLLM 目录 PR
+  - 记录 crewai run 在 kickoff 之前停止的位置
+  - 添加 crewai skill search 以列出组织的技能
+  - 将 crewai run --inputs 传递给 Python flow
+  - 添加 deploy create --zip 并打印 zip 构建所基于的提交
+  - 撰写使用 planningconfig 进行 agent 规划的文档并迁移 reasoning 页面
+
+  ### 问题修复
+  - 在 crewai create 中不再提供已停用的 Gemini 模型
+  - 为 OpenAI 兼容提供商抛出 MissingAPIKeyError
+  - 在匿名遥测中统计因重复工具调用导致的停止
+  - 统计项目脚本执行失败的 crewai run
+  - 允许 crewai[litellm] 在 Python 3.10 上导入；提升 joserfc、pyasn1、pypdf 的最低版本
+  - 对空的 LLM 回答重试一次并抛出带类型的错误
+  - 在使用工具的 agent 完成时请求结构化输出
+  - 对不符合输出模型的 JSON 进行修复而非直接失败
+  - 对重复的工具调用发出警告，并在停止时保留已完成的工作
+  - 遵循 context_window_size 设置，并在使用回退窗口时发出警告
+  - 对缺失或占位的 API 密钥抛出 MissingAPIKeyError
+  - 恢复已移除的导入路径并附带弃用警告
+  - 在 LiteLLM 流式错误中保留提供商的异常信息
+  - 告知模型如何从不可读的延迟结果中恢复
+  - 当 AMP 在评估期间拒绝已保存的登录时，提示登录并重试一次
+  - 阻止 rich 实时面板重复刷写到重定向的日志中
+  - 加载 agent 配置中设置的 from_repository
+  - 将无法恢复的回调保存为 null 而不是导致恢复失败
+  - 在 401 时显示 AMP 的原因，并允许运行应用的部署重新登录
+  - 登录时等待设备码的完整有效期，超时则以退出码 1 退出
+  - 在 crewai 重建前向引用命名空间时保留模块标识
+  - 在 crewai update 时打印升级命令，而不是重写 UV 项目
+  - 从 flow 脚手架的最后一步返回帖子内容
+  - 当 crewai+ 命令需要登录时以退出码 1 退出
+  - 当 Python 对话式 flow 没有终端时退出并给出指引
+  - 在 Python 3.12 上的运行 TUI 中将深层嵌套的 JSON 保留为文本
+  - 允许 JSON crew 运行器在较旧的 crewai-core 上加载
+  - 报告 LiteLLM 工具调用和结构化输出调用的 token 使用情况
+
+  ### 重大变更
+  - 为 1.15.29 版 agent executor 的移除撰写文档并附迁移说明
+
+  ## 贡献者
+
+  @Vidit-Ostwal, @alexmarchenko-crewai, @dependabot[bot], @joaomdmoura, @lorenzejay
+
+</Update>
+
+<Update label="2026年10月27日">
+  ## v1.15.32
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.32)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复不稳定的失败测试
+
+  ### 文档
+  - 更新 v1.15.31 的快照和更新日志
+
+  ## 贡献者
+
+  @lorenzejay
+
+</Update>
+
+<Update label="2026年10月27日">
+  ## v1.15.31
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.31)
+
+  ## 更新内容
+
+  ### 新功能
+  - 支持对话式 flow 的上下文压缩。
+
+  ### 问题修复
+  - 更新存在漏洞的审计依赖。
+  - 不再向 GPT-6 及更新的模型发送 'stop' 参数。
+  - 在 `acleanup_provider_files` 中将提供商列举操作移出事件循环执行。
+  - 对格式错误的护栏结果发出 `LLMGuardrailCompletedEvent`。
+  - 在重命名后的集成 token 缺失时指明其名称。
+  - 修复 `output_file` 中通过模板插值导致的路径遍历问题。
+  - 修补反序列化、SQL 注入和路径遍历漏洞。
+  - 在抑制之后恢复已配置的日志级别。
+  - 复制 crew 时丢弃检查点恢复状态。
+  - 在 `BedrockFileUploader` 中遵循注入的 `aioboto3` 会话。
+  - 在使用自定义模板时使用正确的 task 切片。
+  - 在编码 flow 分析中防范存储列举失败。
+  - 通过模型验证器强制护栏结果与错误互斥。
+  - 在 Qdrant edge 搜索中于服务端过滤类别。
+
+  ### 文档
+  - 在 CLI 概念文档中为 CrewAI AMP 链接使用 HTTPS。
+  - 修复翻译页面中指向英文 slug 的内部锚点链接。
+  - 修复文档示例中的 `CrewBase` 导入。
+
+  ## 贡献者
+
+  @Kiko0301, @Trenyx, @Velmet44, @Vidit-Ostwal, @Wilson0511, @gabemilani, @iris-clawd, @joaomdmoura, @lakers-abing, @leom1919, @lester076, @lorenzejay, @subhashpolisetti
+
+</Update>
+
+<Update label="2026年10月23日">
+  ## v1.15.30
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.30)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复 AGENTS.md，使其在评估期间启动登录流程并在三轮后停止。
+
+  ### 文档
+  - 更新 v1.15.29 的快照和更新日志。
+
+  ## 贡献者
+
+  @joaomdmoura
+
+</Update>
+
+<Update label="2026年10月23日">
+  ## v1.15.29
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.29)
+
+  ## 更新内容
+
+  ### 重大变更
+  - 移除 `CrewAgentExecutor`。`executor_class=CrewAgentExecutor` 现在会以 "CrewAgentExecutor has been removed" 报错，且以下导入路径已被移除：`crewai.agents.crew_agent_executor`、`crewai.agents.CrewAgentExecutor`、`crewai.experimental.agent_executor` 模块、`crewai.experimental.AgentExecutor` 以及 `crewai.experimental.CrewAgentExecutorFlow`。请从 `crewai.agents` 导入 `AgentExecutor`。
+  - 改变每个 agent 的运行方式：过大的工具结果会被延迟写入临时文件，对话会在溢出上下文窗口之前进行摘要，第五次相同的工具调用会停止该 task。每项变更及其控制方式请参见[从早期版本升级 Agent](/zh-CN/concepts/agents#从早期版本升级-agent)。
+
+  ### 新功能
+  - 添加对 LiteLLM 兼容 kwargs 的支持。
+  - 在 CLI 中实现平台应用搜索。
+  - 在 CLI 的操作选择器中高亮搜索内容。
+  - 在 flow 中追踪对话路由和公开回复。
+  - 在 CLI 登录时选择组织。
+  - 添加离线 jev 路由和护栏评估运行器。
+  - 使用 call: 工具直接运行集成应用操作。
+  - 将 AgentExecutor 从实验性状态转正。
+  - 添加 Azure DocumentDB 向量搜索集成。
+  - 添加只读 notebook 文本加载器和基于标准库的 jsonl 加载器。
+  - 确保 crewAI eval 将评估的完整数据保留在项目中。
+  - 支持 crewAI eval 通过一条命令自行运行 crew 以得出评估结论。
+  - 允许 crewAI eval 将评估结果导出为文件。
+
+  ### 问题修复
+  - 修复从登录派生平台集成 token 的问题。
+  - 通过在序列化错误时保留 JSON 日志来解决日志问题。
+  - 跳过非 UTF-8 编码的缓存技能元数据。
+  - 修复工具操作以遵循失败策略，并在每次 kickoff 时获取全新的使用额度。
+  - 防止没有来源的私有记忆泄漏到每次召回中。
+  - 修复 LanceDBStorage 中记忆记录的检索顺序。
+  - 在重新规划失败时恢复 task 描述。
+  - 阻止 agent 重复相同的工具调用。
+  - 在 LanceDB 过滤器中转义 scope 和 id 值。
+
+  ### 文档
+  - 更新 crewAI 示例和可观测性指南中的失效链接。
+  - 修复工具文档中的失效链接。
+
+  ### 重构
+  - 将上下文压缩重构为 BaseLLM 的能力。
+
+  ## 贡献者
+
+  @Akaliup, @Arxsher, @Copilot, @D41910, @LindseyZ1205, @RaycarlLei, @Rohitkanithi, @Sakura-798, @Vidit-Ostwal, @Wilson0511, @Winoren, @abdullahajaz14, @bballhaus, @gabemilani, @iris-clawd, @joaomdmoura, @leom1919, @lorenzejay, @marcreniel, @mattatcha, @reubenjrouse, @rohitkanithi, @sandeepsnairms, @stepchanges, @subhashpolisetti, @theCyberTech, @vatsalyd
+
+</Update>
+
+<Update label="2026年10月14日">
+  ## v1.15.28
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.28)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加 crewai eval 命令以报告停止的模型在何处出错。
+  - 使用 LiteLLM 目录获取上下文窗口大小。
+
+  ### 问题修复
+  - 修复 flow，使其能从恢复的人工反馈中学习并保留已审查的输出类型。
+  - 当非空应用解析不到任何平台工具时发出警告。
+  - 修复 flow add-crew，使其能从 pyproject 正确找到包。
+  - 显示部署失败的原因，并修复 deploy remove 和锁文件检查。
+  - 将触发器列表和负载请求的超时修正为 60 秒。
+  - 在 deploy push 期间读取 AMP 的 source_type，确保 ZIP 部署使用新代码。
+  - 在 rag 中解码带 UTF-8 BOM 的本地 JSON 文件。
+  - 允许 OpenAI GPT-6 Sol/Luna/Astra 使用图像 input_files。
+  - 为流式 anthropic 工具调用发出调用完成事件。
+  - 阻止 JSON-schema 模型对遮蔽 BaseModel 的字段发出警告。
+  - 保留原生工具中止行为和 post-hook 缓存标识。
+  - 在版本提升 PR 合并后刷新 LiteLLM 目录。
+  - 修复失效的评估器回归测试。
+
+  ### 文档
+  - 整合 MongoDB 文档的改进。
+  - 修正 AGENTS.md 中的部署和平台工具指引。
+  - 修复 README 中 RagTool 和 XMLSearchTool 的导入。
+
+  ## 贡献者
+
+  @SIDDARTHAREDDY8, @Vidit-Ostwal, @joaomdmoura, @kimnamu, @lorenzejay, @norareidy, @shaikn6, @zouyonghe
+
+</Update>
+
+<Update label="2026年10月9日">
+  ## v1.15.27
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.27)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为 OpenCLIP 提供商的设备选项添加 XPU
+  - 添加 deepinfra 作为 OpenAI 兼容提供商
+  - 记录评估在得出结论前停止的原因
+  - 记录运行应用的 Deploy 在尝试前遇到的情况
+  - 在 crewai eval --models 中实现按运行的成本和时间跟踪，且不重复打印进度行
+
+  ### 问题修复
+  - 修复向 OpenAI GPT-6/GPT-5.6/gpt-oss 发送 stopSequences 的问题
+  - 保留 GitHub 加载器的来源归属
+  - 修复 SQLite flow 初始化竞争问题
+
+  ### 文档
+  - 添加 v1.15.26 的快照和更新日志
+
+  ## 贡献者
+
+  @StoyanD, @ats3v, @joaomdmoura, @kimnamu, @lorenzejay, @mhbuehler, @zouyonghe
+
+</Update>
+
+<Update label="2026年10月8日">
+  ## v1.15.26
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.26)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复读写锁在获取被中断时的所有权保留问题。
+  - 解决文档站点来源 URL 未被保留的问题。
+  - 修复 log-tasks-outputs 中的 task 输出显示，使其展示实际输出。
+
+  ### 文档
+  - 更新 v1.15.25 版本的快照和更新日志。
+
+  ## 贡献者
+
+  @Velmet44, @Vidit-Ostwal, @joaomdmoura, @leilei3167, @lorenzejay, @lux-liang
+
+</Update>
+
+<Update label="2026年10月7日">
+  ## v1.15.25
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.25)
+
+  ## 更新内容
+
+  ### 文档
+  - v1.15.24 的快照和更新日志
+
+  ## 贡献者
+
+  @lorenzejay
+
+</Update>
+
+<Update label="2026年10月7日">
+  ## v1.15.24
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.24)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加 crewai eval 在由 agent 运行时打印 markdown 摘要
+  - 将相关的后台回复加入队列
+  - 添加实验性的轮次和回复标识
+  - 添加 Oracle 集成
+  - 添加实验性的作业生命周期和运行器
+  - 添加 crewai eval --models，以及可同时替换模型和角色的 llm_overlay
+
+  ### 问题修复
+  - 修复 CLI 中 train 文件名的错误消息
+  - 允许起始步骤在其监听的事件上重新运行
+  - 让发出 human_feedback 的步骤在输出中暴露审查内容
+  - 确保 crewai eval 在未通过门禁时以退出码 1 退出，并在无人值守且未追踪到任何内容时提示登录
+  - 从授权导出器报告追踪发送的使用量
+  - 处理多个依赖安全公告并更新相关软件包
+
+  ### 重构
+  - 将消息摘要迁移到 SummarizeMessages 中
+  - 集中管理并刷新上下文窗口
+
+  ## 贡献者
+
+  @Velmet44, @Vidit-Ostwal, @dependabot[bot], @fileames, @gabemilani, @github-actions[bot], @joaomdmoura, @lorenzejay
+
+</Update>
+
+<Update label="2026年9月28日">
+  ## v1.15.23
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.23)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加对原生 Gemini 3.8 Flash 的支持
+  - 在 crewai eval 中通过 AMP 实现对最近一次已追踪运行的评估
+  - 为 crewai eval 记录最近一次已追踪的运行，而不是直接打印
+  - 改进平台集成设置的用户体验
+  - 优先展示热门平台集成
+  - 增强追踪的 task span，使其包含声明的输出格式和结果
+
+  ### 问题修复
+  - 修复查看追踪面板的可见性问题
+  - 解决开启追踪的问题，并在 TUI 中添加 Evaluate 按钮
+  - 在 LLM 中重试被限流的提供商调用
+  - 在 Bedrock 中从 acall 回退到同步调用
+  - 在 CLI 中打印评估所评分的各个方面
+  - 确保在完成追踪后显示链接
+  - 保持 Selenium 驱动可复用
+  - 正确关闭 S3 响应体
+  - 使用共享辅助函数折叠多模态内容
+  - 匹配 LLM overlay 中仅因首尾空白不同的角色
+  - 在 flow 持久化和 SQLite 提供商中关闭 SQLite 连接
+  - 保留目录列举路径
+
+  ### 文档
+  - 更新面向助手的平台工具指南
+
+  ## 贡献者
+
+  @Copilot, @Mairaarshad19, @SharoonSharif, @Vidit-Ostwal, @gaoanze888, @joaomdmoura, @lorenzejay, @sclfcz, @stepchanges, @vinibrsl
+
+</Update>
+
+<Update label="2026年9月16日">
+  ## v1.15.22
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.22)
+
+  ## 更新内容
+
+  ### 新功能
+  - 支持使用别名作为连接标识符
+  - 记录部署创建失败的原因
+  - 在追踪中收集人工反馈和暂停事件
+  - 添加 `llm_overlay` 上下文变量以将 agent 角色路由到模型
+  - 在 agent 执行负载中携带 `task_prompt` 和输出
+  - 在 crew 设置期间验证平台集成
+  - 将平台工具添加到 JSON crew 向导
+  - 公开 CrewAI Platform 应用目录
+  - 添加 OpenRouter 作为受支持的嵌入提供商
+
+  ### 问题修复
+  - 在内联技能定义中接受 CRLF
+  - 通过安全抓取器加载文本文件 URL
+  - 在 kickoff task 输出存储中关闭 SQLite 连接
+  - 在原生工具路径的 `ToolUsageFinishedEvent` 上携带 `from_cache`
+  - 在上传器中抛出 `ValueError` 而不是裸 raise
+  - 在 SQLiteFlowPersistence 中支持非原始类型
+  - 改进编码 agent 的指令
+  - 以 UTF-8 读取 JSON 检查点
+  - 在 Windows 上覆盖过期的 `poetry.lock` 备份
+  - 在 Azure 中按传输索引为流式工具调用建立键
+  - 在 Gemini 中保留文件数据内容部分
+  - 在 `update()` 和 `recall()` 的访问时间上遵循 `read_only`
+  - 向每个 OpenAI 推理模型发送 `reasoning_effort`
+  - 防止流式输出包含字面量 `[...]` 时运行 TUI 崩溃
+  - 当存储的 task 不一致时拒绝重放
+  - 使用 `sys.platform` 守卫以在 Windows 上兼容 mypy
+  - 将强制的最终答案作为用户轮次来请求
+  - 在嵌入提示词的 task 输出 schema 中保留 null
+  - 使 `DOCXSearchTool` 与标准 RAG 固定 schema 模式对齐
+
+  ### 文档
+  - 在嵌入设备选项中添加 `xpu`
+  - 列出所有工作区软件包
+
+  ## 贡献者
+
+  @ASTion24, @BlueX888, @HUAN2022A, @RaycarlLei, @Rohitkanithi, @SWAPI03, @SharoonSharif, @ShivangiRay, @Theater-ahyeon, @Vidit-Ostwal, @gamal1osama, @github-actions[bot], @joaomdmoura, @lorenzejay, @mhbuehler, @modusensus, @monkscode, @rohitkanithi, @roli-lpci, @vinibrsl, @wangtaotaotao95
+
+</Update>
+
+<Update label="2026年9月9日">
+  ## v1.15.21
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.21)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加遥测以跟踪检查点运行时和 CLI 使用情况。
+
+  ### 问题修复
+  - 修复在 HTTP 200 响应中报告的网关错误。
+  - 让 deploy push 保持使用 AMP 创建时的源。
+  - 在 Oxylabs 集成中报告抓取失败，而不是抛出 IndexError。
+  - 将所有 DashScope 模型路由到原生提供商。
+  - 以 UTF-8 持久化 JSON 检查点。
+  - 移除 BrightData f-string 搜索 URL 中多余的 $。
+  - 在 JSON schema 转换中支持列表形式的 type 数组。
+  - 将 gpt-4o-mini 的上下文窗口从 200000 修正为 128000。
+  - 在 contentBlockStop 时保留流式工具调用参数。
+  - 使 pre-commit 钩子在 Windows 上可移植。
+
+  ### 文档
+  - 阐明追踪与遥测是分开管理的。
+  - 修复并行搜索参考链接。
+  - 从 handle_llm_stream_chunk 的文档字符串中移除过期参数。
+  - 修复流式输出文档字符串示例。
+  - 在技能安装参考中使用组织 UUID。
+
+  ## 贡献者
+
+  @Alphaxiaoteng, @DrewWhittleNZ, @Ghraven, @Shxiao101, @Vaishnavi220506, @Vidit-Ostwal, @danielfsbarreto, @georgeatparallel, @github-actions[bot], @jessemiller, @joaomdmoura, @kimnamu, @kiwoongyoon, @liang0417, @lorenzejay, @oxy-giedrius, @simpleqt, @uoparaji
+
+</Update>
+
+<Update label="2026年9月4日">
+  ## v1.15.20
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.20)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复旧版平台工具别名发现
+
+  ### 文档
+  - 更新 v1.15.19 的快照和更新日志
+
+  ## 贡献者
+
+  @joaomdmoura, @vinibrsl
+
+</Update>
+
+<Update label="2026年9月4日">
+  ## v1.15.19
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.19)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加 Clipper 集成客户端
+  - 在 CEL 表达式环境中添加 `now()`
+  - 为每个用户记录 crew 运行的结束方式
+  - 以粗粒度区间而非核心数报告机器规格
+  - 为 CrewAI 平台工具添加可注入的客户端
+
+  ### 问题修复
+  - 修复 `urlreadtool` 中 octet-stream 和 xlsx URL 的读取
+  - 修复原生 Gemini 提供商中追加末尾用户轮次的问题
+  - 规范化 Ollama 基础 URL 中的协议和端口
+  - 在记忆中保留可复用的作用域配置
+  - 将 `pypdf` 升级到 6.16.2 以修复安全漏洞
+  - 将 `nltk` 升级到 3.10.3 以修复安全漏洞
+  - 修复当前 Claude 模型的原生结构化输出及 Snowflake CVE 最低版本
+  - 在每条路径上运行模型调用钩子并传播拒绝结果
+
+  ### 文档
+  - 从 AI/ML 概览示例中移除 `CodeInterpreterTool`
+  - 将 `prompt-template` 链接指向其当前路径
+  - 将频道指南更新为当前的 CopilotKit 频道 API
+  - 更新已停用的 Gemini 模型 ID
+
+  ## 贡献者
+
+  @Vidit-Ostwal, @a-yeyang, @github-actions[bot], @hvlcrs, @joaomdmoura, @kikifrost, @lorenzejay, @lucasgomide, @parthiban-sivakumar, @ranst91, @tandede, @thiagomoretto, @vinibrsl
+
+</Update>
+
+<Update label="2026年8月27日">
+  ## v1.15.18
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.18)
+
+  ## 更新内容
+
+  ### 新功能
+  - 将对话式 flow 提升为稳定版
+  - 使用给定的 UUID 记录已创建的部署
+  - 增强对话式 flow 的文档和 API
+  - 允许声明指定路由器的响应格式
+  - 允许聊天 flow 声明自己的状态结构
+  - 在对话式声明中接受 crew 风格的 LLM 配置
+  - 使用新生成的 ID 报告项目创建
+  - 记录运行是否有输入，但不记录输入内容
+  - 从每个用户调用的项目命令回填项目 ID
+
+  ### 问题修复
+  - 当最终答案为空时保留工具结果
+  - 将默认 Claude Sonnet 4.6 映射到其 1M 上下文窗口
+  - 提高 Anthropic 大型工具调用的默认 max_tokens
+  - 将消息内容部分渲染为文本，而不是 Python repr
+  - 当 Agent.kickoff 收到对话时保留消息角色
+  - 在 crewai 内部 flow 上跳过拦截钩子
+  - 将 task 失败记录为失败，而不是成功
+  - 在被抑制的恢复时发出 flow 生命周期事件
+  - 为声明式聊天 flow 打开对话式 TUI
+  - 将 crew_memory 记录为字符串而不是布尔值
+  - 始终发出 project_id，以区分缺失和为空的情况
+
+  ### 文档
+  - 阐明 Arize Phoenix 可观测性文档
+
+  ## 贡献者
+
+  @Vidit-Ostwal, @arizedatngo, @joaomdmoura, @lorenzejay, @lucasgomide
+
+</Update>
+
+<Update label="2026年8月19日">
+  ## v1.15.17
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.17)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加声明式对话 flow 文档
+  - 为声明合成内置的对话方法
+  - 支持通过声明驱动对话模式
+  - 使对话模式的显式启用清晰明确
+  - 在通过 slug 引用解析的工具上携带 AMP slug
+  - 在分块时处理超大的单条消息
+
+  ### 问题修复
+  - 修复将 URL 主机名用作 MCP HTTP 和 SSE server_name 的问题
+  - 在每次失败的尝试后关闭 agent 作用域
+  - 将工具错误归因于实际失败的工具
+  - 将 SSRF 检查固定到每个重定向跳转和对端 IP
+  - 解决通过 OpenAI Responses API 的原生工具调用损坏的问题
+
+  ### 文档
+  - 更新文档，添加 v1.15.16 的快照和更新日志
+
+  ## 贡献者
+
+  @Copilot, @Vidit-Ostwal, @github-code-quality[bot], @joaomdmoura, @lorenzejay, @lucasgomide, @theCyberTech
+
+</Update>
+
+<Update label="2026年8月13日">
+  ## v1.15.16
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.16)
+
+  ## 更新内容
+
+  ### 新功能
+  - 引入支持 UUID 的执行上下文管理
+  - 记录结束 flow 的异常类型
+  - 记录追踪批次与 AMP 共享的时间
+  - 统计来自任何来源的部署并记录其起始位置
+
+  ### 问题修复
+  - 在每个发出的 span 上记录正在运行的版本
+  - 修复 MySQL 搜索表名验证
+  - 阻止失败的轮次将下一个轮次标记为失败
+
+  ### 文档
+  - 添加 CopilotKit 和 AG-UI 的前端指南
+
+  ## 贡献者
+
+  @joaomdmoura, @lorenzejay, @ranst91, @theCyberTech
+
+</Update>
+
+<Update label="2026年8月11日">
+  ## v1.15.15
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.15)
+
+  ## 更新内容
+
+  ### 新功能
+  - 报告 flow 的结果、持续时间和人机协同信号。
+
+  ### 问题修复
+  - 当边界钩子中止 flow 时发出 FlowStartedEvent。
+  - 将 span 导出限定到我们自己的 tracer provider。
+  - 将 torch 升级到 2.13.0 以修复安全漏洞。
+  - 在 crewai-tools[github] 中将 gitpython 升级到 3.1.58。
+
+  ### 重构
+  - 更新 agent 中的日期注入功能。
+  - 将 CLI 标志统一为 kebab-case。
+
+  ### 文档
+  - v1.15.14 的快照和更新日志。
+
+  ## 贡献者
+
+  @Vidit-Ostwal, @joaomdmoura, @lorenzejay, @lucasgomide, @theCyberTech
+
+</Update>
+
+<Update label="2026年8月8日">
+  ## v1.15.14
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.14)
+
+  ## 更新内容
+
+  ### 新功能
+  - 将运行时上下文从编码 agent 中拆分并添加项目 ID
+
+  ### 文档
+  - 更新 v1.15.13 的快照和更新日志
+
+  ## 贡献者
+
+  @joaomdmoura
+
+</Update>
+
+<Update label="2026年8月7日">
+  ## v1.15.13
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.13)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复经 LiteLLM 路由的模型上提供商信息的保留问题。
+  - 加固脆弱的 LLM 事件总线 mock。
+  - 修复 Anthropic 缓存 token 使用量少报的问题。
+  - 将 h2 升级到 4.4.1 以修复安全漏洞 GHSA-6hr6-w5qg-qmwg。
+
+  ### 文档
+  - 添加用于语言同步的 DOCS_TRANSLATIONS 工作流。
+  - 修复 README 中失效的链接、目录和贡献指南。
+  - 1.15.12 版本的快照和更新日志。
+
+  ## 贡献者
+
+  @Vidit-Ostwal, @joaomdmoura, @lucasgomide, @theCyberTech
+
+</Update>
+
+<Update label="2026年8月5日">
+  ## v1.15.12
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.12)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在发布时提升 Flow canary 版本
+  - 添加用于读取任意 URL 的 URLReadTool
+  - 为平台操作工具添加应用元数据
+  - 将脚手架统一到 `crewai create <resource>` 之下
+
+  ### 问题修复
+  - 阐明对话式路由/处理器名称冲突错误
+
+  ### 文档
+  - 为统一的 create CLI 更新脚手架 AGENTS.md
+
+  ### 重大变更
+  - 无
+
+  ## 贡献者
+
+  @Vidit-Ostwal, @joaomdmoura, @lorenzejay, @lucasgomide, @theCyberTech
+
+</Update>
+
+<Update label="2026年8月4日">
+  ## v1.15.11
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.11)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在遥测中跟踪拦截钩子的分发
+  - 添加 project_id 以将 OSS 使用情况关联到企业账户
+  - 在 AGENTS.md 中展示 AMP，并在遥测中检测编码 agent
+  - 添加 IBM Db2 搜索工具
+
+  ### 问题修复
+  - 清除 CodeQL 不完整 URL 子串净化告警
+  - 升级 aiohttp 和 cryptography 以清除六个 GHSA 安全公告
+  - 为 map 字面量内的失败报告真实的 CEL 错误
+  - 为仅涉及文档的 PR 正确跳过代码 CI
+
+  ### 文档
+  - v1.15.10 的快照和更新日志
+
+  ## 贡献者
+
+  @PawanThakurIBM, @Vidit-Ostwal, @gabemilani, @joaomdmoura, @lorenzejay, @lucasgomide, @theCyberTech
+
+</Update>
+
+<Update label="2026年7月31日">
+  ## v1.15.10
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.10)
+
+  ## 更新内容
+
+  ### 新功能
+  - 收集技能使用事件
+
+  ### 文档
+  - 移除已迁移的 AMP 文档
+  - 更新安全报告指南
+  - v1.15.9 的快照和更新日志
+
+  ## 贡献者
+
+  @gvieira, @joaomdmoura, @theCyberTech
+
+</Update>
+
+<Update label="2026年7月29日">
+  ## v1.15.9
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.9)
+
+  ## 更新内容
+
+  ### 新功能
+  - 显露工具失败而不是将其报告为成功
+  - 当 flow 执行失败时发出 FlowFailedEvent
+  - 为技能实现渐进式披露
+
+  ### 文档
+  - 更新 v1.15.8 的快照和更新日志
+
+  ## 贡献者
+
+  @github-actions[bot], @joaomdmoura, @lorenzejay, @lucasgomide
+
+</Update>
+
+<Update label="2026年7月28日">
+  ## v1.15.8
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.8)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加 WaitTool 以在长时间运行的作业上暂停等待。
+
+  ### 问题修复
+  - 修复 FileWriterTool 的写入并解决文件工具中的粗糙细节。
+  - 将 E2B_API_KEY 标记为 E2B 工具的必需环境变量。
+
+  ### 文档
+  - 更新模型可用性指南。
+
+  ## 贡献者
+
+  @github-actions[bot], @joaomdmoura, @lucasgomide, @oalami, @thiagomoretto
+
+</Update>
+
+<Update label="2026年7月26日">
+  ## v1.15.7
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.7)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 通过运行时的 CrewAI+ 客户端解析注册表技能
+  - 从 GPT-5.6 tools + reasoning_effort 400 错误中恢复
+  - 使工具调用在 Responses API 路径上正常工作
+  - 路由仅支持 responses 的模型而不是以 404 失败
+  - 升级 bedrock-agentcore 以修补 CVE-2026-16796
+
+  ### 可观测性
+  - 在运行时发出技能使用事件以实现可观测性
+
+  ### 文档
+  - 添加 v1.15.7a1 的快照和更新日志
+
+  ## 贡献者
+
+  @alex-clawd, @joaomdmoura, @lorenzejay
+
+</Update>
+
+<Update label="2026年7月26日">
+  ## v1.15.7a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.7a1)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复通过运行时的 CrewAI+ 客户端解析注册表技能的问题。
+  - 从 GPT-5.6 tools 和 reasoning_effort 的 400 错误中恢复。
+  - 使工具调用在 Responses API 路径上正常工作。
+  - 路由仅支持 responses 的模型以防止 404 错误。
+  - 升级 bedrock-agentcore 依赖以修补 CVE-2026-16796。
+
+  ### 可观测性
+  - 在运行时发出技能使用事件以增强可观测性。
+
+  ### 文档
+  - 1.15.6 版本的快照和更新日志更新。
+
+  ## 贡献者
+
+  @alex-clawd, @joaomdmoura, @lorenzejay
+
+</Update>
+
+<Update label="2026年7月24日">
+  ## v1.15.6
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.6)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复 Anthropic 预览版工具使用块的检测。
+  - 保留严格工具 schema 的属性名称。
+  - 在 crew 和 flow 执行失败时分发 execution_end 钩子。
+  - 在 load_agent_from_repository 中处理异步 get_agent。
+  - 修复依赖解析问题。
+
+  ### 文档
+  - v1.15.5 的快照和更新日志。
+
+  ## 贡献者
+
+  @alex-clawd, @iris-clawd, @lorenzejay, @lucasgomide, @theCyberTech, @vinibrsl
+
+</Update>
+
+<Update label="2026年7月20日">
+  ## v1.15.5
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.5)
+
+  ## 更新内容
+
+  ### 新功能
+  - 对技能注册表下载进行身份验证
+
+  ### 文档
+  - 更新 v1.15.4 的快照和更新日志
+
+  ## 贡献者
+
+  @vinibrsl
+
+</Update>
+
+<Update label="2026年7月17日">
+  ## v1.15.4
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.4)
+
+  ## 更新内容
+
+  ### 新功能
+  - 将技能仓库（Skills Repository）从实验性状态转正
+
+  ### 文档
+  - 添加 Studio 中的 Flows 文档
+
+  ## 贡献者
+
+  @jessemiller, @joaomdmoura, @vinibrsl
+
+</Update>
+
+<Update label="2026年7月16日">
+  ## v1.15.3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.3)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为 PlusAPI 客户端添加组织 ID 参数
+  - 添加步骤拦截点，并围绕 @on 重写执行钩子文档
+  - 接入执行边界拦截点
+  - 添加通用拦截钩子分发器
+  - 在 TUI 上运行声明式 flow（无头终端回退）
+
+  ### 问题修复
+  - 将 kickoff 完成事件与 OUTPUT 钩子结果同步
+  - 修复仓库 agent 属性为 null 的问题
+  - 确保 after_llm_call 钩子不会破坏原生工具执行
+  - 避免处理器裁剪历史时重复追加轮次回复
+  - 将工具结果缓存改为显式启用而非默认开启
+  - 不再在构造时重写作者编写的工具描述
+  - 在 agent 和 crew 结果上以两个名称公开 token 使用情况
+  - 在 kickoff 结果上报告每次调用的使用指标
+  - 当 route_turn() 返回假值时不再重放上一轮的意图
+
+  ### 文档
+  - 更新执行钩子分组并为所有钩子上下文编写文档
+
+  ## 贡献者
+
+  @joaomdmoura, @lorenzejay, @lucasgomide, @vinibrsl
+
+</Update>
+
+<Update label="2026年7月16日">
+  ## v1.15.3a2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.3a2)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复 kickoff 完成事件与 OUTPUT 钩子结果的同步问题
+
+  ### 文档
+  - 更新 v1.15.3a1 的快照和更新日志
+
+  ### 依赖更新
+  - 将 setuptools 升级到 0.83.0 以修复 PYSEC-2026-3447
+
+  ## 贡献者
+
+  @lucasgomide, @vinibrsl
+
+</Update>
+
+<Update label="2026年7月16日">
+  ## v1.15.3a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.3a1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为 PlusAPI 客户端添加组织 ID 参数。
+  - 添加步骤拦截点，并围绕 `@on` 重写执行钩子文档。
+  - 接入执行边界拦截点。
+  - 添加通用拦截钩子分发器。
+  - 在 TUI 上运行声明式 flow（无头终端回退）。
+  - 改进自定义 OpenAI URL。
+
+  ### 问题修复
+  - 修复仓库 agent 属性为 null 的问题。
+  - 修复 `after_llm_call` 钩子以防止破坏原生工具执行。
+  - 当处理器裁剪历史时不再重复追加轮次回复。
+  - 将工具结果缓存改为显式启用而非默认开启。
+  - 不再在构造时重写作者编写的工具描述。
+  - 在 agent 和 crew 结果上以两个名称公开 token 使用情况。
+  - 在 kickoff 结果上报告每次调用的使用指标。
+  - 当 `route_turn()` 返回假值时不再重放上一轮的意图。
+  - 在 kickoff 和 flow 完成事件之前排空记忆写入。
+
+  ### 文档
+  - 对执行钩子进行分组并为所有钩子上下文编写文档。
+  - 更新执行钩子的文档。
+
+  ## 贡献者
+
+  @joaomdmoura, @lorenzejay, @lucasgomide, @vinibrsl
+
+</Update>
+
+<Update label="2026年7月7日">
+  ## v1.15.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.2)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在 crew 向导中动态拉取最新的 LLM 模型。
+  - 支持内联技能定义。
+  - 添加生成的 Flow Definition 编写技能。
+  - 支持模板化的 Flow 操作输入。
+  - 为 flow CEL 提示词添加文本辅助函数。
+  - 为 flow 技能示例添加文本辅助函数。
+  - 在 AgentExecutor 中实现消息设置和反馈处理。
+  - 将仓库 agent 添加到 flow 定义中。
+  - 为 flow 定义流式帧协议。
+  - 在 CrewDefinition 中为 tool 和 app 添加类型。
+  - 将模板命令重新指向 crewAIInc-fde 组织。
+
+  ### 问题修复
+  - 按精确 API 密钥为模型目录缓存建立键，缩短 TTL，并跳过 Ollama。
+  - 统一 `crewai run` 的 flow 输入解析，并根据状态 schema 进行提示。
+  - 解决 onnx 1.22.0 和 nltk PYSEC-2026-597 的 pip-audit 失败。
+  - 确保为 flow 写入版本信息。
+  - 在 bedrock extra 中包含 aiobotocore。
+  - 拒绝监听自身的 flow 方法。
+  - 从 Edge 中移除文档版本导航，避免新页面被遗漏。
+
+  ### 文档
+  - 将措辞从 Rules 更新为 Policies 以匹配新的仪表板变更。
+  - 为 flow agent 选项编写文档。
+  - 将流式传输文档添加到导航中。
+  - 在 Agent Control Plane 中为 Cost Limit 规则类型编写文档。
+  - 从 Datadog 指南中移除 CREWAI_LOG_FORMAT 引用。
+
+  ## 贡献者
+
+  @akaKuruma, @danielfsbarreto, @github-code-quality[bot], @joaomdmoura, @lorenzejay, @lucasgomide, @manisrinivasan2k1, @renatonitta, @vinibrsl
+
+</Update>
+
+<Update label="2026年7月1日">
+  ## v1.15.2a2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.2a2)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在 bedrock extra 中添加 aiobotocore
+  - 为 flow agent 选项编写文档
+  - 为 flow 技能示例添加文本辅助函数
+  - 为 flow CEL 提示词添加文本辅助函数
+  - 将流式传输文档添加到导航中
+
+  ### 问题修复
+  - 拒绝监听自身的 flow 方法
+
+  ### 文档
+  - 更新 v1.15.2a1 的快照和更新日志
+  - 精简 AGENTS.md 文件
+
+  ## 贡献者
+
+  @akaKuruma, @github-code-quality[bot], @lorenzejay, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月30日">
+  ## v1.15.2a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.2a1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 将模板命令重新指向 crewAIInc-fde 组织
+  - 支持内联技能定义
+  - 为 flow 定义流式帧协议
+  - 在 CrewDefinition 中为 tool 和 app 添加类型
+  - 添加生成的 Flow Definition 编写技能
+
+  ### 问题修复
+  - 从 Edge 中移除文档版本导航以防止新页面被遗漏
+
+  ### 文档
+  - 在 Agent Control Plane 中为 Cost Limit 规则类型编写文档
+  - 从 Datadog 指南中移除 CREWAI_LOG_FORMAT 引用
+
+  ## 贡献者
+
+  @danielfsbarreto, @joaomdmoura, @lorenzejay, @lucasgomide, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月26日">
+  ## v1.15.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为生成的项目初始化 Git 仓库 (#6364)
+  - 要求显式的 CrewAI 项目定义 (#6358)
+  - 在 CLI 部署后打开部署页面 (#6343)
+
+  ### 问题修复
+  - 修复部署页面链接 ID 解析 (#6365)
+  - 修复 JSON crew 模板渲染 (#6359)
+  - 修复 JSON crew 版本固定 (#6342)
+  - 修复抓取请求中的 SSRF 重定向绕过 (#6331)
+
+  ### 文档
+  - 改进 README 中的开源定位 (#6363)
+  - 改进编码 agent 设置的行动号召 (#6344)
+  - 添加 1.15.1a1 版本的快照和更新日志 (#6362)
+
+  ## 贡献者
+
+  @joaomdmoura, @lorenzejay, @oalami, @theCyberTech, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月26日">
+  ## v1.15.1a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.1a1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 跟踪 TUI 按钮遥测
+  - 要求显式的 CrewAI 项目定义
+  - 在 CLI 部署后打开部署页面
+
+  ### 问题修复
+  - 修复 JSON crew 模板渲染
+  - 修复 JSON crew 版本固定
+  - 修复抓取请求中的 SSRF 重定向绕过
+
+  ### 文档
+  - 改进编码 agent 设置的行动号召
+  - v1.15.0 的快照和更新日志
+
+  ## 贡献者
+
+  @joaomdmoura, @lorenzejay, @theCyberTech, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月25日">
+  ## v1.15.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.15.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在遥测中跟踪对话式 flow 轮次使用情况
+  - 在 CLI TUI 中支持对话式 flow
+  - 添加统一的声明式 flow 加载
+  - 添加声明式 Flow CLI 支持
+  - 为 each.do 步骤添加可选的 if 表达式
+  - 为 Flow 定义添加单 agent 操作
+  - 为 FlowDefinition 添加 crew 操作
+  - 添加内联 crew 定义加载
+  - 为 FlowDefinition 添加 `each` 复合操作
+  - 在 crew 创建和执行中实现 DMN 模式支持
+
+  ### 问题修复
+  - 修复凭据文件上仅限所有者权限的强制执行
+  - 修复 JSON schema flow 状态的 kickoff 输入
+  - 修复技能归档解压中的符号链接路径遍历
+  - 聚合所有 LLM 调用的 token 使用量
+  - 移除重复的 Exa 工具
+  - 解决 JSON crew 的问题
+  - 修复 JSON crew 处理并增强记忆重置功能
+
+  ### 文档
+  - 为 JSON 优先的 crew 项目更新安装和快速开始文档
+  - 添加带可导入运维仪表板的 Datadog 集成指南
+  - 添加"One Card per Step" Studio 页面
+  - 为 v1.15.0 之前的各个版本添加快照和更新日志
+
+  ### 性能
+  - 改进 crewai run 的启动体验
+  - 为嵌套 crew 保持 flow 方法进度可见
+
+  ### 重构
+  - 从 flow 状态访问中移除 `StateProxy`
+  - 合并 `crewai run` 和 `crewai flow kickoff`
+  - 区分 FlowDefinition 的状态类型
+  - 将 FlowDefinition 中的配置和持久化接入运行时
+
+  ## 贡献者
+
+  @gabemilani, @github-code-quality[bot], @greysonlalonde, @iris-clawd, @jessemiller, @joaomdmoura, @lorenzejay, @lucasgomide, @theCyberTech, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月24日">
+  ## v1.14.8a5
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.8a5)
+
+  ## 更新内容
+
+  ### 新功能
+  - 使声明式引用在 flow 和 crew 之间通用 (#6326)
+
+  ### 问题修复
+  - 修复 JSON schema flow 状态的 kickoff 输入 (#6325)
+
+  ### 文档
+  - 将 One Card per Step 归入 Crew Studio 下并移除发布横幅 (AGE-107) (#6317)
+  - 更新 v1.14.8a4 的快照和更新日志 (#6319)
+
+  ### 重构
+  - 从 flow 状态访问中移除 `StateProxy` (#6327)
+
+  ## 贡献者
+
+  @jessemiller, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月24日">
+  ## v1.14.8a4
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.8a4)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在 CLI TUI 中支持对话式 flow。
+
+  ### 问题修复
+  - 修复技能归档解压中的符号链接路径遍历。
+  - 验证声明式 flow 定义路径。
+
+  ### 文档
+  - 更新 v1.14.8a3 的快照和更新日志。
+
+  ## 贡献者
+
+  @lorenzejay, @theCyberTech, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月23日">
+  ## v1.14.8a3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.8a3)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加统一的声明式 flow 加载
+  - 改进 crewai run 的启动体验
+  - 合并 `crewai run` 和 `crewai flow kickoff`
+  - 为嵌套 crew 保持 flow 方法进度可见
+  - 添加声明式 Flow CLI 支持
+  - 允许 `@router()` 作为 flow 的起始方法
+  - 为 CrewAI 工具添加带类型的输出 schema
+
+  ### 问题修复
+  - 将 opentelemetry 固定到 ~=1.42.0
+
+  ### 文档
+  - 添加"One Card per Step" Studio 页面
+
+  ## 贡献者
+
+  @jessemiller, @joaomdmoura, @lucasgomide, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月18日">
+  ## v1.14.8a2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.8a2)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为 Flow 定义添加单 agent 操作
+  - 在定义加载时验证 flow CEL 表达式
+
+  ### 文档
+  - 添加带可导入运维仪表板的 Datadog 集成指南
+  - 更新 v1.14.8a1 的快照和更新日志
+
+  ## 贡献者
+
+  @joaomdmoura, @lucasgomide, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月18日">
+  ## v1.14.8a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.8a1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为 each.do 步骤添加可选的 if 表达式
+
+  ### 问题修复
+  - 修复 JSON crew 的问题
+
+  ### 文档
+  - 更新 v1.14.8a 的快照和更新日志
+
+  ## 贡献者
+
+  @joaomdmoura, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月17日">
+  ## v1.14.8a
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.8a)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为 FlowDefinition 添加脚本/代码块操作
+  - 为 FlowDefinition 添加 crew 操作
+  - 为 FlowDefinition 添加 `each` 复合操作
+  - 在 crew 创建和执行中实现 DMN 模式支持
+  - 增强记忆重置功能和 JSON crew 处理
+  - 为 FlowDefinition 操作添加表达式
+  - 实现无需 Python 代码即可运行工具的 Flow 定义
+  - 由 flow 定义驱动人工反馈
+  - 将 FlowDefinition 中的配置和持久化接入运行时
+  - 为声明式 flow 添加 `crewai run --definition`
+  - 支持 ZIP 部署回退和 JSON crew 项目环境运行
+  - 引入 JSON 优先的 crew
+
+  ### 问题修复
+  - 修复重复的 Exa 工具
+  - 修复所有 LLM 调用的 token 使用量聚合
+  - 解决 crew 加载和验证逻辑的问题
+
+  ### 文档
+  - 在 JSON schema 中为 FlowDefinition 字段编写文档
+  - 为 JSON 优先的 crew 项目更新安装和快速开始文档
+  - 更新 v1.14.7 的更新日志和版本
+
+  ## 贡献者
+
+  @gabemilani, @greysonlalonde, @iris-clawd, @joaomdmoura, @lorenzejay, @lucasgomide, @theCyberTech, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月11日">
+  ## v1.14.7
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.7)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为 memory、knowledge、rag 和 flow 添加可插拔的默认后端。
+  - 在 LLM 事件上显露真实的 finish_reason、采样参数和 response.id。
+  - 将 DSL 触发器类型化为路由感知的装饰器。
+  - 为对话式 flow 添加聊天 API。
+  - 使锁定后端可被覆盖。
+  - 从 Flow DSL 元数据构建 FlowDefinition。
+  - 添加原生 Snowflake Cortex LLM 提供商。
+  - 添加 crew 已训练 agent 文件支持。
+
+  ### 问题修复
+  - 修复检查点，在恢复时将自定义 BaseLLM 重建为具体的 LLM。
+  - 通过标志控制恢复，防止实时快照被当作恢复重放。
+  - 按运行划分运行时状态作用域，以限制增长并隔离并发运行。
+  - 修复 crewai-login 上的遥测设置。
+  - 对方法执行事件遵循 suppress_flow_events。
+  - 在 crewai 包中恢复 [project.scripts] 以支持 uv tool install。
+  - 解决 aiohttp、docling 和 docling-core 的 pip-audit CVE。
+  - 修复文件输入不能可靠工作的问题。
+  - 修复 Snowflake Claude 工具结果历史不完整的问题。
+
+  ### 文档
+  - 更新 v1.14.7 的更新日志和版本。
+  - 更新 OpenTelemetry collector 文档。
+  - 更新 NVIDIA Nemotron LLM 指南。
+  - 添加 Databricks 集成指南。
+  - 添加 Snowflake 集成指南。
+
+  ### 性能
+  - 通过延迟加载 docling 导入提升 crewai 的导入速度。
+
+  ### 重构
+  - 将 flow 条件求值简化为按事件无状态。
+  - 将对话逻辑与运行时解耦，并添加 conversational_definition。
+  - 将 `flow.py` 拆分为 DSL、定义和运行时。
+
+  ## 贡献者
+
+  @Luzk, @alex-clawd, @devin-ai-integration[bot], @greysonlalonde, @gvieira, @jessemiller, @lorenzejay, @lucasgomide, @mattatcha, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月10日">
+  ## v1.14.7rc2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.7rc2)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 通过标志控制恢复，防止实时快照被当作恢复重放
+
+  ### 文档
+  - 更新 v1.14.7rc1 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde
+
+</Update>
+
+<Update label="2026年6月10日">
+  ## v1.14.7rc1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.7rc1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加 `reset_runtime_state` 以释放累积的总线状态
+  - 处理对两种自定义提示词的同时支持
+  - 将对话逻辑与运行时解耦，并添加 `conversational_definition`
+
+  ### 问题修复
+  - 修复按运行划分的运行时状态作用域，以限制增长并隔离并发运行
+  - 修复 `crewai-login` 上的遥测设置
+  - 修复对方法执行事件遵循 `suppress_flow_events` 的问题
+
+  ### 文档
+  - 更新 OpenTelemetry 图片
+  - 更新文档以反映 OpenTelemetry collector 的新状态
+  - 更新 v1.14.7a4 的更新日志和版本
+
+  ### 重构
+  - 将 flow 条件求值简化为按事件无状态
+  - 减少一个路由以改进对话路由循环
+
+  ## 贡献者
+
+  @greysonlalonde, @lorenzejay, @lucasgomide, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月9日">
+  ## v1.14.7a4
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.7a4)
+
+  ## 更新内容
+
+  ### 新功能
+  - 迁移 @listen/@router 运行时以从 FlowDefinition 读取
+  - 为 memory、knowledge、rag 和 flow 添加可插拔的默认后端
+
+  ### 文档
+  - 更新 v1.14.7a3 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde, @mattatcha, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月8日">
+  ## v1.14.7a3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.7a3)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复实验性 `AgentExecutor` 上 `ask_for_human_input` 的暴露问题
+  - 解决 `aiohttp`、`docling`、`docling-core` 和 `pip` 的 pip-audit CVE
+
+  ### 重构
+  - 迁移 `@start` 以从 `FlowDefinition` 读取
+
+  ### 文档
+  - 更新 v1.14.7a2 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde, @lorenzejay, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月5日">
+  ## v1.14.7a2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.7a2)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加对话式 flow 追踪支持。
+  - 更新对话式 flow 文档以使用 `handle_turn`。
+  - 在 LLM 事件中显露真实的 `finish_reason`、采样参数和 `response.id`。
+  - 将 DSL 触发器类型化为路由感知的装饰器。
+  - 为对话式 flow 实现聊天 API。
+  - 使锁存储中的锁定后端可被覆盖。
+  - 将 flow DSL 单体拆分为专注的装饰器模块。
+  - 在 `_usage_to_dict` 中展平 LiteLLM 缓存/推理使用量子计数。
+  - 从 Flow DSL 元数据构建 `FlowDefinition`。
+
+  ### 文档
+  - 添加 NVIDIA Nemotron LLM 指南。
+  - 为 monorepo 部署编写文档。
+  - 更新 v1.14.7a1 的更新日志和版本。
+
+  ## 贡献者
+
+  @alex-clawd, @gvieira, @lorenzejay, @lucasgomide, @mattatcha, @vinibrsl
+
+</Update>
+
+<Update label="2026年6月3日">
+  ## v1.14.7a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.7a1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加 crew 已训练 agent 文件支持
+  - 添加原生 Snowflake Cortex LLM 提供商
+  - 添加 Databricks 集成指南
+  - 添加 Snowflake 集成指南
+
+  ### 问题修复
+  - 通过在 crewai 包中恢复 `[project.scripts]` 修复 CLI，以支持 UV tool install
+  - 解决文件输入可靠性问题
+  - 修复 Snowflake Claude 中工具结果历史不完整的问题
+  - 处理 Snowflake Claude 的字符串化工具调用
+  - 在路由器驱动的循环中重新激活多源 `or_` 监听器
+
+  ### 性能
+  - 通过延迟加载 docling 导入提升 crewai 的导入速度
+
+  ### 重构
+  - 将 `flow.py` 拆分为 DSL、定义和运行时
+
+  ## 贡献者
+
+  @Luzk, @alex-clawd, @devin-ai-integration[bot], @greysonlalonde, @jessemiller, @lorenzejay, @vinibrsl
+
+</Update>
+
+<Update label="2026年5月28日">
+  ## v1.14.6
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.6)
+
+  ## 更新内容
+
+  ### 新功能
+  - 增强 StdioTransport 以防止环境变量泄漏
+  - 增强规划配置和观察结果处理
+  - 在 DatabricksQueryTool 上声明 env_vars
+  - 添加 Agent Control Plane 文档
+
+  ### 问题修复
+  - 修复工具调用循环中的结构化输出泄漏
+  - 在检查点中丢弃无法往返序列化的回调和适配器状态
+  - 在检查点中将 type[BaseModel] 字段序列化为 JSON schema
+  - 在恢复作用域还原时避免孤立的 task_started
+  - 允许 AgentExecutor 从检查点恢复
+  - 在 package_dependencies 中将 mongodb 拼写错误修正为 pymongo
+
+  ### 文档
+  - 为 Agent Control Plane 页面添加 ACP (Beta) 文档导航块
+  - 从流程页面移除共识式流程的相关内容
+  - 重构检查点页面
+  - 为一次性管理员软件包安装步骤编写文档
+  - 从 replicated-config 迁移 Secrets Manager / Workload Identity
+  - 移除破坏 `<Steps>` 渲染的 `{" "}` JSX 表达式
+
+  ### 重构
+  - 将技能仓库移至实验性模块并加上 CREWAI_EXPERIMENTAL 开关
+
+  ## 贡献者
+
+  @akaKuruma, @alex-clawd, @github-actions[bot], @greysonlalonde, @heitorado, @iris-clawd, @lorenzejay, @lucasgomide, @mattatcha, @thiagomoretto, @vinibrsl
+
+</Update>
+
+<Update label="2026年5月27日">
+  ## v1.14.6a2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.6a2)
+
+  ## 更新内容
+
+  ### 新功能
+  - 增强 `StdioTransport` 以防止环境变量泄漏
+  - 增强规划配置和观察结果处理
+  - 在 `DatabricksQueryTool` 上声明 `env_vars`
+  - 添加 Agent Control Plane 文档
+
+  ### 问题修复
+  - 修复工具调用循环中的结构化输出泄漏
+  - 在检查点中丢弃无法往返序列化的回调和适配器状态
+  - 在检查点中将 `type[BaseModel]` 字段序列化为 JSON schema
+  - 在恢复作用域还原时避免孤立的 `task_started`
+  - 允许 `AgentExecutor` 从检查点恢复
+  - 在软件包依赖中将 MongoDB 拼写错误修正为 `pymongo`
+
+  ### 文档
+  - 重构检查点页面
+  - 为一次性管理员软件包安装步骤编写文档
+  - 从 replicated-config 迁移 Secrets Manager / Workload Identity
+  - 从更新日志中移除技能仓库条目
+
+  ## 贡献者
+
+  @github-actions[bot], @greysonlalonde, @heitorado, @iris-clawd, @lorenzejay, @lucasgomide, @mattatcha, @thiagomoretto, @vinibrsl
+
+</Update>
+
+<Update label="2026年5月21日">
+  ## v1.14.6a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.6a1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为企业版生成分类的发布说明
+
+  ### 问题修复
+  - 加固 RuntimeState 在各实体字段上的序列化
+  - 将 idna 升级到 3.15 以修复安全问题 GHSA-65pc-fj4g-8rjx
+  - 移除破坏 `<Steps>` 渲染的 `{" "}` JSX 表达式
+
+  ### 文档
+  - 更新 v1.14.5 的更新日志和版本
+
+  ## 贡献者
+
+  @akaKuruma, @alex-clawd, @greysonlalonde
+
+</Update>
+
+<Update label="2026年5月19日">
+  ## v1.14.5
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.5)
+
+  ## 更新内容
+
+  ### 新功能
+  - 弃用 `CrewAgentExecutor`，Crew agent 默认使用 `AgentExecutor`
+  - 改进 Daytona 沙箱工具
+  - 添加 `restore_from_state_id` kickoff 参数
+  - 为 `ExaSearchTool` 添加高亮功能，并从 `EXASearchTool` 重命名
+
+  ### 问题修复
+  - 通过使用 `cached_property` 修复 `git.py` 中的内存泄漏
+  - 当 `available_functions` 缺失时显露流式工具调用
+  - 确保为追踪生成 `skills` 加载事件
+  - 将状态端点路径从 `/{kickoff_id}/status` 修正为 `/status/{kickoff_id}`
+  - 恢复 pt-BR 第一个 flow 指南中缺失的代码块
+  - 防止 `result_as_answer` 将钩子阻断或错误消息作为最终答案返回
+  - 在异步批量刷新间保留 task 输出
+  - 始终在 finally 块中恢复 `task.output_pydantic`
+  - 在 `convert_to_model` 中处理 `BaseModel` 输入
+
+  ### 文档
+  - 更新 v1.14.5 的更新日志和版本
+  - 添加 OSS 升级与 crew 到 flow 的迁移指南
+  - 为 devtools 的额外环境变量编写文档
+  - 添加 `TavilyGetResearch` 的文档
+
+  ### 重构
+  - 将 CLI 提取为独立的 `crewai-cli` 包
+
+  ## 贡献者
+
+  @NIK-TIGER-BILL, @akaKuruma, @cgoeppinger, @github-actions[bot], @greysonlalonde, @heitorado, @irfaan101, @iris-clawd, @lorenzejay, @manisrinivasan2k1, @minasami-pr, @mislavivanda, @theCyberTech, @theishangoswami, @wishhyt
+
+</Update>
+
+<Update label="2026年5月18日">
+  ## v1.14.5a7
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.5a7)
+
+  ## 更新内容
+
+  ### 文档
+  - 更新 v1.14.5a6 的更新日志和版本
+
+  ### 重大变更
+  - 弃用 function_calling_llm 字段
+
+  ## 贡献者
+
+  @greysonlalonde, @heitorado
+
+</Update>
+
+<Update label="2026年5月15日">
+  ## v1.14.5a6
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.5a6)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复 available_functions 缺失时的流式工具调用
+  - 将 langsmith 依赖升级到 >=0.8.0 以修复 GHSA-3644-q5cj-c5c7
+  - 解决巴西葡萄牙语文档中未翻译的代码块占位符
+
+  ### 文档
+  - 添加 TavilyGetResearch 的文档
+  - 更新 v1.14.5a5 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde, @heitorado, @iris-clawd, @lorenzejay, @manisrinivasan2k1
+
+</Update>
+
+<Update label="2026年5月13日">
+  ## v1.14.5a5
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.5a5)
+
+  ## 更新内容
+
+  ### 新功能
+  - 弃用 CrewAgentExecutor，Crew agent 默认使用 AgentExecutor
+  - 改进 Daytona 沙箱工具
+
+  ### 问题修复
+  - 修复 pt-BR 第一个 flow 指南中缺失的代码块
+  - 记录 HITL 预审查和蒸馏失败，并添加 learn_strict
+  - 修补 urllib3 的安全漏洞
+  - 修补 gitpython 和 langchain-core；忽略未修补的 paramiko CVE
+  - 在 uv lock/sync 时刷新所有已发布的工作区软件包
+
+  ### 文档
+  - 添加 `inputs.id` 到 `restoreFromStateId` 的迁移指南
+  - 添加 OSS 升级与 crew 到 flow 的迁移指南
+  - 更新 v1.14.5a4 的更新日志和版本
+
+  ## 贡献者
+
+  @akaKuruma, @greysonlalonde, @iris-clawd, @lorenzejay, @mislavivanda
+
+</Update>
+
+<Update label="2026年5月9日">
+  ## v1.14.5a4
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.5a4)
+
+  ## 更新内容
+
+  ### 新功能
+  - 更新 LLM 列表
+
+  ### 问题修复
+  - 通过将 `textual` 移至 `crewai-cli` 并添加 `certifi` 修复依赖问题
+
+  ### 文档
+  - 更新 v1.14.5a3 的更新日志和版本
+
+  ## 贡献者
+
+  @cgoeppinger, @greysonlalonde
+
+</Update>
+
+<Update label="2026年5月7日">
+  ## v1.14.5a3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.5a3)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 将状态端点路径从 /{kickoff_id}/status 修正为 /status/{kickoff_id}
+  - 将 gitpython 依赖升级到 >=3.1.47 以满足安全合规
+
+  ### 重构
+  - 将 CLI 提取为独立的 crewai-cli 包
+
+  ### 文档
+  - 更新 v1.14.5a2 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde, @iris-clawd
+
+</Update>
+
+<Update label="2026年5月4日">
+  ## v1.14.5a2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.5a2)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复 finally 块中的 task 输出恢复
+  - 在补全 token 中包含 `thoughts_token_count`
+  - 在异步批量刷新间保留 task 输出
+  - 在 `CrewAIRagAdapter` 中将 kwargs 转发给加载器调用
+  - 防止 `result_as_answer` 将钩子阻断消息作为最终答案返回
+  - 防止 `result_as_answer` 将错误作为最终答案返回
+  - 在异步路径中使用 `acall` 进行输出转换
+  - 防止共享 LLM 停止词在 agent 之间被相互修改
+  - 在 `convert_to_model` 中处理 `BaseModel` 输入
+
+  ### 文档
+  - 为额外的环境变量编写文档
+  - 更新 v1.14.5a1 的更新日志和版本
+
+  ## 贡献者
+
+  @NIK-TIGER-BILL, @greysonlalonde, @lorenzejay, @minasami-pr, @theCyberTech, @wishhyt
+
+</Update>
+
+<Update label="2026年5月1日">
+  ## v1.14.5a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.5a1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加 `restore_from_state_id` kickoff 参数
+  - 为 ExaSearchTool 添加高亮功能，并从 EXASearchTool 重命名
+
+  ### 问题修复
+  - 修复发布流程中缺失的 crewai 版本固定位置
+  - 确保为追踪生成技能加载事件
+
+  ### 文档
+  - 更新 v1.14.4 的更新日志和版本
+
+  ## 贡献者
+
+  @akaKuruma, @github-actions[bot], @greysonlalonde, @lorenzejay, @theishangoswami
+
+</Update>
+
+<Update label="2026年5月1日">
+  ## v1.14.4
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.4)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在 @persist 中添加对自定义持久化键的支持
+  - 为 Azure OpenAI 提供商添加 Responses API 支持
+  - 将 credential_scopes 转发给 Azure AI Inference 客户端
+  - 添加 Vertex AI 工作负载身份设置指南
+  - 添加 Tavily Research 和 get Research
+  - 添加用于搜索、研究和内容提取的 You.com MCP 工具
+
+  ### 问题修复
+  - 修复 JSON 正则匹配结果不是有效 JSON 时的穿透处理
+  - 修复响应同时包含文本时保留 tool_calls 的问题
+  - 修复将 base_url 和 api_key 转发给 instructor.from_provider 的问题
+  - 修复原生 MCP 服务器未返回工具时发出警告并返回空结果
+  - 修复在非流式处理器中使用已验证的 messages 变量
+  - 修复保护 crew 聊天描述辅助函数免受 LLM 失败影响
+  - 修复在多次调用之间重置消息和迭代次数
+  - 修复通过 replay 和 test 转发已训练 agent 文件
+  - 修复在推理时遵循自定义已训练 agent 文件
+  - 修复将仅属于 task 的 agent 绑定到 crew 以支持多模态 input_files
+  - 修复为 JSON 检查点将护栏可调用对象序列化为 null
+  - 修复 force_final_answer 的重命名以避免自引用路由器
+  - 修复升级 litellm 以修复 SSTI；忽略无法修复的 pip CVE
+
+  ### 文档
+  - 更新 v1.14.4a1 的更新日志和版本
+  - 添加 E2B 沙箱工具页面
+  - 添加 Daytona 沙箱工具文档
+
+  ## 贡献者
+
+  @EdwardIrby, @dependabot[bot], @factory-droid-oss, @factory-droid[bot], @greysonlalonde, @kunalk16, @lorenzejay, @lucasgomide, @manisrinivasan2k1, @mattatcha, @vinibrsl
+
+</Update>
+
+<Update label="2026年4月29日">
+  ## v1.14.4a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.4a1)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复 crew 聊天描述辅助函数以防范 LLM 失败。
+  - 在执行器中于多次调用之间重置消息和迭代次数。
+  - 在 CLI 中通过 replay 和 test 转发已训练 agent 文件。
+  - 在 agent 中于推理时遵循自定义已训练 agent 文件。
+  - 将仅属于 task 的 agent 绑定到 crew，确保多模态 input_files 能到达 LLM。
+  - 为 JSON 检查点将护栏可调用对象序列化为 null。
+  - 重命名 agent_executor 中的 `force_final_answer` 以避免自引用路由器。
+  - 升级 `litellm` 以修复 SSTI，并忽略无法修复的 pip CVE。
+
+  ### 文档
+  - 添加 E2B 沙箱工具页面。
+  - 添加 Daytona 沙箱工具文档。
+  - 添加 Vertex AI 工作负载身份设置指南。
+  - 添加用于搜索、研究和内容提取的 You.com MCP 工具。
+  - 更新 v1.14.3 的更新日志和版本。
+
+  ## 贡献者
+
+  @EdwardIrby, @dependabot[bot], @factory-droid-oss, @factory-droid[bot], @greysonlalonde, @lorenzejay, @manisrinivasan2k1, @mattatcha
+
+</Update>
+
+<Update label="2026年4月25日">
+  ## v1.14.3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.3)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为检查点操作添加生命周期事件
+  - 添加对 e2b 的支持
+  - 在 Azure 集成中未提供 API 密钥时回退到 DefaultAzureCredential
+  - 添加 Bedrock V4 支持
+  - 添加 Daytona 沙箱工具以增强功能
+  - 为独立 agent 添加检查点和分叉支持
+
+  ### 问题修复
+  - 修复 execution_id，使其与 state.id 相互独立
+  - 解决检查点恢复时重放已记录方法事件的问题
+  - 修复将 initial_state 类引用序列化为 JSON schema
+  - 保留仅含元数据的 agent 技能
+  - 将隐式 @CrewBase 名称传播到 crew 事件
+  - 在重复批次初始化时合并执行元数据
+  - 修复 Task 类引用字段的检查点序列化
+  - 在护栏重试循环中处理 BaseModel 结果
+  - 在 Gemini 流式工具调用中保留 thought_signature
+  - 在分叉恢复时发出 task_started 并重新设计检查点 TUI
+  - 在检查点清理测试中使用未来日期以防止时间相关的失败
+  - 修复 devtools 发布中的 dry-run 顺序并处理已检出的过期分支
+  - 将 lxml 升级到 >=6.1.0 以应用安全补丁
+  - 将 python-dotenv 升级到 >=1.2.2 以应用安全补丁
+
+  ### 文档
+  - 更新 v1.14.3 的更新日志和版本
+  - 添加"Build with AI"页面并更新所有语言的导航
+  - 从所有语言版本的 build-with-ai 页面移除定价 FAQ
+
+  ### 性能
+  - 优化 MCP SDK 和事件类型，将冷启动时间减少约 29%
+
+  ### 重构
+  - 重构检查点辅助函数以消除重复并收紧状态类型提示
+
+  ## 贡献者
+
+  @MatthiasHowellYopp, @akaKuruma, @alex-clawd, @github-actions[bot], @github-advanced-security[bot], @greysonlalonde, @iris-clawd, @lorenzejay, @mattatcha, @renatonitta
+
+</Update>
+
+<Update label="2026年4月23日">
+  ## v1.14.3a3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.3a3)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加对 e2b 的支持
+  - 实现未提供 API 密钥时回退到 DefaultAzureCredential
+
+  ### 问题修复
+  - 将 lxml 升级到 >=6.1.0 以修复安全问题 GHSA-vfmq-68hx-4jfw
+
+  ### 文档
+  - 从所有语言版本的 build-with-ai 页面移除定价 FAQ
+
+  ### 性能
+  - 通过延迟加载 MCP SDK 和事件类型，将冷启动时间改善约 29%
+
+  ## 贡献者
+
+  @alex-clawd, @github-advanced-security[bot], @greysonlalonde, @iris-clawd, @lorenzejay, @mattatcha
+
+</Update>
+
+<Update label="2026年4月22日">
+  ## v1.14.3a2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.3a2)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加对 bedrock V4 的支持
+  - 添加 Daytona 沙箱工具以增强功能
+  - 添加"Build with AI"页面——面向编码 agent 的 AI 原生文档
+  - 为所有语言（en、ko、pt-BR、ar）在 Get Started 导航中添加 Build with AI 及其页面文件
+
+  ### 问题修复
+  - 修复隐式 @CrewBase 名称到 crew 事件的传播
+  - 解决执行元数据合并中重复批次初始化的问题
+  - 修复 Task 类引用字段的检查点序列化
+  - 在护栏重试循环中处理 BaseModel 结果
+  - 将 python-dotenv 升级到 >=1.2.2 以满足安全合规
+
+  ### 文档
+  - 更新 v1.14.3a1 的更新日志和版本
+  - 更新描述并应用实际翻译
+
+  ## 贡献者
+
+  @MatthiasHowellYopp, @github-actions[bot], @greysonlalonde, @iris-clawd, @lorenzejay, @renatonitta
+
+</Update>
+
+<Update label="2026年4月21日">
+  ## v1.14.3a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.3a1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为独立 agent 添加检查点和分叉支持
+
+  ### 问题修复
+  - 在 Gemini 流式工具调用中保留 thought_signature
+  - 在分叉恢复时发出 task_started 并重新设计检查点 TUI
+  - 修正 devtools 发布中的 dry-run 顺序并处理已检出的过期分支
+  - 在检查点清理测试中使用未来日期以防止时间相关的失败 (#5543)
+
+  ### 文档
+  - 更新 v1.14.2 的更新日志和版本
+
+  ## 贡献者
+
+  @alex-clawd, @greysonlalonde
+
+</Update>
+
+<Update label="2026年4月17日">
+  ## v1.14.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.2)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加检查点恢复、对比和清理命令并提升可发现性。
+  - 为 `Agent.kickoff` 及相关方法添加 `from_checkpoint` 参数。
+  - 为项目模板添加模板管理命令。
+  - 在 devtools 发布失败时添加恢复提示。
+  - 添加部署验证 CLI 并增强 LLM 初始化的易用性。
+  - 添加带谱系跟踪的检查点分叉。
+  - 使用推理 token 和缓存创建 token 丰富 LLM token 跟踪。
+
+  ### 问题修复
+  - 修复 devtools 发布中过期分支冲突时的提示。
+  - 修补 `authlib`、`langchain-text-splitters` 和 `pypdf` 中的漏洞。
+  - 限定流式处理器作用域以防止跨运行的分块污染。
+  - 在 TUI 中通过 Flow API 分发 Flow 检查点。
+  - 使用递归 glob 发现 JSON 检查点。
+  - 在 MCP 工具解析中处理循环 JSON schema。
+  - 通过移除真值默认值保留 Bedrock 工具调用参数。
+  - 在 HITL 恢复后发出 flow_finished 事件。
+  - 通过更新依赖（包括 `requests`、`cryptography` 和 `pytest`）修复多个漏洞。
+  - 修复不再向 Bedrock Converse API 转发严格模式。
+
+  ### 文档
+  - 为缺失的参数编写文档并添加检查点章节。
+  - 更新 v1.14.2 及之前候选版本的更新日志和版本。
+  - 添加企业版 A2A 功能文档并更新 OSS A2A 文档。
+
+  ## 贡献者
+
+  @Yanhu007, @alex-clawd, @github-actions[bot], @greysonlalonde, @iris-clawd, @lorenzejay, @lucasgomide
+
+</Update>
+
+<Update label="2026年4月16日">
+  ## v1.14.2rc1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.2rc1)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复 MCP 工具解析中循环 JSON schema 的处理
+  - 通过将 python-multipart 升级到 0.0.26 修复漏洞
+  - 通过将 pypdf 升级到 6.10.1 修复漏洞
+
+  ### 文档
+  - 更新 v1.14.2a5 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde
+
+</Update>
+
+<Update label="2026年4月15日">
+  ## v1.14.2a5
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.2a5)
+
+  ## 更新内容
+
+  ### 文档
+  - 更新 v1.14.2a4 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde
+
+</Update>
+
+<Update label="2026年4月15日">
+  ## v1.14.2a4
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.2a4)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在 devtools 发布失败时添加恢复提示
+
+  ### 问题修复
+  - 修复向 Bedrock Converse API 转发严格模式的问题
+  - 将 pytest 版本固定到 9.0.3 以修复安全漏洞 GHSA-6w46-j5rx-g56g
+  - 将 OpenAI 下限提升到 >=2.0.0
+
+  ### 文档
+  - 更新 v1.14.2a3 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde
+
+</Update>
+
+<Update label="2026年4月13日">
+  ## v1.14.2a3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.2a3)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加部署验证 CLI
+  - 改进 LLM 初始化的易用性
+
+  ### 问题修复
+  - 将 pypdf 和 uv 覆盖到已修补版本以修复 CVE-2026-40260 和 GHSA-pjjw-68hj-v9mw
+  - 将 requests 升级到 >=2.33.0 以修复 CVE 临时文件漏洞
+  - 通过移除真值默认值保留 Bedrock 工具调用参数
+  - 为严格模式净化工具 schema
+  - 修复 MemoryRecord 嵌入序列化测试的不稳定性
+
+  ### 文档
+  - 整理企业版 A2A 的措辞
+  - 添加企业版 A2A 功能文档
+  - 更新 OSS A2A 文档
+  - 更新 v1.14.2a2 的更新日志和版本
+
+  ## 贡献者
+
+  @Yanhu007, @greysonlalonde
+
+</Update>
+
+<Update label="2026年4月10日">
+  ## v1.14.2a2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.2a2)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加带树状视图、分叉支持和可编辑输入/输出的检查点 TUI
+  - 使用推理 token 和缓存创建 token 丰富 LLM token 跟踪
+  - 为 kickoff 方法添加 `from_checkpoint` 参数
+  - 在检查点中嵌入 `crewai_version` 并提供迁移框架
+  - 添加带谱系跟踪的检查点分叉
+
+  ### 问题修复
+  - 修复向 Anthropic 和 Bedrock 提供商转发严格模式的问题
+  - 通过只读默认值、查询验证和参数化查询加固 NL2SQLTool
+
+  ### 文档
+  - 更新 v1.14.2a1 的更新日志和版本
+
+  ## 贡献者
+
+  @alex-clawd, @github-actions[bot], @greysonlalonde, @lucasgomide
+
+</Update>
+
+<Update label="2026年4月9日">
+  ## v1.14.2a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.2a1)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复 HITL 恢复后 flow_finished 事件的发出
+  - 将 cryptography 版本固定到 46.0.7 以修复 CVE-2026-39892
+
+  ### 重构
+  - 重构为使用共享的 I18N_DEFAULT 单例
+
+  ### 文档
+  - 更新 v1.14.1 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde
+
+</Update>
+
+<Update label="2026年4月9日">
+  ## v1.14.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加异步检查点 TUI 浏览器
+  - 为流式输出添加 aclose()/close() 和异步上下文管理器
+
+  ### 问题修复
+  - 修复模板 pyproject.toml 版本提升的正则表达式
+  - 在钩子装饰器过滤器中净化工具名称
+  - 修复创建 CheckpointConfig 时检查点处理器的注册
+  - 将 transformers 升级到 5.5.0 以解决 CVE-2026-1839
+  - 移除 FilteredStream 的 stdout/stderr 包装器
+
+  ### 文档
+  - 更新 v1.14.1rc1 的更新日志和版本
+
+  ### 重构
+  - 在规格生成中用动态 BaseTool 字段排除替换硬编码的拒绝列表
+  - 在 devtools CLI 中用 tomlkit 替换正则表达式
+  - 使用共享的 PRINTER 单例
+  - 将 BaseProvider 改为带 provider_type 鉴别器的 BaseModel
+
+  ## 贡献者
+
+  @greysonlalonde, @iris-clawd, @joaomdmoura, @lorenzejay
+
+</Update>
+
+<Update label="2026年4月9日">
+  ## v1.14.1rc1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.1rc1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加异步检查点 TUI 浏览器
+  - 为流式输出添加 aclose()/close() 和异步上下文管理器
+
+  ### 问题修复
+  - 修复使用正则表达式的模板 pyproject.toml 版本提升
+  - 在钩子装饰器过滤器中净化工具名称
+  - 将 transformers 升级到 5.5.0 以解决 CVE-2026-1839
+  - 在创建 CheckpointConfig 时注册检查点处理器
+
+  ### 重构
+  - 在规格生成中用动态 BaseTool 字段排除替换硬编码的拒绝列表
+  - 在 devtools CLI 中用 tomlkit 替换正则表达式
+  - 使用共享的 PRINTER 单例
+  - 将 BaseProvider 改为带 provider_type 鉴别器的 BaseModel
+  - 移除 FilteredStream 的 stdout/stderr 包装器
+  - 移除未使用的 flow/config.py
+
+  ### 文档
+  - 更新 v1.14.0 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde, @iris-clawd, @joaomdmoura
+
+</Update>
+
+<Update label="2026年4月7日">
+  ## v1.14.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加检查点 list/info CLI 命令
+  - 添加 guardrail_type 和名称以区分追踪
+  - 为检查点存储添加 SqliteProvider
+  - 添加用于自动检查点的 CheckpointConfig
+  - 实现运行时状态检查点、事件系统和执行器重构
+
+  ### 问题修复
+  - 添加 SSRF 和路径遍历防护
+  - 为 RAG 工具添加路径和 URL 验证
+  - 从记忆序列化中排除嵌入向量以节省 token
+  - 在 flow 模板中写入前确保输出目录存在
+  - 将 litellm 升级到 >=1.83.0 以修复 CVE-2026-35030
+  - 移除导致阿拉伯语页面渲染问题的 SEO 索引字段
+
+  ### 文档
+  - 更新 v1.14.0 的更新日志和版本
+  - 更新快速开始和安装指南以提升清晰度
+  - 添加存储提供商章节，导出 JsonProvider
+  - 添加 AMP Training 标签页指南
+
+  ### 重构
+  - 清理检查点 API
+  - 移除 CodeInterpreterTool 并弃用代码执行参数
+
+  ## 贡献者
+
+  @alex-clawd, @github-actions[bot], @greysonlalonde, @iris-clawd, @joaomdmoura, @lorenzejay, @lucasgomide
+
+</Update>
+
+<Update label="2026年4月7日">
+  ## v1.14.0a4
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.0a4)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加 guardrail_type 和名称以区分追踪
+  - 为检查点存储添加 SqliteProvider
+  - 添加用于自动检查点的 CheckpointConfig
+  - 实现运行时状态检查点、事件系统和执行器重构
+
+  ### 问题修复
+  - 从记忆序列化中排除嵌入向量以节省 token
+  - 将 litellm 升级到 >=1.83.0 以修复 CVE-2026-35030
+
+  ### 文档
+  - 更新快速开始和安装指南以提升清晰度
+  - 添加存储提供商章节并导出 JsonProvider
+
+  ### 性能
+  - 为检查点数据列使用 JSONB
+
+  ### 重构
+  - 移除 CodeInterpreterTool 并弃用代码执行参数
+
+  ## 贡献者
+
+  @alex-clawd, @github-actions[bot], @greysonlalonde, @joaomdmoura, @lorenzejay, @lucasgomide
+
+</Update>
+
+<Update label="2026年4月6日">
+  ## v1.14.0a3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.0a3)
+
+  ## 更新内容
+
+  ### 文档
+  - 更新 v1.14.0a2 的更新日志和版本
+
+  ## 贡献者
+
+  @joaomdmoura
+
+</Update>
+
+<Update label="2026年4月6日">
+  ## v1.14.0a2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.14.0a2)
+
+  发布 1.14.0a2
+
+</Update>
+
+<Update label="2026年4月2日">
+  ## v1.13.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.13.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加用于统一状态序列化的 RuntimeState RootModel
+  - 通过为技能和记忆事件添加新的遥测 span 增强事件监听器
+  - 添加支持 v0.8/v0.9 的 A2UI 扩展及其 schema 和文档
+  - 在 LLMCallCompletedEvent 中发出 token 使用数据
+  - 在发布期间自动更新部署测试仓库
+  - 改进企业版发布的韧性和体验
+
+  ### 问题修复
+  - 为 crewai install 添加工具仓库凭据
+  - 在工具发布的 uv build 中添加工具仓库凭据
+  - 通过配置而非工具参数传递指纹元数据
+  - 处理 GPT-5.x 模型不支持 `stop` API 参数的情况
+  - 将 GPT-5 和 o 系列添加到多模态视觉前缀
+  - 在企业版发布中为新发布的软件包清除 uv 缓存
+  - 将 lancedb 限制在 0.30.1 以下以兼容 Windows
+  - 修复 RBAC 权限级别以匹配实际的 UI 选项
+  - 修复所有语言中 agent-capabilities 的不准确之处
+
+  ### 文档
+  - 在入门页面添加编码 agent 技能演示视频
+  - 添加完整的 SSO 配置指南
+  - 添加完整的 RBAC 权限矩阵和部署指南
+  - 更新 v1.13.0 的更新日志和版本
+
+  ### 性能
+  - 通过惰性事件总线减少框架开销，并在禁用时跳过追踪
+
+  ### 重构
+  - 将 Flow 转换为 Pydantic BaseModel
+  - 将 LLM 类转换为 Pydantic BaseModel
+  - 用普通类型注解替换 InstanceOf[T]
+  - 移除未使用的 third_party LLM 目录
+
+  ## 贡献者
+
+  @alex-clawd, @dependabot[bot], @greysonlalonde, @iris-clawd, @joaomdmoura, @lorenzejay, @lucasgomide, @thiagomoretto
+
+</Update>
+
+<Update label="2026年4月2日">
+  ## v1.13.0a7
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.13.0a7)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加支持 v0.8/v0.9 的 A2UI 扩展及其 schema 和文档
+
+  ### 问题修复
+  - 通过添加 GPT-5 和 o 系列修复多模态视觉前缀
+
+  ### 文档
+  - 更新 v1.13.0a6 的更新日志和版本
+
+  ## 贡献者
+
+  @alex-clawd, @greysonlalonde, @joaomdmoura
+
+</Update>
+
+<Update label="2026年4月1日">
+  ## v1.13.0a6
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.13.0a6)
+
+  ## 更新内容
+
+  ### 文档
+  - 修复 RBAC 权限级别以匹配实际的 UI 选项 (#5210)
+  - 更新 v1.13.0a5 的更新日志和版本 (#5200)
+
+  ### 性能
+  - 通过实现惰性事件总线并在禁用时跳过追踪来减少框架开销 (#5187)
+
+  ## 贡献者
+
+  @alex-clawd, @joaomdmoura, @lucasgomide
+
+</Update>
+
+<Update label="2026年3月31日">
+  ## v1.13.0a5
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.13.0a5)
+
+  ## 更新内容
+
+  ### 文档
+  - 更新 v1.13.0a4 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde, @joaomdmoura
+
+</Update>
+
+<Update label="2026年4月1日">
+  ## v1.13.0a4
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.13.0a4)
+
+  ## 更新内容
+
+  ### 文档
+  - 更新 v1.13.0a3 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde
+
+</Update>
+
+<Update label="2026年4月1日">
+  ## v1.13.0a3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.13.0a3)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在 LLMCallCompletedEvent 中发出 token 使用数据
+  - 提取工具元数据并发布到 AMP
+
+  ### 问题修复
+  - 处理 GPT-5.x 模型不支持 `stop` API 参数的情况
+
+  ### 文档
+  - 修复所有语言中 agent-capabilities 的不准确之处
+  - 添加 Agent Capabilities 概览并改进 Skills 文档
+  - 添加完整的 SSO 配置指南
+  - 更新 v1.13.0rc1 的更新日志和版本
+
+  ### 重构
+  - 将 Flow 转换为 Pydantic BaseModel
+  - 将 LLM 类转换为 Pydantic BaseModel
+  - 用普通类型注解替换 InstanceOf[T]
+  - 移除未使用的方法
+
+  ## 贡献者
+
+  @dependabot[bot], @greysonlalonde, @iris-clawd, @lorenzejay, @lucasgomide, @thiagomoretto
+
+</Update>
+
+<Update label="2026年3月27日">
+  ## v1.13.0rc1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.13.0rc1)
+
+  ## 更新内容
+
+  ### 文档
+  - 更新 v1.13.0a2 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde
+
+</Update>
+
+<Update label="2026年3月27日">
+  ## v1.13.0a2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.13.0a2)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在发布期间自动更新部署测试仓库
+  - 改进企业版发布的韧性和体验
+
+  ### 文档
+  - 更新 v1.13.0a1 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde
+
+</Update>
+
+<Update label="2026年3月27日">
+  ## v1.13.0a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.13.0a1)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 通过将 Node 固定到 LTS 22 修复文档工作流中的失效链接
+  - 在企业版发布中为新发布的软件包清除 uv 缓存
+
+  ### 文档
+  - 添加完整的 RBAC 权限矩阵和部署指南
+  - 更新 v1.12.2 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde, @iris-clawd, @joaomdmoura
+
+</Update>
+
+<Update label="2026年3月25日">
+  ## v1.12.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.12.2)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在 devtools 发布中添加企业版发布阶段
+
+  ### 问题修复
+  - 为带 emit 的 @human_feedback 保留方法返回值作为 flow 输出
+
+  ### 文档
+  - 更新 v1.12.1 的更新日志和版本
+  - 修订安全政策和报告说明
+
+  ## 贡献者
+
+  @alex-clawd, @greysonlalonde, @joaomdmoura, @theCyberTech
+
+</Update>
+
+<Update label="2026年3月25日">
+  ## v1.12.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.12.1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为 HumanFeedbackRequestedEvent 添加 request_id
+  - 为记忆系统添加 Qdrant Edge 存储后端
+  - 添加 docs-check 命令以分析变更并生成带翻译的文档
+  - 为更新日志和发布工具添加阿拉伯语支持
+  - 添加所有文档的现代标准阿拉伯语翻译
+  - 在 CLI 中添加 logout 命令
+  - 添加 agent 技能
+  - 实现用于分层记忆隔离的自动 root_scope
+  - 实现原生 OpenAI 兼容提供商（OpenRouter、DeepSeek、Ollama、vLLM、Cerebras、Dashscope）
+
+  ### 问题修复
+  - 修复追踪批量推送的无效凭据问题 (404)
+  - 解决 HITL flow 系统中的多个问题
+  - 修复 agent 记忆保存
+  - 解决 crewai 包中所有严格 mypy 错误
+  - 修复 FlowMeta 中 listener+router 方法对 __router_paths__ 的使用
+  - 修复不支持文件时的 value error
+  - 修正文档中 litellm 隔离的措辞
+  - 修复 crewai-files 中所有 mypy 错误并将所有包加入 CI 类型检查
+  - 将 litellm 上限固定到最后测试的版本 (1.82.6)
+
+  ### 文档
+  - 更新 v1.12.0 的更新日志和版本
+  - 添加 CONTRIBUTING.md
+  - 添加不使用 LiteLLM 的 CrewAI 使用指南
+
+  ## 贡献者
+
+  @akaKuruma, @alex-clawd, @greysonlalonde, @iris-clawd, @joaomdmoura, @lorenzejay, @lucasgomide, @nicoferdi96
+
+</Update>
+
+<Update label="2026年3月25日">
+  ## v1.12.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.12.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为记忆系统添加 Qdrant Edge 存储后端
+  - 添加 docs-check 命令以分析变更并生成带翻译的文档
+  - 为更新日志和发布工具添加阿拉伯语支持
+  - 添加所有文档的现代标准阿拉伯语翻译
+  - 在 CLI 中添加 logout 命令
+  - 实现 agent 技能
+  - 实现用于分层记忆隔离的自动 root_scope
+  - 实现原生 OpenAI 兼容提供商（OpenRouter、DeepSeek、Ollama、vLLM、Cerebras、Dashscope）
+
+  ### 问题修复
+  - 修复追踪批量推送的无效凭据问题 (404)
+  - 解决 HITL flow 系统中的多个问题
+  - 解决 crewai-files 中的 mypy 错误并将所有包加入 CI 类型检查
+  - 解决 crewai-tools 包中所有严格 mypy 错误
+  - 解决 crewai 包中所有 mypy 错误
+  - 修复 agent 中的记忆保存
+  - 修复 FlowMeta 中 listener+router 方法对 __router_paths__ 的使用
+  - 在不支持文件时抛出 value error
+  - 修正文档中 litellm 隔离的措辞
+  - 在人工反馈学习中对记忆使用 None 检查而非 isinstance
+  - 将 litellm 上限固定到最后测试的版本 (1.82.6)
+
+  ### 文档
+  - 更新 v1.12.0 的更新日志和版本
+  - 添加 CONTRIBUTING.md
+  - 添加不使用 LiteLLM 的 CrewAI 使用指南
+
+  ### 重构
+  - 重构以消除 agent 中同步/异步 task 执行和 kickoff 的重复
+  - 简化来自 litellm 的内部管道（token 计数、回调、特性检测、错误）
+
+  ## 贡献者
+
+  @akaKuruma, @alex-clawd, @greysonlalonde, @iris-clawd, @joaomdmoura, @lorenzejay, @nicoferdi96
+
+</Update>
+
+<Update label="2026年3月26日">
+  ## v1.12.0a3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.12.0a3)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复追踪批量推送的无效凭据问题 (404)
+  - 解决 HITL flow 系统中的多个问题
+
+  ### 文档
+  - 更新 v1.12.0a2 的更新日志和版本
+
+  ## 贡献者
+
+  @akaKuruma, @greysonlalonde
+
+</Update>
+
+<Update label="2026年3月25日">
+  ## v1.12.0a2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.12.0a2)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为记忆系统添加 Qdrant Edge 存储后端
+
+  ### 文档
+  - 更新 v1.12.0a1 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde
+
+</Update>
+
+<Update label="2026年3月25日">
+  ## v1.12.0a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.12.0a1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加 docs-check 命令以分析变更并生成带翻译的文档
+  - 为更新日志和发布工具添加阿拉伯语支持
+  - 添加所有文档的现代标准阿拉伯语翻译
+  - 添加原生 OpenAI 兼容提供商（OpenRouter、DeepSeek、Ollama、vLLM、Cerebras、Dashscope）
+  - 添加 agent 技能
+  - 在 CLI 中添加 logout 命令
+  - 实现用于分层记忆隔离的自动 root_scope
+
+  ### 问题修复
+  - 修复 agent 记忆保存
+  - 解决 crewai-files 中的 mypy 错误并将所有包加入 CI 类型检查
+  - 解决 crewai-tools 包中所有严格 mypy 错误
+  - 解决 crewai 包中所有 mypy 错误
+  - 修复 FlowMeta 中 listener+router 方法对 __router_paths__ 的使用
+  - 将 litellm 上限固定到最后测试的版本 (1.82.6)
+  - 在不支持文件时抛出 value error
+  - 修正文档中 litellm 隔离的措辞
+
+  ### 文档
+  - 添加 CONTRIBUTING.md
+  - 添加不使用 LiteLLM 的 CrewAI 使用指南
+  - 更新 v1.11.1 的更新日志和版本
+
+  ### 重构
+  - 重构以消除 agent 中同步/异步 task 执行和 kickoff 的重复
+  - 将内部管道与 litellm 解耦（token 计数、回调、特性检测、错误）
+
+  ## 贡献者
+
+  @alex-clawd, @greysonlalonde, @iris-clawd, @lorenzejay, @nicoferdi96
+
+</Update>
+
+<Update label="2026年3月23日">
+  ## v1.11.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.11.1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加用于 Flow 类自省的 flow_structure() 序列化器。
+
+  ### 问题修复
+  - 通过升级 pypdf、tinytag 和 langchain-core 修复安全漏洞。
+  - 在 HITL 恢复时为非 OpenAI 提供商保留完整的 LLM 配置。
+  - 防止 FileWriterTool 中的路径遍历。
+  - 修复未安装 redis 包时 lock_store 崩溃的问题。
+  - 将 cache_function 从 BaseTool 传递给 CrewStructuredTool。
+
+  ### 文档
+  - 添加带翻译的自定义工具发布指南。
+  - 更新 v1.11.0 的更新日志和版本。
+  - 添加缺失的事件监听器文档。
+
+  ### 重构
+  - 在 pdf 加载器中用 requests 替换 urllib。
+  - 用可序列化类型替换 Any 类型的回调和模型字段。
+
+  ## 贡献者
+
+  @alex-clawd, @danielfsbarreto, @dependabot[bot], @greysonlalonde, @lorenzejay, @lucasgomide, @mattatcha, @theCyberTech, @vinibrsl
+
+</Update>
+
+<Update label="2026年3月18日">
+  ## v1.11.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.11.0)
+
+  ## 更新内容
+
+  ### 文档
+  - 更新 v1.11.0rc2 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde
+
+</Update>
+
+<Update label="2026年3月17日">
+  ## v1.11.0rc2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.11.0rc2)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 增强 LLM 响应处理和序列化。
+  - 升级存在漏洞的间接依赖（authlib、PyJWT、snowflake-connector-python）。
+  - 在不安全模式的 pip install 中用 `subprocess.run` 替换 `os.system`。
+
+  ### 文档
+  - 更新 Exa Search Tool 页面，改进命名、描述和配置选项。
+  - 在操作指南中添加自定义 MCP 服务器。
+  - 更新 OTEL collector 文档。
+  - 更新 MCP 文档。
+  - 更新 v1.11.0rc1 的更新日志和版本。
+
+  ## 贡献者
+
+  @10ishq, @greysonlalonde, @joaomdmoura, @lucasgomide, @mattatcha, @theCyberTech, @vinibrsl
+
+</Update>
+
+<Update label="2026年3月15日">
+  ## v1.11.0rc1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.11.0rc1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在 a2a 中添加 Plus API token 身份验证
+  - 实现计划执行模式
+
+  ### 问题修复
+  - 解决代码解释器沙箱逃逸问题
+
+  ### 文档
+  - 更新 v1.10.2rc2 的更新日志和版本
+
+  ## 贡献者
+
+  @Copilot, @greysonlalonde, @lorenzejay, @theCyberTech
+
+</Update>
+
+<Update label="2026年3月14日">
+  ## v1.10.2rc2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.10.2rc2)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 从只读存储操作中移除排他锁
+
+  ### 文档
+  - 更新 v1.10.2rc1 的更新日志和版本
+
+  ## 贡献者
+
+  @greysonlalonde
+
+</Update>
+
+<Update label="2026年3月13日">
+  ## v1.10.2rc1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.10.2rc1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加 release 命令并触发 PyPI 发布
+
+  ### 问题修复
+  - 为未受保护的 I/O 修复跨进程和线程安全的锁定
+  - 在所有线程和执行器边界间传播 contextvars
+  - 将 ContextVars 传播到异步 task 线程中
+
+  ### 文档
+  - 更新 v1.10.2a1 的更新日志和版本
+
+  ## 贡献者
+
+  @danglies007, @greysonlalonde
+
+</Update>
+
+<Update label="2026年3月11日">
+  ## v1.10.2a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.10.2a1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为 Anthropic 添加工具搜索支持，节省 token 并在执行期间动态注入合适的工具。
+  - 引入更多 Brave Search 工具。
+  - 创建用于夜间发布的 action。
+
+  ### 问题修复
+  - 修复并发多进程执行下的 LockException。
+  - 解决将并行工具结果归组到单条用户消息中的问题。
+  - 处理 MCP 工具解析并消除所有共享的可变连接。
+  - 更新 human_feedback 函数中的 LLM 参数处理。
+  - 为 LockedListProxy 和 LockedDictProxy 添加缺失的 list/dict 方法。
+  - 将 contextvars 上下文传播到并行工具调用线程。
+  - 将 gitpython 依赖升级到 >=3.1.41 以解决 CVE 路径遍历漏洞。
+
+  ### 重构
+  - 重构记忆类使其可序列化。
+
+  ### 文档
+  - 更新 v1.10.1 的更新日志和版本。
+
+  ## 贡献者
+
+  @akaKuruma, @github-actions[bot], @giulio-leone, @greysonlalonde, @joaomdmoura, @jonathansampson, @lorenzejay, @lucasgomide, @mattatcha
+
+</Update>
+
+<Update label="2026年3月4日">
+  ## v1.10.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.10.1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 升级 Gemini GenAI
+
+  ### 问题修复
+  - 调整执行器监听器的值以避免递归
+  - 在 Gemini 中将并行函数响应部分归组到单个 Content 对象中
+  - 在 Gemini 中显露思考模型的思考输出
+  - 当 agent 工具为 None 时加载 MCP 和平台工具
+  - 在 A2A 中支持有运行中事件循环的 Jupyter 环境
+  - 为临时追踪使用匿名 ID
+  - 有条件地传递 plus 请求头
+  - 在非主线程中为遥测跳过信号处理器注册
+  - 将工具错误作为观察结果注入并解决名称冲突
+  - 将 pypdf 从 4.x 升级到 6.7.4 以解决 Dependabot 告警
+  - 解决严重和高危的 Dependabot 安全告警
+
+  ### 文档
+  - 在各语言版本间同步 Composio 工具文档
+
+  ## 贡献者
+
+  @giulio-leone, @greysonlalonde, @haxzie, @joaomdmoura, @lorenzejay, @mattatcha, @mplachta, @nicoferdi96
+
+</Update>
+
+<Update label="2026年2月27日">
+  ## v1.10.1a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.10.1a1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 在步骤回调方法中实现异步调用支持
+  - 为 Memory 模块中的重量级依赖实现延迟加载
+
+  ### 文档
+  - 更新 v1.10.0 的更新日志和版本
+
+  ### 重构
+  - 重构步骤回调方法以支持异步调用
+  - 重构以为 Memory 模块中的重量级依赖实现延迟加载
+
+  ### 问题修复
+  - 修复发布说明的分支
+
+  ## 贡献者
+
+  @greysonlalonde, @joaomdmoura
+
+</Update>
+
+<Update label="2026年2月27日">
+  ## v1.10.1a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.10.1a1)
+
+  ## 更新内容
+
+  ### 重构
+  - 重构步骤回调方法以支持异步调用
+  - 为 Memory 模块中的重量级依赖实现延迟加载
+
+  ### 文档
+  - 更新 v1.10.0 的更新日志和版本
+
+  ### 问题修复
+  - 创建发布说明的分支
+
+  ## 贡献者
+
+  @greysonlalonde, @joaomdmoura
+
+</Update>
+
+<Update label="2026年2月26日">
+  ## v1.10.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.10.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 增强 MCP 工具解析及相关事件
+  - 更新 lancedb 版本并添加 lance-namespace 包
+  - 增强 CrewAgentExecutor 和 BaseTool 中的 JSON 参数解析和验证
+  - 将 CLI HTTP 客户端从 requests 迁移到 httpx
+  - 添加版本化文档
+  - 为版本说明添加已撤回版本检测
+  - 在 Flows 中实现用户输入处理
+  - 在人工反馈集成测试中增强 HITL 自循环功能
+  - 添加 started_event_id 并在 eventbus 中设置
+  - 自动更新 tools.specs
+
+  ### 问题修复
+  - 即使工具 kwargs 为空也进行验证，以防止难以理解的 TypeError
+  - 在面向 LLM 的工具参数 schema 中保留 null 类型
+  - 将 output_pydantic/output_json 映射到原生结构化输出
+  - 确保回调若为 promise 则被执行/等待
+  - 在异常上下文中捕获方法名
+  - 在路由器结果中保留枚举类型；改进类型
+  - 修复在输入中传入持久化 ID 时循环 flow 静默失败的问题
+  - 将 CLI 标志格式从 --skip-provider 修正为 --skip_provider
+  - 确保 OpenAI 工具调用流被正确终结
+  - 解析 MCP 工具中复杂 schema 的 $ref 指针
+  - 在 schema 中强制 additionalProperties=false
+  - 为 crew 文件夹拒绝保留的脚本名称
+  - 解决护栏事件发出测试中的竞态条件
+
+  ### 文档
+  - 为非原生 LLM 提供商添加 litellm 依赖说明
+  - 阐明 NL2SQL 安全模型和加固指南
+  - 为 9 个集成添加 96 个缺失的操作
+
+  ### 重构
+  - 将 crew 重构为 provider
+  - 将 HITL 提取为 provider 模式
+  - 改进钩子的类型标注和注册
+
+  ## 贡献者
+
+  @dependabot[bot], @github-actions[bot], @github-code-quality[bot], @greysonlalonde, @heitorado, @hobostay, @joaomdmoura, @johnvan7, @jonathansampson, @lorenzejay, @lucasgomide, @mattatcha, @mplachta, @nicoferdi96, @theCyberTech, @thiagomoretto, @vinibrsl
+
+</Update>
+
+<Update label="2026年1月26日">
+  ## v1.9.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.9.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 跨提供商添加结构化输出和 response_format 支持
+  - 为流式响应添加响应 ID
+  - 添加带父子层级的事件排序
+  - 添加 Keycloak SSO 身份验证支持
+  - 添加多模态文件处理能力
+  - 添加原生 OpenAI responses API 支持
+  - 添加 A2A task 执行工具集
+  - 添加 A2A 服务器配置和 agent card 生成
+  - 增强事件系统并扩展传输选项
+  - 改进工具调用机制
+
+  ### 问题修复
+  - 在 aiocache 不可用时为文件存储增加回退内存缓存
+  - 确保文档列表不为空
+  - 正确处理 Bedrock 停止序列
+  - 添加 Google Vertex API 密钥支持
+  - 增强 Azure 模型停止词检测
+  - 改进 flow 执行中 HumanFeedbackPending 的错误处理
+  - 修复执行 span 的 task 解除关联
+
+  ### 文档
+  - 添加原生文件处理文档
+  - 添加 OpenAI responses API 文档
+  - 添加 agent card 实现指南
+  - 完善 A2A 文档
+  - 更新 v1.8.0 的更新日志
+
+  ### 贡献者
+  @Anaisdg, @GininDenis, @Vidit-Ostwal, @greysonlalonde, @heitorado, @joaomdmoura, @koushiv777, @lorenzejay, @nicoferdi96, @vinibrsl
+
+</Update>
+
+<Update label="2026年1月15日">
+  ## v1.8.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.8.1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加 A2A task 执行工具集
+  - 添加 A2A 服务器配置和 agent card 生成
+  - 添加额外的传输机制
+  - 添加 Galileo 集成支持
+
+  ### 问题修复
+  - 改进 Azure 模型兼容性
+  - 扩展帧检查深度以检测 parent_flow
+  - 解决 task 执行 span 管理问题
+  - 增强 flow 执行期间人工反馈场景的错误处理
+
+  ### 文档
+  - 添加 A2A agent card 文档
+  - 添加 PII 脱敏功能文档
+
+  ### 贡献者
+  @Anaisdg, @GininDenis, @greysonlalonde, @joaomdmoura, @koushiv777, @lorenzejay, @vinibrsl
+
+</Update>
+
+<Update label="2026年1月8日">
+  ## v1.8.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.8.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为 a2a 添加原生异步链
+  - 添加带处理器和配置的 a2a 更新机制（轮询/流式/推送）
+  - 为人机协同反馈引入全局 flow 配置
+  - 添加流式工具调用事件并修复提供商 ID 跟踪
+  - 引入生产就绪的 Flows 和 Crews 架构
+  - 为 Flows 添加 HITL
+  - 改进 EventListener 和 TraceCollectionListener 以增强事件处理
+
+  ### 问题修复
+  - 将缺失的 a2a 依赖作为可选依赖处理
+  - 修正 WorkOS 登录轮询的错误获取
+  - 修复示例文档中错误的触发器名称
+
+  ### 文档
+  - 更新 webhook 流式传输文档
+  - 调整 AOP 到 AMP 的文档措辞
+
+  ### 贡献者
+  @Vidit-Ostwal, @greysonlalonde, @heitorado, @joaomdmoura, @lorenzejay, @lucasgomide, @mplachta
+
+</Update>
+
+<Update label="2025年12月19日">
+  ## v1.7.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.7.2)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 解决连接问题
+
+  ### 文档
+  - 更新 api-reference/status 文档页面
+
+  ### 贡献者
+  @greysonlalonde, @heitorado, @lorenzejay, @lucasgomide
+
+</Update>
+
+<Update label="2025年12月16日">
+  ## v1.7.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.7.1)
+
+  ## 更新内容
+
+  ### 改进
+  - 为 bump 命令添加 `--no-commit` 标志
+  - 使用 JSON schema 进行工具参数序列化
+
+  ### 问题修复
+  - 修复工具仓库登录失败时响应中错误消息的显示
+  - 修复异步执行 task 时 future 的优雅终止
+  - 通过添加索引修复 task 排序
+  - 修复 Windows 信号的平台兼容性检查
+  - 修复 RPM 控制器定时器以防止进程挂起
+  - 修复 token 使用记录并在流式传输时验证响应模型
+
+  ### 文档
+  - 添加异步相关的翻译文档
+  - 添加 AOP Deploy API 文档
+  - 添加 agent 处理器连接器文档
+  - 添加原生异步文档
+
+  ### 贡献者
+  @Llamrei, @dragosmc, @gilfeig, @greysonlalonde, @heitorado, @lorenzejay, @mattatcha, @vinibrsl
+
+</Update>
+
+<Update label="2025年12月9日">
+  ## v1.7.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.7.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加异步 flow kickoff
+  - 添加异步 crew 支持
+  - 添加异步 task 支持
+  - 添加异步知识库支持
+  - 添加异步记忆支持
+  - 为工具和 agent 执行器添加异步支持；改进类型标注和文档
+  - 实现 a2a 扩展 API 和异步 agent card 缓存；修复 task 传播与流式传输
+  - 添加原生异步工具支持
+  - 添加异步 llm 支持
+  - 创建系统事件类型和处理器
+
+  ### 问题修复
+  - 修复以确保不向 otel 传递 None 类型
+  - 修复 token 存储文件操作中的死锁
+  - 修复以确保 otel span 被关闭
+  - 使用 HuggingFaceEmbeddingFunction 进行嵌入，更新密钥并添加测试
+  - 修复以确保所有受支持的 anthropic 模型的 supports_tools 为 true
+  - 确保钩子在 lite agent flow 中正常工作
+
+  ### 贡献者
+  @greysonlalonde, @lorenzejay
+
+</Update>
+
+<Update label="2025年11月29日">
+  ## v1.6.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.6.1)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复 ChatCompletionsClient 调用以确保功能正常
+  - 确保注解的异步方法可执行
+  - 修复 RagTool.add 中的参数，添加类型标注和测试
+  - 从 SSE 客户端移除无效参数
+  - 在 'crewai config reset' 命令中清除 'oauth2_extra' 设置
+
+  ### 重构
+  - 增强 LLM 类中的模型验证和提供商推断
+
+  ### 贡献者
+  @Vidit-Ostwal, @greysonlalonde, @heitorado, @lorenzejay
+
+</Update>
+
+<Update label="2025年11月25日">
+  ## v1.6.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.6.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为 flow 和 crew 添加流式结果支持
+  - 添加 gemini-3-pro-preview
+  - 支持使用 Entra ID 进行 CLI 登录
+  - 添加 Merge Agent Handler 工具
+  - 增强 flow 事件状态管理
+
+  ### 问题修复
+  - 确保自定义 rag 存储的持久化路径在传入时被设置
+  - 使模糊返回更严格并显示类型警告
+  - 重新添加 openai response_format 参数并添加测试
+  - 修复 rag 工具嵌入配置
+  - 确保在绘图时不显示 flow 执行开始面板
+
+  ### 文档
+  - 将文档中的 AMP 引用更新为 AOP
+  - 将 AMP 更新为 AOP
+
+  ### 贡献者
+  @Vidit-Ostwal, @gilfeig, @greysonlalonde, @heitorado, @joaomdmoura, @lorenzejay, @markmcd
+
+</Update>
+
+<Update label="2025年11月22日">
+  ## v0.203.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.203.2)
+
+  ## 更新内容
+
+  - 热修复版本号从 0.203.1 提升到 0.203.2
+
+</Update>
+
+<Update label="2025年11月16日">
+  ## v1.5.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.5.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加 a2a 信任远程完成状态标志
+  - 获取并存储更多关于 Okta 授权服务器的数据
+  - 在 CrewAgentExecutor 中实现 LLM 调用前后钩子
+  - 向 TaskOutput 和 LiteAgentOutputs 公开消息
+  - 增强 QdrantVectorSearchTool 的 schema 描述
+
+  ### 问题修复
+  - 确保追踪插桩标志被正确应用
+  - 修复自定义工具文档链接并添加 Mintlify 失效链接检查 action
+
+  ### 文档
+  - 增强 task 护栏文档，加入基于 LLM 的验证支持
+
+  ### 贡献者
+  @danielfsbarreto, @greysonlalonde, @heitorado, @lorenzejay, @theCyberTech
+
+</Update>
+
+<Update label="2025年11月7日">
+  ## v1.4.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.4.1)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 修复 agent 最大迭代次数的处理
+  - 解决 LLM 模型语法到对应提供商的路由问题
+
+  ### 贡献者
+  @greysonlalonde
+
+</Update>
+
+<Update label="2025年11月7日">
+  ## v1.4.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.4.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加对非 AST 绘图路由的支持
+  - 实现对 MCP 的一等支持
+  - 为 BaseInterceptor 添加 Pydantic 验证 dunder 方法
+  - 添加对 LLM 消息拦截器钩子的支持
+  - 缓存 i18n 提示词以提高使用效率
+  - 增强 QdrantVectorSearchTool
+
+  ### 问题修复
+  - 修复停止词保持更新的问题
+  - 解决 flow 状态中不可 pickle 的值
+  - 确保 lite agent 在验证错误时进行纠正
+  - 修复回调参数哈希以确保缓存正常工作
+  - 允许从有效 URL 添加 RAG 源内容
+  - 使绘图节点选择更流畅
+  - 修复知识库文档 ID 重复的问题
+
+  ### 重构
+  - 使用并发 futures 改进 MCP 工具执行处理
+  - 简化 flow 处理、类型标注和日志记录；更新 UI 和测试
+  - 将停止词管理重构为属性
+
+  ### 文档
+  - 在工具文档中将 embedder 迁移到 embedding_model 并要求 vectordb；添加提供商示例（en/ko/pt-BR）
+
+  ### 贡献者
+  @danielfsbarreto, @greysonlalonde, @lorenzejay, @lucasgomide, @tonykipkemboi
+
+</Update>
+
+<Update label="2025年11月1日">
+  ## v1.3.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.3.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 重构 flow 处理、类型标注和日志记录
+  - 增强 QdrantVectorSearchTool
+
+  ### 问题修复
+  - 修复 Firecrawl 工具并添加测试
+  - 将 use_stop_words 重构为属性并添加停止词检查
+
+  ### 文档
+  - 在工具文档中将 embedder 迁移到 embedding_model 并要求 vectordb
+  - 添加英语、韩语和葡萄牙语的提供商示例
+
+  ### 重构
+  - 改进 flow 处理和 UI 更新
+
+  ### 贡献者
+  @danielfsbarreto, @greysonlalonde, @lorenzejay, @lucasgomide, @tonykipkemboi
+
+</Update>
+
+<Update label="2025年10月27日">
+  ## v1.2.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.2.1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 添加对 Datadog 集成的支持
+  - 在 liteagent 中支持应用和 mcps
+
+  ### 文档
+  - 为每个集成描述调用 Platform 工具所需的必需环境变量
+  - 添加 Datadog 集成文档
+
+  ### 贡献者
+  @barieom, @lorenzejay, @lucasgomide, @sabrenner
+
+</Update>
+
+<Update label="2025年10月24日">
+  ## v1.2.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.2.0)
+
+  ## 更新内容
+
+  ### 问题修复
+  - 更新默认 LLM 模型并改进 LLM 工具集中的错误日志
+  - 更改 flow 可视化目录和方法检查
+
+  ### 移除未使用项
+  - 移除 aisuite
+
+  ### 贡献者
+  @greysonlalonde, @lorenzejay
+
+</Update>
+
+<Update label="2025年10月21日">
+  ## v1.1.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.1.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 增强 InternalInstructor 以支持多个 LLM 提供商
+  - 实现 mypy 插件基础
+  - 改进 QdrantVectorSearchTool
+
+  ### 问题修复
+  - 修正失效的集成文档链接
+  - 修复重复的 trace 调用并添加类型
+  - 将模板版本固定到最新版本
+
+  ### 文档
+  - 更新 LLM 集成细节和示例
+
+  ### 重构
+  - 改进 CrewBase 的类型标注
+
+  ### 贡献者
+  @cwarre33, @danielfsbarreto, @greysonlalonde, @lorenzejay
+
+</Update>
+
+<Update label="2025年10月20日">
+  ## v1.0.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.0.0)
+
+  ## 更新内容
+
+  ### 新功能
+  - 将版本提升到 1.0.0
+  - 增强 Agent 类中的知识库和护栏事件处理
+  - 在 crewai run 命令中注入工具仓库凭据
+
+  ### 问题修复
+  - 在 Flow 装饰器中保留嵌套条件结构
+  - 为 Printer.print 方法添加标准打印参数
+  - 修复没有可用 input() 时的错误
+  - 在解码 JWT 时增加 10 秒的容差
+  - 回退有问题的 cron 调度
+  - 修正 cron 调度以在特定日期每 5 天运行一次
+  - 使用系统 PATH 中的 Docker 二进制文件而非硬编码路径
+  - 添加 CodeQL 配置以正确排除模板目录
+
+  ### 文档
+  - 更新漏洞报告的安全政策
+  - 添加在 CrewAI AMP 中捕获遥测日志的指南
+  - 添加缺失的 /resume 文件
+  - 阐明 HITL 工作流中的 webhook URL 参数
+
+  ### 贡献者
+  @Vidit-Ostwal, @greysonlalonde, @heitorado, @joaomdmoura, @lorenzejay, @lucasgomide, @mplachta, @theCyberTech
+
+</Update>
+
+<Update label="2025年10月18日">
+  ## v1.0.0b3（预发布）
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.0.0b3)
+
+  ## 更新内容
+
+  ### 新功能
+  - 增强 task 护栏功能和验证
+  - 改进对导入原生 SDK 的支持
+  - 添加 Azure 原生测试
+  - 为 BedrockCompletion 类增强高级特性
+  - 为 GeminiCompletion 类增强客户端参数支持
+  - 为 AnthropicCompletion 类增强额外的客户端参数
+
+  ### 问题修复
+  - 在 Flow 装饰器中保留嵌套条件结构
+  - 为 Printer.print 方法添加标准打印参数
+  - 移除 stdout 打印并改进测试确定性
+
+  ### 重构
+  - 将 project 模块转换为带完整类型标注的元类
+
+  ### 贡献者
+  @greysonlalonde, @lorenzejay
+
+</Update>
+
+<Update label="2025年10月16日">
+  ## v1.0.0b2（预发布）
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.0.0b2)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为 OpenAICompletion 类增强额外的客户端参数
+  - 改进事件总线的线程安全和异步支持
+  - 在 crewai run 命令中注入工具仓库凭据
+
+  ### 问题修复
+  - 修复没有可用 input() 时报错的问题
+  - 在解码 JWT 时增加 10 秒的容差
+  - 修复复制并在 task.py 中添加 NOT_SPECIFIED 检查
+
+  ### 文档
+  - 确保文档中提及 CREWAI_PLATFORM_INTEGRATION_TOKEN
+  - 更新触发器文档
+
+  ### 贡献者
+  @Vidit-Ostwal, @greysonlalonde, @heitorado, @joaomdmoura, @lorenzejay, @lucasgomide
+
+</Update>
+
+<Update label="2025年10月14日">
+  ## v1.0.0b1（预发布）
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.0.0b1)
+
+  ## 更新内容
+
+  ### 新功能
+  - 为 OpenAICompletion 类增强额外的客户端参数
+  - 改进事件总线的线程安全和异步支持
+  - 实现 Bedrock LLM 集成
+
+  ### 问题修复
+  - 修复缺少可用 input() 的问题
+  - 通过增加 10 秒容差解决 JWT 解码错误
+  - 在 crewai run 命令中注入工具仓库凭据
+  - 修复复制并在 task.py 中添加 NOT_SPECIFIED 检查
+
+  ### 文档
+  - 确保文档中提及 CREWAI_PLATFORM_INTEGRATION_TOKEN
+  - 更新触发器文档
+
+  ### 贡献者
+  @Vidit-Ostwal, @greysonlalonde, @heitorado, @joaomdmoura, @lorenzejay, @lucasgomide
+
+</Update>
+
+<Update label="2025年10月13日">
+  ## v0.203.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.203.1)
+
+  ## 更新内容
+
+  ### 核心改进与修复
+  - 修复向 `crewai run` 命令注入工具仓库凭据的问题
+  - 在解码 JWT 时增加 10 秒的容差以减少 token 验证错误
+  - 修正（随后回退）旨在特定日期每 5 天运行作业的 cron 调度修复
+
+  ### 文档与指南
+  - 更新安全政策以阐明漏洞报告流程
+
+</Update>
+
+<Update label="2025年10月9日">
+  ## v1.0.0a4（预发布）
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.0.0a4)
+
+  ## 更新内容
+
+  ### 新功能
+  - 增强 Agent 类中的知识库和护栏事件处理
+  - 为本地开发引入触发器列表和执行命令
+  - 使用消费 Platform Actions 的新方式更新文档
+  - 添加在 CrewAI AMP 中捕获遥测日志的指南
+
+  ### 问题修复
+  - 回退有问题的 cron 调度
+  - 修正 cron 调度以在特定日期每 5 天运行一次
+  - 移除重复行并添加显式环境变量
+  - 解决代码库中的 lint 错误
+  - 在 agent 和记忆处理中用 logger 替换 print 语句
+  - 使用系统 PATH 中的 Docker 二进制文件而非硬编码路径
+  - 允许 PyPI 发布失败
+  - 匹配标签和发布标题，PyPI 忽略 devtools 构建
+
+  ### 文档
+  - 更新漏洞报告的安全政策
+  - 添加缺失的 /resume 文件
+  - 阐明 HITL 工作流中的 webhook URL 参数
+
+  ### 贡献者
+  @Vidit-Ostwal, @greysonlalonde, @lorenzejay, @lucasgomide, @theCyberTech
+
+</Update>
+
+<Update label="2025年9月30日">
+  ## v1.0.0a1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/1.0.0a1)
+
+  ## 更新内容
+
+  ### 核心改进与修复
+  - 修复 agent 配置中 `actions` 的权限处理
+  - 更新 CI 工作流和发布流程以支持新的 monorepo 结构
+  - 将 Python 支持提升到 3.13 并刷新工作区元数据
+
+  ### 新功能与增强
+  - 为 `Agent` 添加 `apps` 和 `actions` 属性以实现更丰富的运行时控制
+  - 将 `crewai-tools` 仓库合并到主工作区（monorepo）
+  - 将所有包提升到 1.0.0a1 以标记 alpha 里程碑
+
+  ### 清理与基础设施
+  - 交付了带版本固定和发布策略的新 CI 流水线
+  - 统一内部代码以协调管理多个包
+
+</Update>
+
+<Update label="2025年9月26日">
+  ## v0.201.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.201.1)
+
+  ## 更新内容
+
+  ### 核心改进与修复
+  - 将 Watson 嵌入提供商重命名为 `watsonx` 并刷新环境变量前缀
+  - 为 `watsonx` 和 `voyageai` 嵌入提供商添加 ChromaDB 兼容性
+
+  ### 清理与弃用
+  - 为所有嵌入提供商统一环境变量前缀
+  - 将 CrewAI 提升到 0.201.1 并更新内部依赖
+
+</Update>
+
+<Update label="2025年9月24日">
+  ## v0.201.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.201.0)
+
+  ## 更新内容
+
+  ### 核心改进与修复
+  - 使 `_create_reasoning_plan` 中的 `ready` 参数变为可选
+  - 修复 embedder 配置的嵌套配置处理
+  - 添加 `batch_size` 支持以避免 token 限制错误
+  - 修正 Quickstart 文档的目录命名
+  - 解决测试时长缓存问题和事件导出
+  - 为 crew 设置添加回退逻辑
+
+  ### 新功能与增强
+  - 引入线程安全的平台上下文管理
+  - 添加 `crewai uv` 包装命令以从 CLI 运行 `uv`
+  - 支持为可观测性工作流将追踪标记为失败
+  - 添加自定义嵌入类型和提供商迁移支持
+  - 将 ChromaDB 升级到 v1.1.0 并提供兼容性修复和类型改进
+  - 添加 Pydantic 兼容的导入验证并重新组织依赖分组
+
+  ### 文档与指南
+  - 更新近期版本（0.193.x 系列）的更新日志覆盖
+  - 为 LLM Guardrail 事件的元数据支持编写文档
+  - 添加回退行为和配置可见性的指南
+
+  ### 清理与弃用
+  - 解决各模块中的 Ruff 和 MyPy 问题
+  - 改进类型注解并整合工具集
+  - 弃用旧版工具集，改用 Pydantic 兼容的导入
+
+  ### 贡献者
+  - @qizwiz（首次贡献）
+
+</Update>
+
+
+<Update label="2025年9月20日">
+  ## v0.193.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.193.2)
+
+  ## 更新内容
+
+  - 更新 pyproject 模板以使用正确的版本
+
+</Update>
+
+<Update label="2025年9月20日">
+  ## v0.193.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.193.1)
+
+  ## 更新内容
+
+  - 一系列小修复和 linter 改进
+
+</Update>
+
+<Update label="2025年9月19日">
+  ## v0.193.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.193.0)
+
+  ## 核心改进与修复
+
+  - 修复 OpenAI 适配器初始化期间 `model` 参数的处理
+  - 解决 CI 工作流中的测试时长缓存问题
+  - 修复与 agent 重复使用工具相关的不稳定测试
+  - 向 `__init__.py` 添加缺失的事件导出以保证模块行为一致
+  - 在 Mem0 中从元数据中移除消息存储以减少膨胀
+  - 修复 L2 距离度量支持以保证向量搜索的向后兼容性
+
+  ## 新功能与增强
+
+  - 引入线程安全的平台上下文管理
+  - 添加测试时长缓存以优化 `pytest-split` 运行
+  - 添加临时追踪改进以实现更好的追踪控制
+  - 使 RAG、知识库和记忆的搜索参数完全可配置
+  - 支持 ChromaDB 使用 OpenAI API 作为嵌入函数
+  - 添加更深入的可观测性工具以获得用户级洞察
+  - 统一 RAG 存储系统并支持实例专属客户端
+
+  ## 文档与指南
+
+  - 更新 `RagTool` 引用以反映 CrewAI 原生 RAG 实现
+  - 改进 `langgraph` 和 `openai` agent 适配器的内部文档，添加类型注解和文档字符串
+
+</Update>
+
+<Update label="2025年9月11日">
+  ## v0.186.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.186.1)
+
+  ## 更新内容
+
+  - 修复版本找不到且回退静默失败的问题
+  - 将 CrewAI 版本提升到 0.186.1 并更新 CLI 中的依赖
+
+</Update>
+
+<Update label="2025年9月10日">
+  ## v0.186.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.186.0)
+
+  ## 更新内容
+
+  - 详细变更请参阅 GitHub 发布说明
+
+</Update>
+
+<Update label="2025年9月4日">
+  ## v0.177.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.177.0)
+
+
+  ## 核心改进与修复
+
+  - 实现 `rag` 包与当前实现的功能对等
+  - 使用 task 和 agent 元数据增强 LLM 事件处理
+  - 通过将可变默认参数替换为 `None` 来修复相关问题
+  - 在初始化期间抑制 Pydantic 弃用警告
+  - 修复 `README.md` 中失效的示例链接
+  - 移除仅适用于 Python 3.12+ 的 Ruff 规则以保证兼容性
+  - 将 CI 工作流迁移到使用 `uv` 并更新开发工具
+
+  ## 新功能与增强
+
+  - 添加追踪改进和清理
+  - 通过将 `events` 模块移至 `crewai.events` 集中事件逻辑
+
+  ## 文档与指南
+
+  - 更新 Enterprise Action Auth Token 章节文档
+  - 发布 `v0.175.0` 版本的文档更新
+
+  ## 清理与重构
+
+  - 将解析器重构为模块化函数以获得更好的结构
+
+</Update>
+
+<Update label="2025年8月28日">
+  ## v0.175.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.175.0)
+
+
+  ## 核心改进与修复
+
+  - 修复 `crewai update` 期间 `tool` 部分的迁移
+  - 回退 OpenAI 版本固定：由于导入问题已修复，现在要求 `openai >=1.13.3`
+  - 修复不稳定的测试并提高测试稳定性
+  - 改进 `Flow` 监听器在 HITL 和循环 flow 中的可恢复性
+  - 增强 `PlusAPI` 和 `TraceBatchManager` 中的超时处理
+  - 批量处理实体记忆条目以减少冗余操作
+
+  ## 新功能与增强
+
+  - 为 `Flow.start()` 方法添加额外参数支持
+  - 在详细 CLI 输出中显示 task 名称
+  - 添加集中式嵌入类型并引入基础嵌入客户端
+  - 为 ChromaDB 和 Qdrant 引入通用客户端
+  - 添加 `crewai config reset` 支持以清除 token
+  - 支持 `crewai_trigger_payload` 自动注入
+  - 简化 RAG 客户端初始化并引入 RAG 配置系统
+  - 添加 Qdrant RAG 提供商支持
+  - 通过更好的事件数据改进追踪
+  - 支持在 `crewai login` 时移除 Auth0 和电子邮件输入
+
+  ## 文档与指南
+
+  - 添加自动化触发器文档
+  - 修复 API Reference 的 OpenAPI 源和重定向
+  - 在文档中添加混合搜索 alpha 参数
+
+  ## 清理与弃用
+
+  - 为 `Task.max_retries` 添加弃用通知
+  - 从登录流程中移除 Auth0 依赖
+
+</Update>
+
+<Update label="2025年8月19日">
+  ## v0.165.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.165.1)
+
+
+  ## 核心改进与修复
+
+  - 通过为 `configparser` 将配置值转换为字符串修复 `XMLSearchTool` 的兼容性
+  - 修复涉及 `PytestUnraisableExceptionWarning` 的不稳定 Pytest 测试
+  - 在测试套件中模拟遥测以获得更稳定的 CI 运行
+  - 将 Chroma 锁文件处理移至 `db_storage_path`
+  - 忽略来自 `chromadb` 的弃用警告
+  - 由于 `ResponseTextConfigParam` 导入问题，将 OpenAI 版本固定为 `<1.100.0`
+
+  ## 新功能与增强
+
+  - 将 agent 之间交换的消息纳入 `ExternalMemory` 元数据
+  - 自动注入 `crewai_trigger_payload`
+  - 将内部标志 `inject_trigger_input` 重命名为 `allow_crewai_trigger_context`
+  - 持续改进追踪和临时追踪逻辑
+  - 整合追踪逻辑条件
+  - 在 `Mem0` 中添加与 `agent_id` 关联的记忆条目支持
+
+  ## 文档与指南
+
+  - 在工具仓库文档中添加示例
+  - 更新 Mem0 文档中短期记忆和实体记忆集成的内容
+  - 修订韩语翻译并改进句子结构
+
+  ## 清理与杂项
+
+  - 移除已弃用的 AgentOps 集成
+
+</Update>
+
+<Update label="2025年8月19日">
+  ## v0.165.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.165.0)
+
+
+  ## 核心改进与修复
+
+  - 通过为 `configparser` 将配置值转换为字符串修复 `XMLSearchTool` 的兼容性
+  - 修复涉及 `PytestUnraisableExceptionWarning` 的不稳定 Pytest 测试
+  - 在测试套件中模拟遥测以获得更稳定的 CI 运行
+  - 将 Chroma 锁文件处理移至 `db_storage_path`
+  - 忽略来自 `chromadb` 的弃用警告
+  - 由于 `ResponseTextConfigParam` 导入问题，将 OpenAI 版本固定为 `<1.100.0`
+
+  ## 新功能与增强
+
+  - 将 agent 之间交换的消息纳入 `ExternalMemory` 元数据
+  - 自动注入 `crewai_trigger_payload`
+  - 将内部标志 `inject_trigger_input` 重命名为 `allow_crewai_trigger_context`
+  - 持续改进追踪和临时追踪逻辑
+  - 整合追踪逻辑条件
+  - 在 `Mem0` 中添加与 `agent_id` 关联的记忆条目支持
+
+  ## 文档与指南
+
+  - 在工具仓库文档中添加示例
+  - 更新 Mem0 文档中短期记忆和实体记忆集成的内容
+  - 修订韩语翻译并改进句子结构
+
+  ## 清理与杂项
+
+  - 移除已弃用的 AgentOps 集成
+
+</Update>
+
+<Update label="2025年8月13日">
+  ## v0.159.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.159.0)
+
+
+  ## 核心改进与修复
+
+  - 改进 LLM 消息格式化性能以提升运行时效率
+  - 修复企业配置 auth/parameters 中使用错误端点的问题
+  - 为部分 flow 恢复的稳定性注释掉监听器可恢复性检查
+
+  ## 新功能与增强
+
+  - 为 CLI 添加 `enterprise configure` 命令以简化企业设置
+  - 引入部分 flow 可恢复性支持
+
+  ## 文档与指南
+
+  - 添加新工具的文档
+  - 添加韩语翻译
+  - 使用 TrueFoundry 集成详情更新文档
+  - 添加 RBAC 文档和整体清理
+  - 修复 API reference 并翻新 EN、PT-BR 和 KO 的示例/手册
+
+</Update>
+
+<Update label="2025年8月6日">
+  ## v0.157.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.157.0)
+
+  ## v0.157.0 更新内容
+
+  ## 核心改进与修复
+
+  - 为长输入工具启用自动换行
+  - 允许使用 `BaseModel` 条目持久化 Flow 状态
+  - 使用 `partition()` 优化字符串操作以提升性能
+  - 停止支持已弃用的 User Memory 系统
+  - 将 LiteLLM 版本提升到 `1.74.9`
+  - 修复 CLI 以在导入时更清晰地显示缺失模块
+  - 支持使用 Okta 进行设备授权
+
+  ## 新功能与增强
+
+  - 添加 `crewai config` CLI 命令组及测试
+  - 为 `crew.name` 添加默认值支持
+  - 引入初始追踪能力
+  - 添加 LangDB 集成支持
+  - 添加 CLI 配置文档支持
+
+  ## 文档与指南
+
+  - 使用 `connect_timeout` 属性更新 MCP 文档
+  - 添加 LangDB 集成文档
+  - 添加 CLI 配置文档
+  - 功能文档的常规更新和清理
+
+</Update>
+
+<Update label="2025年7月30日">
+  ## v0.152.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.152.0)
+
+
+  ## 核心改进与修复
+
+  - 移除 `crewai signup` 引用并替换为 `crewai login`
+  - 修复使用 `agent_id` 向 Mem0 添加记忆的支持
+  - 更改 Mem0 配置中的默认值
+  - 更新导入错误以清晰显示缺失的模块文件
+  - 为事件时间戳添加时区支持
+
+  ## 新功能与增强
+
+  - 增强 `Flow` 类以支持自定义 flow 名称
+  - 将 RAG 组件重构为专门的顶层模块
+
+  ## 文档与指南
+
+  - 修复 Google Vertex AI 文档中不正确的模型命名
+
+</Update>
+
+<Update label="2025年7月23日">
+  ## v0.150.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.150.0)
+
+
+  ## 核心改进与修复
+
+  - 在 Chroma 客户端初始化周围使用文件锁
+  - 移除与不带 FTS5 的 SQLite 相关的变通方案
+  - 自动丢弃 LLM 模型不支持的 `stop` 参数
+  - 修复 `save` 方法并更新相关测试用例
+  - 修复最后一条消息来自 assistant 时 Ollama 模型的消息处理
+  - 移除 LLM 调用错误时的重复打印
+  - 为 `UserMemory` 添加弃用通知
+  - 将 LiteLLM 升级到 1.74.3 版本
+
+  ## 新功能与增强
+
+  - 添加通过内部 LLM 类进行临时工具调用的支持
+  - 将 Mem0 Storage 从 v1.1 更新到 v2
+
+  ## 文档与指南
+
+  - 修复 neatlogs 文档
+  - 在 Search-Research 套件中添加 Tavily Search & Extractor 工具
+  - 添加 `SerperScrapeWebsiteTool` 的文档并重新组织 Serper 章节
+  - 常规文档更新和改进
+
+  ## crewai-tools v0.58.0
+  ### 新工具 / 增强
+  - **SerperScrapeWebsiteTool**：添加用于从 URL 提取干净内容的工具
+  - **Bedrock AgentCore**：为 Bedrock agent 集成浏览器和代码解释器工具包
+  - **Stagehand 更新**：重构并更新 Stagehand 集成
+
+  ### 修复与清理
+  - **FTS5 支持**：启用 SQLite FTS5 以改进测试工作流中的文本搜索
+  - **测试提速**：并行化 GitHub Actions 测试套件以加快 CI 运行
+  - **清理**：由于 FTS5 支持已可用，移除 SQLite 变通方案
+  - **MongoDBVectorSearchTool**：修复序列化和 schema 处理
+
+</Update>
+
+<Update label="2025年7月16日">
+  ## v0.148.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.148.0)
+
+
+  ## 核心改进与修复
+
+  - 使用生产环境的 WorkOS 环境 ID
+  - 为测试工作流添加 SQLite FTS5 支持
+  - 修复 agent 知识库处理
+  - 使用 `BaseLLM` 类而非 `LLM` 进行比较
+  - 修复 `Task` 类中缺失的 `create_directory` 参数
+
+  ## 新功能与增强
+
+  - 引入 Agent 评估功能
+  - 添加 Evaluator 实验和回归测试方法
+  - 实现线程安全的 `AgentEvaluator`
+  - 为 Agent 评估启用事件发出
+  - 支持对单个 `Agent` 和 `LiteAgent` 进行评估
+  - 添加与 `neatlogs` 的集成
+  - 为 LLM 护栏事件添加 crew 上下文跟踪
+
+  ## 文档与指南
+
+  - 添加 `guardrail` 属性的文档和使用示例
+  - 添加 `neatlogs` 的集成指南
+  - 更新 Agent 仓库和 `Agent.kickoff` 用法的文档
+
+</Update>
+
+<Update label="2025年7月9日">
+  ## v0.141.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.141.0)
+
+
+  ## 核心改进与修复
+
+  - 通过并行化加速 GitHub Actions 测试
+
+  ## 新功能与增强
+
+  - 为 LLM 护栏事件添加 crew 上下文跟踪
+
+  ## 文档与指南
+
+  - 添加 Agent 仓库用法的文档
+  - 添加 `Agent.kickoff` 方法的文档
+</Update>
+
+<Update label="2025年7月2日">
+  ## v0.140.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.140.0)
+
+
+  ## 核心改进与修复
+
+  - 修复测试提示词中的拼写错误
+  - 通过在创建 crew 时去除末尾斜杠修复项目名称规范化
+  - 确保环境变量以大写形式写入
+  - 更新 LiteLLM 依赖
+  - 重构 `RAGStorage` 中的集合处理
+  - 实现 PEP 621 动态版本管理
+
+  ## 新功能与增强
+
+  - 添加按 task 和 agent 跟踪 LLM 调用的能力
+  - 引入 `MemoryEvents` 以监控记忆使用情况
+  - 为记忆系统和 LLM 护栏事件添加控制台日志
+  - 改进对最多 7B 参数模型的数据训练支持
+  - 添加 Scarf 和 Reo.dev 分析跟踪
+  - CLI workos 登录
+
+  ## 文档与指南
+
+  - 更新 CLI LLM 文档
+  - 在文档中添加 Nebius 集成
+  - 修正安装文档和 pt-BR 文档中的拼写错误
+  - 添加关于 `MemoryEvents` 的文档
+  - 实现文档重定向并纳入开发工具
+</Update>
+
+<Update label="2025年6月25日">
+  ## v0.134.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.134.0)
+
+
+  ## 核心改进与修复
+
+  - 修复 tools 参数语法
+  - 修复 `Task` 中的类型注解
+  - 修复从 GitHub 获取 LLM 数据时的 SSL 错误
+  - 确保与 Pydantic 2.7.x 的兼容性
+  - 从项目依赖中移除 `mkdocs`
+  - 将 Langfuse 代码示例升级为使用 Python SDK v3
+  - 在 `mem0` 存储中添加角色净化功能
+  - 改进记忆重置期间的 Crew 搜索
+  - 改进控制台打印输出
+
+  ## 新功能与增强
+
+  - 添加从已定义的 `Tool` 属性初始化工具的支持
+  - 添加在 `CrewBase` 中使用 MCP 工具的官方方式
+  - 增强 MCP 工具支持，允许在 `CrewBase` 中为每个 agent 选择多个工具
+  - 添加 Oxylabs 网页抓取工具
+
+  ## 文档与指南
+
+  - 更新 `quickstart.mdx`
+  - 添加关于 `LLMGuardrail` 事件的文档
+  - 使用全面的服务集成详情更新文档
+  - 更新 MCP 和企业版工具的推荐过滤器
+  - 更新 Maxim 可观测性文档
+  - 添加 pt-BR 文档翻译
+  - 常规文档改进
+</Update>
+
+<Update label="2025年6月12日">
+  ## v0.130.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.130.0)
+
+
+  ## 核心改进与修复
+
+  - 移除与工具结果输出相关的重复消息
+  - 修复 kickoff 的 `usage_metrics` 中缺失 `manager_agent` token 的问题
+  - 修复遥测单例以遵循动态环境变量
+  - 修复 Flow 状态日志可能遮挡人工输入的问题
+  - 增大 flow 绘图的默认 X 轴间距
+
+  ## 新功能与增强
+
+  - 在 CLI 中添加多组织操作支持
+  - 启用异步工具执行以实现更高效的工作流
+  - 引入集成 Guardrail 的 `LiteAgent`
+  - 升级 `LiteLLM` 以支持最新的 OpenAI 版本
+
+  ## 文档与指南
+
+  - 为工具仓库记录最低 `UV` 版本要求
+  - 改进幻觉护栏（Hallucination Guardrail）的示例
+  - 更新 LLM 使用的规划文档
+  - 添加 Agent 可观测性中 Maxim 支持的文档
+  - 使用企业功能的图片扩充集成文档
+  - 修复持久化指南
+  - 更新 Python 版本支持以支持 python 3.13.x
+</Update>
+
+<Update label="2025年6月5日">
+  ## v0.126.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.126.0)
+
+  ### 更新内容
+
+  ####  核心改进与修复
+
+  - 添加对 Python 3.13 的支持
+  - 修复 agent 知识源问题
+  - 持久化工具仓库中的可用工具
+  - 支持通过工具自身模块从 Agent 仓库加载工具
+  - 记录 LLM 调用工具时的使用情况
+
+  #### 新功能与增强
+
+  - 在 MCP 集成中添加 streamable-http 传输支持
+  - 添加社区分析支持
+  - 使用 Gemini 示例扩充 OpenAI 兼容章节
+  - 为提示词和记忆系统引入透明度功能
+  - 工具发布的小幅增强
+
+  #### 文档与指南
+
+  - 大规模重构文档以改善导航
+  - 扩充 MCP 集成文档
+  - 更新记忆文档和 README 视觉效果
+  - 修复异步 kickoff 示例中缺失的 await 关键字
+  - 更新 Portkey 和 Azure 嵌入文档
+  - 在 LLM 指南中添加企业版测试图片
+  - README 的常规更新
+</Update>
+
+<Update label="2025年5月27日">
+  ## v0.121.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.121.1)
+
+  问题修复与文档改进
+</Update>
+
+<Update label="2025年5月22日">
+  ## v0.121.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.121.0)
+
+  # 更新内容
+
+  ## 核心改进与修复
+
+  - 修复创建工具时的编码错误
+  - 修复失败的 llama 测试
+  - 更新日志配置以保持一致性
+  - 增强遥测初始化和事件处理
+
+  ## 新功能与增强
+
+  - 为 Task 类添加 markdown 属性
+  - 为 Agent 类添加 reasoning 属性
+  - 为 Agent 添加 inject_date 标志以自动注入日期
+  - 实现 HallucinationGuardrail（空操作，附测试覆盖）
+
+  ## 文档与指南
+
+  - 添加 StagehandTool 的文档并改进 MDX 结构
+  - 添加 MCP 集成文档并更新企业版文档
+  - 为知识库事件编写文档并更新推理文档
+  - 添加 stop 参数文档
+  - 修复文档示例中的导入引用（before_kickoff、after_kickoff）
+  - 常规文档更新和重构以提升清晰度
+</Update>
+
+<Update label="2025年5月15日">
+  ## v0.120.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.120.1)
+
+  ## 更新内容
+
+  * 修复带连字符的插值
+</Update>
+
+<Update label="2025年5月14日">
+  ## v0.120.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.120.0)
+
+
+  ### 核心改进与修复
+  	•	默认启用完整的 Ruff 规则集以实现更严格的 lint 检查
+  	•	使用上下文管理器解决 FilteredStream 中的竞态条件
+  	•	修复 agent 知识库重置问题
+  	•	将 agent 获取逻辑重构到工具模块中
+
+  ### 新功能与增强
+  	•	添加直接从仓库加载 Agent 的支持
+  	•	支持为 Task 设置空上下文
+  	•	增强 Agent 仓库反馈并修复 Tool 自动导入行为
+  	•	引入知识库的直接初始化（绕过 knowledge_sources）
+
+  ### 文档与指南
+  	•	更新 security.md 以反映当前安全实践
+  	•	整理 Google 设置章节以提升清晰度
+  	•	在输入 Gemini 密钥时添加 AI Studio 链接
+  	•	更新 Arize Phoenix 可观测性指南
+  	•	更新 flow 文档
+
+</Update>
+
+<Update label="2025年5月8日">
+  ## v0.119.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.119.0)
+
+  更新内容
+
+  ## 核心改进与修复
+
+  - 通过增强对不稳定测试的 pytest 处理提高测试可靠性
+  - 修复嵌入维度不匹配时记忆重置崩溃的问题
+  - 为 Crew 和 LiteAgent 启用父 flow 识别
+  - 防止遥测不可用时的相关崩溃
+  - 升级 LiteLLM 版本以获得更好的兼容性
+  - 通过移除 skip_external_api 修复 llama 转换器测试
+
+  ## 新功能与增强
+
+  - 在 Agent 中引入知识检索提示词重写以改进跟踪和调试
+  - 使 LLM 设置和快速开始指南与模型无关
+
+  ## 文档与指南
+
+  - 添加 RAG 工具的高级配置文档
+  - 更新 Windows 故障排除指南
+  - 完善文档示例以提升清晰度
+  - 修复文档和配置文件中的拼写错误
+</Update>
+
+<Update label="2025年4月30日">
+  ## v0.118.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.118.0)
+
+
+  ### 核心改进与修复
+
+  - 修复提示词或系统模板缺失的问题。
+  - 移除全局日志配置以避免意外覆盖。
+  - 将 TaskGuardrail 重命名为 LLMGuardrail 以提升清晰度。
+  - 将 litellm 降级到 1.167.1 版本以保证兼容性。
+  - 添加缺失的 __init__.py 文件以确保模块正确初始化。
+
+  ### 新功能与增强
+
+  - 添加无代码创建 Guardrail 的支持，以简化 AI 行为控制。
+
+  ### 文档与指南
+
+  - 从公开文档中移除 CrewStructuredTool 以反映其内部用途。
+  - 更新企业版文档和 YouTube 嵌入以改善入门体验。
+</Update>
+
+<Update label="2025年4月28日">
+  ## v0.117.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.117.1)
+
+  * build: 升级 crewai-tools
+  * 将 liteLLM 升级到最新版本
+  * 修复 Mem0 OSS
+
+</Update>
+
+<Update label="2025年4月28日">
+  ## v0.117.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.117.0)
+
+  # 更新内容
+
+  ## 新功能与增强
+
+  - 在 `@tool` 装饰器中添加 `result_as_answer` 参数支持。
+  - 引入对新语言模型的支持：GPT-4.1、Gemini-2.0 和 Gemini-2.5 Pro。
+  - 增强知识管理能力。
+  - 在 CLI 中添加 Huggingface 提供商选项。
+  - 改进 Python 3.10+ 的兼容性和 CI 支持。
+
+  ## 核心改进与修复
+
+  - 修复模板参数错误和输入缺失的问题。
+  - 通过协程条件检查改进异步 flow 处理。
+  - 通过隔离配置和正确复制记忆对象增强记忆管理。
+  - 修复 lite agent 初始化时的引用问题。
+  - 处理 Python 类型提示问题并移除冗余导入。
+  - 更新事件位置以改进工具使用跟踪。
+  - 在 flow 失败时抛出显式异常。
+  - 从多个模块中移除未使用的代码和冗余注释。
+  - 将 GitHub App token action 更新到 v2。
+
+  ## 文档与指南
+
+  - 增强文档结构，包括企业版部署说明。
+  - 为文档生成自动创建输出文件夹。
+  - 修复 `WeaviateVectorSearchTool` 文档中的失效链接。
+  - 修复护栏文档用法和 JSON 搜索工具的导入路径。
+  - 更新 `CodeInterpreterTool` 的文档。
+  - 改进文档页面的 SEO、上下文导航和错误处理。
+
+</Update>
+
+<Update label="2025年4月10日">
+  ## v0.114.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.114.0)
+
+  # 更新内容
+
+  ## 新功能与增强
+
+  - Agent 作为原子单元。（`Agent(...).kickoff()`）
+  - 支持自定义 LLM 实现。
+  - 集成外部记忆和 Opik 可观测性。
+  - 增强 YAML 提取。
+  - 多模态 agent 验证。
+  - 为 agent 和 crew 添加安全指纹。
+
+  ## 核心改进与修复
+
+  - 改进序列化、agent 复制和 Python 兼容性。
+  - 为 emit() 添加通配符支持
+  - 添加对额外路由器调用和上下文窗口调整的支持。
+  - 修复类型问题、验证和导入语句。
+  - 改进方法性能。
+  - 增强 agent task 处理、事件发出和记忆管理。
+  - 修复 CLI 问题、条件 task、克隆行为和工具输出。
+
+  ## 文档与指南
+
+  - 改进文档结构、主题和组织。
+  - 添加使用 WSL2 的本地 NVIDIA NIM、W&B Weave 和 Arize Phoenix 的指南。
+  - 更新工具配置示例、提示词和可观测性文档。
+  - 在 Flows 中使用单个 agent 的指南
+</Update>
+
+<Update label="2025年3月17日">
+  ## v0.108.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.108.0)
+
+  # 新功能
+
+  - 在 PR #2190 中将 crew.py 模板中的制表符转换为空格
+  - 在 PR #2266 中增强 LLM 流式响应处理和事件系统
+  - 在 PR #2310 中包含 model_name
+  - 在 PR #2321 中通过丰富的可视化和改进的日志增强事件监听器
+  - 在 PR #2332 中添加指纹功能
+
+  # 问题修复
+
+  - 在 PR #2308 中修复 Mistral 问题
+  - 在 PR #2370 中修复文档中的一个问题
+  - 在 PR #2369 中修复指纹属性的类型检查错误
+
+  # 文档更新
+
+  - 在 PR #2259 中改进工具文档
+  - 在 PR #2196 中更新 uv 工具包的安装指南
+  - 在 PR #2363 中添加使用 uv 工具升级 crewAI 的说明
+  - 在 PR #2254 中添加 ApifyActorsTool 的文档
+</Update>
+
+<Update label="2025年3月9日">
+  ## v0.105.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.105.0)
+
+  **核心改进与修复**
+  - 修复模板变量缺失和用户记忆配置的问题。
+  - 改进异步 flow 支持并处理 agent 响应格式化。
+  - 增强记忆重置功能并修复 CLI 记忆命令。
+  - 修复类型问题、工具调用属性和遥测解耦。
+
+  **新功能与增强**
+  - 添加 Flow 状态导出并改进状态工具集。
+  - 通过可选的 crew embedder 增强 agent 知识库设置。
+  - 引入事件发射器以获得更好的可观测性和 LLM 调用跟踪。
+  - 添加对 Python 3.10 和来自 langchain_ollama 的 ChatOllama 的支持。
+  - 为 o3-mini 模型集成上下文窗口大小支持。
+  - 添加对多次路由器调用的支持。
+
+  **文档与指南**
+  - 改进文档布局和层级结构。
+  - 添加 QdrantVectorSearchTool 指南并阐明事件监听器用法。
+  - 修复提示词中的拼写错误并更新 Amazon Bedrock 模型列表。
+
+</Update>
+
+<Update label="2025年2月13日">
+  ## v0.102.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.102.0)
+
+
+  ### 核心改进与修复
+
+  - 增强 LLM 支持：改进结构化 LLM 输出、参数处理以及 Anthropic 模型的格式化。
+  - Crew 与 Agent 稳定性：修复使用知识源克隆 agent/crew 的问题、条件 task 中多个 task 输出的问题以及 Crew task 回调被忽略的问题。
+  - 记忆与存储修复：修复 Bedrock 的短期记忆处理，确保 embedder 正确初始化，并在 crew 类中添加重置记忆函数。
+  - 训练与执行可靠性：修复训练损坏问题以及 dict 和 list 输入类型的插值问题。
+
+  ### 新功能与增强
+
+  - 高级知识管理：改进命名约定并通过自定义 embedder 支持增强嵌入配置。
+  - 扩展日志与可观测性：为日志添加 JSON 格式支持并集成 MLflow 追踪文档。
+  - 数据处理改进：更新 excel_knowledge_source.py 以处理多标签页文件。
+  - 整体性能与代码库清理：精简企业版代码对齐并解决 lint 问题。
+  - 添加新工具 QdrantVectorSearchTool
+
+  ### 文档与指南
+
+  - 更新 AI 与记忆文档：改进 Bedrock、Google AI 和长期记忆文档。
+  - Task 与工作流清晰度：在 Task 属性中添加"人工输入"行，添加 Langfuse 指南和 FileWriterTool 文档。
+  - 修复各种拼写错误和格式问题。
+
+  ### 维护与杂项
+
+  - 完善 Google Docs 集成和当前年份的 task 处理。
+
+</Update>
+
+<Update label="2025年1月28日">
+  ## v0.100.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.100.0)
+
+  * Feat: 添加 Composio 文档
+  * Feat: 添加 SageMaker 作为 LLM 提供商
+  * Fix: 整体 LLM 连接问题
+  * Fix: 在训练中使用安全访问器
+  * Fix: 为 crew_chat.py 添加版本检查
+  * Docs: crewai chat 的新文档
+  * Docs: 改进 CLI 和 Composio Tool 文档的格式和清晰度
+
+</Update>
+
+<Update label="2025年1月20日">
+  ## v0.98.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.98.0)
+
+  * Feat: 对话 crew v1
+  * Feat: 为 flow 状态添加唯一 ID
+  * Feat: 添加带 FlowPersistence 接口的 @persist 装饰器
+  * 集成: 添加 SambaNova 集成
+  * 集成: 在 cli 中添加 NVIDIA NIM 提供商
+  * 集成: 引入 VoyageAI
+  * Chore: 将模板中的日期更新为当前年份
+  * Fix: 修复 Mem0 集成中的 API 密钥行为和实体处理
+  * Fix: 修复核心调用循环逻辑及相关测试
+  * Fix: 使工具输入成为真正的对象而非字符串
+  * Fix: 为创建工具添加重要的缺失部分
+  * Fix: 降低 litellm 版本以避免 windows 问题
+  * Fix: 修复输入为 none 时的 kickoff 前处理
+  * Fix: 拼写错误
+  * Fix: 嵌套 pydantic 模型问题
+  * Fix: Docling 问题
+  * Fix: union 问题
+  * 文档更新
+
+</Update>
+
+<Update label="2025年1月4日">
+  ## v0.95.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.95.0)
+
+  * Feat: 为 Crew 添加多模态能力
+  * Feat: 程序化护栏
+  * Feat: HITL 多轮反馈
+  * Feat: Gemini 2.0 支持
+  * Feat: CrewAI Flows 改进
+  * Feat: 添加工作流权限
+  * Feat: 添加 langfuse 与 litellm 的支持
+  * Feat: Portkey 与 CrewAI 的集成
+  * Feat: 添加 interpolate_only 方法并改进错误处理
+  * Feat: Docling 支持
+  * Feat: Weviate 支持
+  * Fix: output_file 不遵循系统路径的问题
+  * Fix: 重置短期记忆时的磁盘 I/O 错误。
+  * Fix: CrewJSONEncoder 现在接受枚举
+  * Fix: Python 最高版本
+  * Fix: Task 中 output_file 的插值
+  * Fix: 正确处理协作者角色名称的大小写/空白
+  * Fix: 将 tiktoken 添加为显式依赖并记录 Rust 要求
+  * Fix: 在规划过程中包含 agent 知识
+  * Fix: 将 KnowledgeStorage 的存储初始化改为 None
+  * Fix: 修复可选存储检查
+  * Fix: 在 flow 中包含事件发射器
+  * Fix: 文档字符串、错误处理和类型提示改进
+  * Fix: 抑制来自 litellm pydantic 问题的 userWarning
+
+</Update>
+
+<Update label="2024年12月5日">
+  ## v0.86.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.86.0)
+
+  * 移除所有对 pipeline 和 pipeline router 的引用
+  * docs: 在 Custom LLM 中添加 Nvidia NIM 作为提供商
+  * 添加知识库演示 + 改进知识库文档
+  * Brandon/cre 509 hitl 多轮跟进
+  * 关于使用装饰器的 yaml crew 的新文档。简化模板 crew
+</Update>
+
+<Update label="2024年12月4日">
+  ## v0.85.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.85.0)
+
+  * 在 agent 级别添加知识库
+  * Feat/移除 langchain
+  * 改进类型化 task 输出
+  * 在 `crewai login` 时登录工具仓库
+  * 修复 result as answer 未正确退出 LLM 循环的问题
+  * fix: 使用 ollama 提供商运行时缺失键名
+  * 修复发现的拼写问题
+  * 更新运行 mypy 的 readme
+  * 将知识库添加到 mint.json
+  * 更新 Github actions
+  * 文档：更新 Agents 文档以包含创建 agent 的两种方式
+  * 文档改进：LLM 配置与使用
+</Update>
+
+<Update label="2024年11月25日">
+  ## v0.83.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.83.0)
+
+  * 新增 `before_kickoff` 和 `after_kickoff` crew 回调
+  * 支持为 agent 预置知识库
+  * 添加使用 Mem0 检索用户偏好和记忆的支持
+  * 修复异步执行
+  * 升级 chroma 并调整 embedder 函数生成器
+  * 更新 CLI Watson 支持的模型 + 文档
+  * 降低 Bandit 的级别
+  * 修复所有测试
+  * 更新文档
+</Update>
+
+<Update label="2024年11月14日">
+  ## v0.80.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.80.0)
+
+  * 修复 Tokens 回调替换问题
+  * 修复 Step 回调问题
+  * 在使用指标中添加缓存提示词 token 信息
+  * 修复 crew_train_success 测试
+</Update>
+
+<Update label="2024年11月11日">
+  ## v0.79.4
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.79.4)
+
+  围绕 llm 支持的一系列小问题修复
+</Update>
+
+<Update label="2024年11月10日">
+  ## v0.79.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.79.0)
+
+  * 为 flow 添加输入
+  * 增强日志存储以支持更多数据类型
+  * 添加对 IBM 记忆的支持
+  * 在 CLI 中添加 Watson 作为选项
+  * 添加 security.md 文件
+  * 用 uv 环境变量替换 .netrc
+  * 将 BaseTool 移至主包并集中工具描述生成
+  * 当 LLM 未返回响应时抛出错误
+  * 修复 flow 以支持循环并添加测试
+  * 更新 crew 的命名方式并修复缺失的配置
+  * 更新文档
+</Update>
+
+<Update label="2024年10月30日">
+  ## v0.76.9
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.76.9)
+
+  * 将 flow 的绘图命令更新为 crewai flow plot
+  * 添加 tomli 以支持 3.10
+  * 将安装命令选项转发给 `uv sync`
+  * 改进工具文本描述和参数
+  * 改进工具和 flow 文档
+  * 更新 flows cli，支持使用 crewai flow add-crew 轻松向 flow 添加额外的 crew
+  * 修复使用多个 start 和 listen(and_(..., ..., ...)) 时的 flow 问题
+</Update>
+
+<Update label="2024年10月23日">
+  ## v0.76.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.76.2)
+
+  更新 crewai create 命令
+</Update>
+
+<Update label="2024年10月23日">
+  ## v0.76.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.76.0)
+
+  * fix/修复缺失的 API 提示 + CLI 文档更新
+  * chore(readme): 修正贡献指南中"运行测试"的步骤
+  * 支持不安全代码执行。添加 docker 安装和运行检查
+  * 修复嵌入函数的记忆导入
+</Update>
+
+<Update label="2024年10月23日">
+  ## v0.75.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.75.1)
+
+  crewai create 上新增 `--provider` 选项
+</Update>
+
+<Update label="2024年10月23日">
+  ## v0.75.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.75.0)
+
+  * 修复训练后的测试
+  * 简化 flow
+  * 适配 `crewai tool install <tool>`
+  * 确保原始嵌入配置正常工作
+  * 修复问题
+  * 更新文档——包括在 LLM 文档中添加 Cerebras LLM 示例配置
+  * 删除不必要的测试
+
+</Update>
+
+<Update label="2024年10月18日">
+  ## v0.74.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.74.2)
+
+  * feat: 将 poetry.lock 加入 uv 迁移
+  * 修复工具调用问题
+</Update>
+
+<Update label="2024年10月18日">
+  ## v0.74.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.74.0)
+
+  - UV 迁移
+  - 将 Tools CLI 适配到 UV
+  - 添加从 Poetry 到 UV 的警告
+  - CLI 支持模型选择和提交 API 密钥
+  - 新的记忆基础（Memory Base）
+  - 修复 Lint 和警告
+  - 更新文档
+  - 问题修复
+</Update>
+
+<Update label="2024年10月11日">
+  ## v0.70.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.70.1)
+
+  * 新的 Flow 功能
+  * Flow 可视化工具
+  * 创建 `crewai create flow` 命令
+  * 创建 `crewai tool create <tool>` 命令
+  * 为发布工具添加 Git 验证
+  * fix: JSON 编码日期对象
+  * 新文档
+  * 更新 README
+  * 问题修复
+</Update>
+
+<Update label="2024年9月27日">
+  ## v0.65.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.65.2)
+
+  - 添加实验性的 Flows 功能
+  - 修复 task 顺序问题
+  - 更新模板
+</Update>
+
+<Update label="2024年9月27日">
+  ## v0.64.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.64.0)
+
+  - 正确排序 task
+  - 修复摘要逻辑
+  - 修复停止词逻辑
+  - 将默认最大迭代次数提高到 20
+  - 修复输入插值后 crew 的键
+  - 修复训练功能
+  - 添加初始工具 API
+  - 拼写错误
+  - 更新文档
+
+  修复: #1359 #1355 #1353 #1356 及其他
+</Update>
+
+<Update label="2024年9月25日">
+  ## v0.63.6
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.63.6)
+
+  - 更新项目模板
+</Update>
+
+<Update label="2024年9月25日">
+  ## v0.63.5
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.63.5)
+
+  - 恢复对 o1 系列以及任何不支持停止词的模型的支持
+  - 更新依赖
+  - 更新日志
+  - 更新文档
+</Update>
+
+<Update label="2024年9月24日">
+  ## v0.63.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.63.2)
+
+  - 添加 OPENAI_BASE_URL 作为回退
+  - 添加正确的 LLM 导入
+  - 更新文档
+</Update>
+
+<Update label="2024年9月24日">
+  ## v0.63.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.63.1)
+
+  - 为支持未来的 CrewAI 部署而进行的小问题修复
+</Update>
+
+<Update label="2024年9月24日">
+  ## v0.63.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.63.0)
+
+  - 用于与 LLM 交互的新 LLM 类（利用 LiteLLM）
+  - 添加对自定义记忆接口的支持
+  - 将 GPT-4o-mini 设为默认模型
+  - 更新文档
+  - 更新依赖
+  - 问题修复
+  	- 移除 `kickoff_for_each_async` 中冗余的 task 创建
+</Update>
+
+<Update label="2024年9月18日">
+  ## v0.61.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.61.0)
+
+  - 更新依赖
+  - 以不同颜色打印最大 rpm 消息
+  - 更新所有测试的 cassette
+  - 始终以用户消息结尾——以更好地支持某些模型（如 bedrock 模型）
+  - 整体小问题修复
+</Update>
+
+<Update label="2024年9月16日">
+  ## v0.60.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.60.0)
+
+  - 移除 LangChain 并重建执行器
+  - 让所有测试恢复通过
+  - 添加在 Agent 上通过 use_system_prompt 禁用系统提示词的能力
+  - 添加在 Agent 上通过 use_stop_words 禁用停止词的能力（以支持 o1 模型）
+  - 滑动上下文窗口重命名为 respect_context_window，并默认启用
+  - 委派（Delegation）现在默认禁用
+  - 内部提示词也有细微调整
+  - 整体可靠性和结果质量提升
+  - 新增支持：
+    - 每分钟最大请求数
+    - 给出最终答案前的最大迭代次数
+    - 充分利用系统提示词
+    - Token 计算流程
+    - crew 和 agent 执行的新日志记录
+</Update>
+
+<Update label="2024年9月13日">
+  ## v0.55.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.55.2)
+
+  * 添加自动补全能力
+  * 为 TaskOutput 添加 name 和 expected_output
+  * 新的 `crewai install` CLI
+  * 新的 `crewai deploy` CLI
+  * 清理 Pipeline 功能
+  * 更新文档
+  * 开发体验改进，如 bandit CI 流水线
+  * 修复问题：
+    * 可以使用 `planning_llm`
+    * 修复基于 YAML 的项目
+    * 修复 Azure 支持
+    * 添加对 Python 3.10 的支持
+    * 迁移离开 Pydantic v1
+
+
+</Update>
+
+<Update label="2024年8月11日">
+  ## v0.51.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.51.0)
+
+  - crewAI 测试/评估 - https://docs.crewai.com/core-concepts/Testing/
+  - 添加新的滑动上下文窗口
+  - 允许在 YAML 中使用所有属性 - https://docs.crewai.com/getting-started/Start-a-New-CrewAI-Project-Template-Method/#customizing-your-project
+  - 添加初始 Pipeline 结构 - https://docs.crewai.com/core-concepts/Pipeline/
+  - 可以为规划步骤设置 LLM - https://docs.crewai.com/core-concepts/Planning/
+  - 新的 crew run 命令 - https://docs.crewai.com/getting-started/Start-a-New-CrewAI-Project-Template-Method/#running-your-project
+  - 保存文件现在将 dict 导出为 JSON - https://docs.crewai.com/core-concepts/Tasks/#creating-directories-when-saving-files
+  - 对工具输出使用 verbose 设置
+  - 添加新的 Github 模板
+  - 新的 Vision 工具 - https://docs.crewai.com/tools/VisionTool/
+  - 新的 DALL-E 工具 - https://docs.crewai.com/tools/DALL-ETool/
+  - 新的 MySQL 工具 - https://docs.crewai.com/tools/MySQLTool/
+  - 新的 NL2SQL 工具 - https://docs.crewai.com/tools/NL2SQLTool.md
+  - 问题修复：
+      - 规划功能输出的问题
+      - 层级流程的异步 task
+      - 为非 OAI 模型提供更好的 pydantic 输出
+      - JSON 截断问题
+      - 修复日志类型
+      - 仅在设置了环境变量密钥时才导入 AgentOps
+      - 净化 agent 角色以确保目录名称有效（Windows）
+      - OpenAI 的工具名称不应包含空格
+      - 一批小问题
+</Update>
+
+<Update label="2024年7月20日">
+  ## v0.41.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.41.1)
+
+  - 修复规划功能的问题
+</Update>
+
+<Update label="2024年7月19日">
+  ## v0.41.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.41.0)
+
+  - **[重大变更]** 类型安全的输出
+    - 所有 crew 和 task 现在返回正规的 TaskOuput 和 CrewOutput 对象
+  - **[功能]** crew 的新规划功能（先规划后行动）
+    - 通过向 Crew 实例添加 planning=True 启用
+  - **[功能]** 引入重放（Replay）功能
+    - 新 CLI 支持列出上次运行的 task 并从指定 task 开始重放
+  - **[功能]** 重置记忆的能力
+    - 可以在再次运行前清理 crew 的记忆
+  - **[功能]** 为 LLM 调用添加重试功能
+    - 可以重试 llm 调用而不中止 crew 的执行
+  - **[功能]** 添加自定义转换器的能力
+  - **[工具]** 通过类型提示和新属性增强工具
+  - **[工具]** 添加 MultiON 工具
+  - **[工具]** 修复 filecrawl 工具
+  - **[工具]** 修复抓取工具中的问题
+  - **[工具]** 提升 crewAI-tools 依赖版本
+  - **[问题]** 常规问题修复和改进
+  - **[问题]** 遥测修复
+  - **[问题]** 拼写检查修正
+  - **[文档]** 更新文档
+</Update>
+
+<Update label="2024年7月6日">
+  ## v0.36.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.36.0)
+
+  - 问题修复
+  - 更新文档
+  - 更新原生提示词
+  - 修复提示词中的拼写错误
+  - 添加 AgentOps 原生支持
+  - 添加 Firecrawl 工具
+  - 添加将工具结果作为 agent 结果返回的新能力
+  - 改进代码解释器工具
+  - 添加创建自定义转换器类的新选项（文档待补充）
+</Update>
+
+<Update label="2024年7月4日">
+  ## v0.35.8
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.35.8)
+
+  - 修复 embechain 依赖问题
+</Update>
+
+<Update label="2024年7月2日">
+  ## v0.35.7
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.35.7)
+
+  - 新的 @composiohq 集成已发布
+  - 文档更新
+  - Custom GPT 已更新
+  - 调整 manager 的详细日志级别
+  - 问题修复
+</Update>
+
+<Update label="2024年7月1日">
+  ## v0.35.5
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.35.5)
+
+  - 修复 embedchain 依赖
+</Update>
+
+<Update label="2024年7月1日">
+  ## v0.35.4
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.35.4)
+
+  - 更新 crewai create CLI 以使用新版本
+</Update>
+
+<Update label="2024年7月1日">
+  ## v0.35.3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.35.3)
+
+  - 修复代码执行问题
+  - 更新整体文档
+  - 提升 crewai-tools 的版本
+  - 提升多个依赖的版本
+  - 整体问题修复
+</Update>
+
+<Update label="2024年6月29日">
+  ## v0.35.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.35.0)
+
+  - 你的 agent 现在可以执行代码了
+  - 带来任意第三方 agent，LlamaIndex、LangChain 和 Autogen 的 agent 现在都可以成为你 crew 的一员！
+  - 在执行之前训练你的 crew 以获得一致的结果！新 CLI `crewai train -n X`
+  - 问题修复和文档更新（部分新文档更新即将推出）
+</Update>
+
+<Update label="2024年6月22日">
+  ## v0.32.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.32.2)
+
+  - 更新 `crewai create` CLI 以使用新版本
+  - 修复委派 agent 匹配
+</Update>
+
+<Update label="2024年6月21日">
+  ## v0.32.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.32.0)
+
+  - 新的 `kickoff_for_each`、`kickoff_async` 和 `kickoff_for_each_async` 方法，更好地控制 kickoff 过程
+  - 添加对所有 LlamaIndex hub 集成的支持
+  - 为 crew 的完整输出添加 `usage_metrics`
+  - 在新 YAML 格式中添加对多个 crew 的支持
+  - 更新依赖
+  - 修复问题和拼写错误
+  - 更新文档
+  - 在文档中添加搜索功能
+  - 将 gpt-4o 设为默认模型
+  - 添加 LangTrace、Browserbase 和 Exa Search 的新文档
+  - 为日志添加时间戳
+
+
+
+</Update>
+
+<Update label="2024年5月23日">
+  ## v0.30.11
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.30.11)
+
+  - 更新项目生成模板
+</Update>
+
+<Update label="2024年5月14日">
+  ## v0.30.8
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.30.8)
+
+  - 更新依赖
+  - crewAI 项目结构的小问题修复
+  - 暂时移除自定义 YAML 解析器
+</Update>
+
+<Update label="2024年5月14日">
+  ## v0.30.5
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.30.5)
+
+  - 使 agent 委派对小模型更加通用
+</Update>
+
+<Update label="2024年5月13日">
+  ## v0.30.4
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.30.4)**文档更新即将跟进**，抱歉并感谢大家的耐心等待，我们很快会推出新文档！
+
+  ➿  修复 task 回调
+  🧙  可以指定某个 agent 作为 manager，而不是由 crew 为你创建
+  📄  可以设置系统、提示词和响应模板，使其在开源模型上工作更可靠（对小模型效果更好）
+  👨‍💻  改进 json 和 pydantic 输出（对小模型效果更好）
+  🔎 改进工具名称识别（对小模型效果更好）
+  🧰  工具使用方面的改进（对小模型效果更好）
+  📃  初步支持自带提示词
+  2️⃣  修复 token 计算器指标重复的问题
+  🪚  添加几个新工具：Browserbase 和 Exa Search
+  📁  保存为文件时可以创建目录
+  🔁  更新依赖——请再次检查工具
+  📄  整体小幅文档改进
+  🐛  较小的问题修复（拼写错误等）
+  👬  修复 co-worker / coworker 问题
+  👀  较小的 Readme 更新
+
+</Update>
+
+<Update label="2024年4月11日">
+  ## v0.28.8
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.28.8)
+
+  - 更新 crewai CLI 使用的版本
+</Update>
+
+<Update label="2024年4月11日">
+  ## v0.28.7
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/0.28.7)
+
+  - 问题修复
+  - 更新 crewAI 工具版本并修复问题
+</Update>
+
+<Update label="2024年4月8日">
+  ## v0.28.5
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.28.5)
+
+  - 重大的长期记忆插值问题
+  - 更新工具包依赖并包含修复
+  - 移除不必要的证书
+</Update>
+
+<Update label="2024年4月7日">
+  ## v0.28.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.28.2)
+
+  - 重大的长期记忆修复
+</Update>
+
+<Update label="2024年4月6日">
+  ## v0.28.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.28.1)
+
+  - 将 crewai-tools 更新到 0.1.15
+</Update>
+
+<Update label="2024年4月5日">
+  ## v0.28.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.28.0)
+
+  - 不再覆盖 LLM 回调
+  - 添加 `max_execution_time` 支持
+  - 添加专门的记忆文档
+  - 将工具使用日志颜色从黄色改为紫色
+  - 更新文档
+</Update>
+
+<Update label="2024年4月4日">
+  ## v0.27.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.27.0)
+
+  - 🧠 **记忆（crew 共享记忆）**：只需向 crew 添加 `memory=True` 即可启用。它会透明生效并让结果更好、更稳定；目前默认关闭。
+  - 🤚🏼**原生人工输入支持：**[文档](https://docs.crewai.com/how-to/Human-Input-on-Execution/)
+  - 🌐**通用 RAG 工具支持：**任意模型，不再局限于 OpenAI。[示例](https://docs.crewai.com/tools/DirectorySearchTool/#custom-model-and-embeddings)
+  - 🔍**增强的缓存控制：**认识一下巧妙的 cache_function 属性：[文档](https://docs.crewai.com/core-concepts/Tools/#custom-caching-mechanism)
+  - 🔁**更新 crewai-tools 依赖：**始终与最新最好的版本保持同步。
+  - ⛓️**跨 Agent 委派：**agent 之间更顺畅的协作。
+  - 💠**内部提示词改进：**更精细的对话流程。
+  - 📝 **通过更好的解析改进工具使用**
+  - 🔒 **安全性改进和依赖更新**
+  - 📄 **文档改进**
+  - 🐛 **问题修复**
+</Update>
+
+<Update label="2024年3月12日">
+  ## v0.22.5
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.22.5)
+
+  - 新模板上的其他小导入问题
+</Update>
+
+<Update label="2024年3月12日">
+  ## v0.22.4
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.22.4)
+
+  修复模板问题
+</Update>
+
+<Update label="2024年3月11日">
+  ## v0.22.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.22.2)
+
+  - 修复新 cli 模板上的问题
+  - 保证新 cli 模板上的 task 顺序
+</Update>
+
+<Update label="2024年3月11日">
+  ## v0.22.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.22.0)
+
+  - 添加初始 CLI `crewai create` 命令
+  - 添加使用字典定义 agent 和 task 的能力
+  - 添加更清晰的 agent 日志记录
+  - 修复超出最大递归深度的问题
+  - 修复文档
+  - 更新 README
+</Update>
+
+<Update label="2024年3月4日">
+  ## v0.19.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.19.0)
+
+  - 工具使用效率 +1023.21%
+  - 平均工具使用次数 +276%
+  - 工具错误减少 67%，比以往更可靠。
+  - 委派能力增强
+  - 可以通过为 Agent 或 Crew 设置 `function_calling_llm` 回退到函数调用
+  - 可以在 `kickoff` 后通过 `crew.usage_metrics` 获取 crew 执行指标
+  - 现在可以在 kickoff 时传入输入 `crew.kickoff(inputs: {'key': 'value})`
+  - 更新文档
+</Update>
+
+<Update label="2024年2月28日">
+  ## v0.16.3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.16.3)
+
+  - 修复整体问题
+  - 确保代码向后兼容
+</Update>
+
+<Update label="2024年2月28日">
+  ## v0.16.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.16.0)
+
+  - 移除残留的 `crewai_tools` 依赖
+  - 添加对输入插值的初步支持（文档待补充）
+  - 添加跟踪工具使用、工具错误、格式化错误和 token 使用量的能力
+  - 更新 README
+</Update>
+
+<Update label="2024年2月26日">
+  ## v0.14.4
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.14.4)
+
+  - 更新超时
+  - 更新文档
+  - 不再强制依赖 crewai_tools
+  - 默认让 agent 无记忆以减少 token 数量（对此前依赖该特性的用户是重大变更）
+</Update>
+
+<Update label="2024年2月24日">
+  ## v0.14.3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.14.3)
+
+  - 修复失效的文档链接
+  - 添加对不带工具的 agent 的支持
+  - 避免空的 task 输出
+</Update>
+
+<Update label="2024年2月22日">
+  ## v0.14.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.14.0)
+
+  包含 v0.14.0rc 的所有改进。
+  - 支持从开源模型导出 json 和 pydantic
+</Update>
+
+<Update label="2024年2月20日">
+  ## v0.14.0rc
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.14.0rc0)
+
+  - 添加对 crewai-tools 的支持
+  - 添加将 task 输出格式化为 Pydantic 对象或 JSON 的支持
+  - 添加将 task 输出保存到文件的支持
+  - 提高 agent 间委派的可靠性
+  - 翻新工具使用逻辑以正确使用函数调用
+  - 更新内部提示词
+  - 支持无参数的工具
+  - 问题修复
+</Update>
+
+<Update label="2024年2月16日">
+  ## v0.11.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.11.2)
+
+  - 添加更多错误日志，使用户在工具失败时能了解发生了什么
+</Update>
+
+<Update label="2024年2月16日">
+  ## v0.11.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.11.1)
+
+  - 修复工具使用逻辑中的一个问题：即使使用出错也会提前缓存结果，导致无法再次使用该工具。
+  - 还会以红色打印所有错误消息，使用户能够了解工具出了什么问题。
+</Update>
+
+<Update label="2024年2月13日">
+  ## v0.11.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.11.0)
+
+  - 可以在整个 crew 和单个 agent 上设置 `function_calling_llm`
+  - 一些早期的成本降低尝试
+  - 改进工具的函数调用
+  - 更新文档
+</Update>
+
+<Update label="2024年2月10日">
+  ## v0.10.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.10.0)
+
+  - 可以从 crew kickoff 获取包含所有 task 输出的 `full_ouput`
+  - 可以为 Agent 和 Crew 设置 `step_callback` 函数以获取所有中间步骤
+  - 在一定次数的工具使用后提醒 Agent 预期的格式。
+  - 新的工具使用内部实现现在使用 json，解锁多参数工具
+  - 重构整体委派逻辑，现在可靠性大幅提升
+  - 修复 `max_inter` 问题，现在在达到上限时能正确强制 llm 给出答案
+  - 重建缓存结构，确保多个 agent 可以使用同一缓存
+  - 重构 Task 重复使用防护逻辑
+  - 移除现在已无必要的 `CrewAgentOutputParser`
+  - 可选择与 crewAI 团队共享完整的 crew 相关数据
+  - 整体文档更新
+</Update>
+
+<Update label="2024年2月8日">
+  ## v0.5.5
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.5.5)
+
+  - 整体文档 + readme 改进
+  - 修复 RPM 控制器被不必要设置的问题
+  - 添加早期阶段的匿名遥测以改进库
+</Update>
+
+<Update label="2024年2月7日">
+  ## v0.5.3
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.5.3)
+
+  - 层级 manager 的快速修复
+</Update>
+
+<Update label="2024年2月6日">
+  ## v0.5.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.5.2)
+
+  - 为层级流程添加 `manager_llm`
+  - 改进 `max_inter` 和 `max_rpm` 逻辑
+  - 更新 README 和文档
+</Update>
+
+<Update label="2024年2月4日">
+  ## v0.5.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.5.0)
+
+  这个新版本为库带来了大量新功能和改进。
+
+  ## 新功能
+  - 添加 Task 回调。
+  - 添加对层级流程的支持。
+  - 添加在一个 task 中引用特定其他 task 的能力。
+  - 添加并行 task 执行的能力。
+
+  ## 改进
+  - 翻新最大迭代次数和每分钟最大请求数。
+  - 开发体验改进，如文档字符串等。
+  - 小幅改进和拼写修正。
+  - 修复静态类型错误。
+  - 更新 README 和文档。
+
+</Update>
+
+<Update label="2024年1月14日">
+  ## v0.1.32
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.1.32)
+
+  - 迁移到 LangChain 0.1.0
+  - 改进提示词
+  - 添加限制 agent 最大迭代次数的能力
+  - 为 Agent 和 Crew 添加每分钟请求数限流能力
+  - 添加对翻译的初步支持
+  - 添加希腊语翻译
+  - 提高代码可读性
+  - 使用 mkdocs 启动新文档
+</Update>
+
+<Update label="2024年1月7日">
+  ## v0.1.23
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.1.23)
+
+  - 大量可靠性改进
+  - 提示词变更
+  - 支持多语言的初步变更
+  - 修复 task 重复执行的问题
+  - 更好的执行错误处理
+  - 更新 README
+</Update>
+
+<Update label="2023年12月30日">
+  ## v0.1.14
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.1.14)
+
+  - 添加工具缓存和循环执行防护。(@joaomdmoura)
+  - 为 Agent 委派添加更多准则。(@joaomdmoura)
+  - 更新为使用新版 openai 库。(@joaomdmoura)
+  - 为日志记录器添加详细级别。(@joaomdmoura)
+  - 移除 WIP 代码。(@joaomdmoura)
+  - 大量开发者体验改进（特别感谢 @greysonlalonde）。
+  - 更新到 pydantic v2（同样特别感谢 @greysonlalonde）。
+
+</Update>
+
+<Update label="2023年11月24日">
+  ## v0.1.2
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.1.2)
+
+  - 添加使用 OpenAI 之外其他 LLM 的能力
+</Update>
+
+<Update label="2023年11月19日">
+  ## v0.1.1
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.1.1)
+
+  # CrewAI v0.1.1 发布说明
+
+  ## 新内容
+
+  - **Crew 详细模式**：现在可以让你查看 task 的执行过程。
+
+  - **README 和文档更新**：文档上的一系列小更新
+</Update>
+
+<Update label="2023年11月14日">
+  ## v0.1.0
+
+  [在 GitHub 上查看此版本](https://github.com/crewAIInc/crewAI/releases/tag/v0.1.0)
+
+  # CrewAI v0.1.0 发布说明
+
+  我们非常激动地宣布 CrewAI 的首个版本 0.1.0 发布！CrewAI 是一个框架，旨在协调能够进行角色扮演和协作的自主 AI agent，以更高效地完成复杂任务。
+
+  ## 新内容
+
+  - **首次发布**：CrewAI 正式面世！这个奠基性版本为 AI agent 协同工作打下了基础，每个 agent 都有自己专门的角色和目标。
+
+  - **基于角色的 Agent 设计**：使用特定的角色、目标及其成功所需的工具来定义和自定义 agent。
+
+  - **Agent 间委派**：agent 现在能够自主委派 task，实现团队间工作量的动态分配。
+
+  - **Task 管理**：动态创建和分配 task，并可灵活指定每个 task 所需的工具。
+
+  - **顺序流程**：设置你的 agent 依次处理 task，确保工作流有序且可预测。
+
+  - **文档**：通过我们的初始文档开始探索 CrewAI，它将指导你完成框架的设置和使用。
+
+  ## 增强
+
+  - `Agent`、`Task`、`Crew` 和 `Process` 类的详细 API 文档。
+  - 帮助你构建第一个 CrewAI 应用的示例和教程。
+  - agent 之间协作和委派机制的基础设置。
+
+  ## 已知问题
+
+  - 作为首个版本，可能存在尚未发现的问题和待优化之处。我们鼓励社区报告使用过程中发现的任何问题。
+
+  ## 即将推出的功能
+
+  - **高级流程管理**：在未来的版本中，我们将为 task 管理引入更复杂的流程，包括共识式和层级式工作流。
+</Update>
